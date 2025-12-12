@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Bottom"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="basicdata">
+  <Table ss:ExpandedColumnCount="2" ss:ExpandedRowCount="10" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultColumnWidth="65" ss:DefaultRowHeight="15">
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">ApplicantFileReference</Data></Cell>
+    <Cell><Data ss:Type="String">TEST001</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">earliestpriorityIPOfficeCode</Data></Cell>
+    <Cell><Data ss:Type="String">CN</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">ApplicationNumberText</Data></Cell>
+    <Cell><Data ss:Type="String">20241111111111</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">earliestpriorityFilingDate</Data></Cell>
+    <Cell><Data ss:Type="String">2024-05-09</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">ApplicantName</Data></Cell>
+    <Cell><Data ss:Type="String">测试公司</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">ApplicantNameLatin</Data></Cell>
+    <Cell><Data ss:Type="String">Test Company</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">InventorName</Data></Cell>
+    <Cell><Data ss:Type="String">测试发明人</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">InventorNameLatin</Data></Cell>
+    <Cell><Data ss:Type="String">Test Inventor</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">InventionTitle</Data></Cell>
+    <Cell><Data ss:Type="String">测试核酸分子</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="seqdata">
+  <Table ss:ExpandedColumnCount="4" ss:ExpandedRowCount="3" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultColumnWidth="65" ss:DefaultRowHeight="15">
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">sequence</Data></Cell>
+    <Cell><Data ss:Type="String">moltype</Data></Cell>
+    <Cell><Data ss:Type="String">organism</Data></Cell>
+    <Cell><Data ss:Type="String">qual_moltype</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">AmGmCmUmAmGL96</Data></Cell>
+    <Cell><Data ss:Type="String">RNA</Data></Cell>
+    <Cell><Data ss:Type="String">Homo sapiens</Data></Cell>
+    <Cell><Data ss:Type="String">other RNA</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">ATCG</Data></Cell>
+    <Cell><Data ss:Type="String">DNA</Data></Cell>
+    <Cell><Data ss:Type="String">E. coli</Data></Cell>
+    <Cell><Data ss:Type="String">genomic DNA</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+</Workbook>

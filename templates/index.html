@@ -1,0 +1,441 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>ST26 XML生成工具</title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.3">
+  <style type="text/css">
+    body {
+      font-family: 'PingFang SC', Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fafafa;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      font: 24.0px 'PingFang SC';
+      color: #212f3f;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #2b84d2;
+    }
+    h2 {
+      font: 18.0px 'PingFang SC Semibold';
+      color: #2b84d2;
+      padding: 8px 12px;
+      background-color: #f7f7f7;
+      border-left: 4px solid #2b84d2;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .download-btn {
+      display: inline-block;
+      background-color: #2b84d2;
+      color: white !important;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 10px 0;
+      transition: background-color 0.3s;
+    }
+    .download-btn:hover {
+      background-color: #1a6db0;
+    }
+    .instructions, .disclaimer {
+      background-color: #f7f7f7;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+    .status-box {
+      padding: 15px;
+      background-color: #cbead1;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+    .xml-download {
+      display: inline-block;
+      background-color: #25a24e;
+      color: white !important;
+      padding: 12px 24px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .step-number {
+      background-color: #2b84d2;
+      color: white;
+      border-radius: 50%;
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      text-align: center;
+      line-height: 24px;
+      margin-right: 8px;
+    }
+    .upload-area {
+      text-align: center;
+      padding: 30px;
+      border: 2px dashed #2b84d2;
+      border-radius: 8px;
+      margin: 20px 0;
+      background-color: #f0f8ff;
+      cursor: pointer;
+    }
+    .upload-area:hover {
+      background-color: #e0f0ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    <b>ST26格式序列表XML生成工具</b>
+  </h1>
+  
+  <div class="section">
+    <h2>
+      <span class="step-number">1</span>
+      <b>下载模板</b>
+    </h2>
+    <p>请先下载模板文件，按照模板格式填写数据：</p>
+    <a href="{{ url_for('download_template') }}" class="download-btn">
+      下载Excel模板
+    </a>
+  </div>
+  
+  <div class="section">
+    <h2>
+      <span class="step-number">2</span>
+      <b>上传填写的数据文件</b>
+    </h2>
+    
+    <form method="post" enctype="multipart/form-data" action="/upload">
+      <div class="upload-area">
+        <p style="font-size: 18px; margin-bottom: 15px;">
+          <b>点击选择文件或拖放到此处</b>
+        </p>
+        <input type="file" name="file" accept=".xlsx,.xls" style="display: none;" id="fileInput">
+        <label for="fileInput" style="cursor: pointer;">
+          <b>上传并生成 XML</b>
+        </label>
+      </div>
+      <button type="submit" style="display: none;" id="submitBtn"></button>
+    </form>
+  </div>
+  
+  <div class="section">
+    <h2><b>处理状态</b></h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="status-box">
+            <p>{{ message }}</p>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    
+    <!-- 任务进度显示区域 -->
+    <div id="task-progress" style="display: none;" class="status-box">
+      <div style="margin-bottom: 10px;">
+        <p id="progress-status"></p>
+      </div>
+      <div style="width: 100%; background-color: #f3f3f3; border-radius: 5px; overflow: hidden;">
+        <div id="progress-bar" style="width: 0%; height: 20px; background-color: #2b84d2; transition: width 0.3s;"></div>
+      </div>
+    </div>
+    
+    <!-- 转换错误显示区域 -->
+    <div id="conversion-error" style="display: none;" class="status-box">
+      <p style="color: #dc3545;"><b>⚠️ 转换失败：</b></p>
+      <p id="error-message"></p>
+    </div>
+    
+    {% if xml_file %}
+      <div class="status-box">
+        <p><b>XML文件已成功生成！</b></p>
+        <p>文件名: {{ xml_file }}</p>
+        <a href="{{ url_for('download_xml', filename=xml_file) }}" class="xml-download">
+          下载XML文件并删除缓存数据
+        </a>
+      </div>
+    {% endif %}
+    
+    {% if reminders or sequence_summary %}
+      <div class="status-box">
+        <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <h3 style="color: #856404; margin-top: 0; margin-bottom: 10px;">⚠️ 处理提醒</h3>
+          
+          <!-- 从reminders列表中来的提醒 -->
+          {% if reminders %}
+            {% for reminder in reminders %}
+              <p style="color: #856404; margin: 8px 0; padding-left: 15px; border-left: 3px solid #ffc107;">{{ reminder }}</p>
+            {% endfor %}
+          {% endif %}
+          
+          <!-- 从sequence_summary中来的通用提醒 -->
+          {% if sequence_summary %}
+            <!-- 移除了L96配体的通用提醒，因为已在xml_generator.py中添加了带行号的详细提醒 -->
+            <!-- 移除了简并碱基的通用提醒，因为已在xml_generator.py中添加了带行号的详细提醒 -->
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if sequence_summary %}
+      <div class="status-box">
+        <p><b>序列信息摘要</b></p>
+        <div style="margin-bottom: 15px;">
+          <p>总序列数: {{ sequence_summary.total_count }}</p>
+          <p>DNA序列: {{ sequence_summary.type_counts.DNA }} | RNA序列: {{ sequence_summary.type_counts.RNA }} | 氨基酸序列: {{ sequence_summary.type_counts.AA }}</p>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+          <thead>
+            <tr style="background-color: #f7f7f7;">
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">序号</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">类型</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">来源</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">长度</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">修饰和特殊说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for seq in sequence_summary.details %}
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px;">{{ seq.id }}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">{{ seq.type }}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">{{ seq.organism }}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">{{ seq.naked_length }}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">{{ seq.modification_special_notes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    // 文件上传交互脚本
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.querySelector('.upload-area');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    uploadArea.addEventListener('click', () => {
+      fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        submitBtn.click(); // 自动提交表单
+      }
+    });
+    
+    // 拖放功能
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.backgroundColor = '#e0f0ff';
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.backgroundColor = '#f0f8ff';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.backgroundColor = '#f0f8ff';
+      
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        submitBtn.click(); // 自动提交表单
+      }
+    });
+  </script>
+  
+  <script>
+    // 任务状态轮询脚本
+    document.addEventListener('DOMContentLoaded', () => {
+      // 从session中获取任务ID和xml_file结果
+      const taskId = {{ session.get('task_id', None)|tojson }};
+      const hasXmlFile = {{ 'true' if 'xml_file' in session else 'false' }};
+      
+      // 只有当有task_id且没有xml_file时才执行轮询
+      if (taskId && taskId !== 'null' && !hasXmlFile) {
+          // 显示进度条
+          const progressArea = document.getElementById('task-progress');
+          const statusText = document.getElementById('progress-status');
+          const progressBar = document.getElementById('progress-bar');
+          
+          progressArea.style.display = 'block';
+          // 在进度条区域显示初始消息
+          statusText.textContent = '⚠️ 文件正在转换中，请稍候...';
+        
+        // 开始轮询任务状态
+        const pollInterval = setInterval(() => {
+          fetch(`/task_status/${taskId}`)
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`HTTP错误，状态码: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then(data => {
+              // 更新进度信息
+              statusText.textContent = data.status;
+              const progress = Math.round((data.current / data.total) * 100);
+              progressBar.style.width = `${progress}%`;
+              
+              if (data.state === 'SUCCESS') {
+                if (data.result && data.result.status === 'success') {
+                  // 任务成功完成，刷新页面显示结果
+                  clearInterval(pollInterval);
+                  window.location.reload();
+                } else if (data.result && data.result.status === 'error') {
+                  // 转换过程中出错
+                  clearInterval(pollInterval);
+                  
+                  const errorArea = document.getElementById('conversion-error');
+                  const errorMessage = document.getElementById('error-message');
+                  
+                  progressArea.style.display = 'none';
+                  errorArea.style.display = 'block';
+                  errorMessage.textContent = data.error || data.result.error_message || '未知错误';
+                  
+                  // 清除session中的任务信息
+                  fetch(`/clear_task/${taskId}`)
+                    .catch(error => console.error('清除任务信息失败:', error));
+                }
+              } else if (data.state === 'FAILURE' || data.state === 'ERROR') {
+                // 任务失败或出错，显示错误信息
+                clearInterval(pollInterval);
+                
+                const errorArea = document.getElementById('conversion-error');
+                const errorMessage = document.getElementById('error-message');
+                
+                progressArea.style.display = 'none';
+                errorArea.style.display = 'block';
+                errorMessage.textContent = data.error || '未知错误';
+                
+                // 清除session中的任务信息
+                fetch(`/clear_task/${taskId}`)
+                  .catch(error => console.error('清除任务信息失败:', error));
+              }
+            })
+            .catch(error => {
+              console.error('获取任务状态失败:', error);
+              clearInterval(pollInterval);
+              
+              const errorArea = document.getElementById('conversion-error');
+              const errorMessage = document.getElementById('error-message');
+              
+              progressArea.style.display = 'none';
+              errorArea.style.display = 'block';
+              errorMessage.textContent = '获取任务状态失败，请刷新页面重试。';
+            });
+        }, 2000); // 每2秒轮询一次
+      }
+    });
+  </script>
+
+  <!-- 底部折叠菜单 -->
+  <div class="collapsible-menu" style="
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+  ">
+    <div class="menu-section">
+      <button class="menu-btn" onclick="toggleMenu('instructions-menu')" style="
+        width: 100%;
+        padding: 12px;
+        background-color: #2b84d2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <span>使用说明</span>
+        <span id="instructions-icon">▼</span>
+      </button>
+      <div id="instructions-menu" class="menu-content" style="
+        display: none;
+        padding: 15px;
+        background-color: white;
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        margin-bottom: 10px;
+      ">
+        <p>1）请按照模板格式填写数据，支持小核酸的修饰处理；</p>
+        <p>2）如果报错，可能是数据格式输入错误，请检查输入序列的格式是否正确</p>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <button class="menu-btn" onclick="toggleMenu('disclaimer-menu')" style="
+        width: 100%;
+        padding: 12px;
+        background-color: #2b84d2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <span>免责声明</span>
+        <span id="disclaimer-icon">▼</span>
+      </button>
+      <div id="disclaimer-menu" class="menu-content" style="
+        display: none;
+        padding: 15px;
+        background-color: white;
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        margin-bottom: 10px;
+      ">
+        <p>1）请将XML文件导入回WIPO工具进行检查，注释格式按照作者对ST26规则理解；</p>
+        <p>2）程序运行在个人电脑，文件下载后即删除数据，作者保证不查看和传播上传的数据。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 折叠菜单JavaScript -->
+  <script>
+    function toggleMenu(menuId) {
+      const menu = document.getElementById(menuId);
+      const icon = document.getElementById(menuId.replace('-menu', '-icon'));
+      
+      if (menu.style.display === 'none' || menu.style.display === '') {
+        menu.style.display = 'block';
+        icon.textContent = '▲';
+      } else {
+        menu.style.display = 'none';
+        icon.textContent = '▼';
+      }
+    }
+  </script>
+</body>
+</html>
