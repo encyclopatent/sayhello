@@ -91,3 +91,11 @@ ValueError: 第21行序列位置 4 处：字符 'I' 并非系统允许的碱基�
 2025-12-23 00:03:30,043 - app - INFO - Conversion completed successfully, generated XML: D252015BPCN.xml
 2025-12-30 20:13:27,751 - app - INFO - Starting BLAST search for target sequence
 2025-12-30 20:14:33,468 - app - INFO - BLAST search completed, found 6 matches
+2026-01-01 15:34:59,950 - app - INFO - Starting conversion task for file: static/uploads/ac04a7d7584f47e2b604e1969342ada0_template_3.xlsx
+2026-01-01 15:35:00,141 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+2026-01-01 17:12:32,259 - app - INFO - Starting conversion task for file: static/uploads/77ebca3722d24d6888c1443252f5c7ad_template_8.xlsx
+2026-01-01 17:12:32,459 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+2026-01-01 20:12:19,744 - app - INFO - Starting conversion task for file: static/uploads/3aaa1550188d42f58984e8d3e4c9b44e_template_3.xlsx
+2026-01-01 20:12:19,803 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+2026-01-01 20:37:02,166 - app - INFO - Starting BLAST search for target sequence
+2026-01-01 20:38:06,594 - app - INFO - BLAST search completed, found 6 matches

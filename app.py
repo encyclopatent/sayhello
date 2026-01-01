@@ -16,15 +16,23 @@ from Bio.Seq import Seq
 from Bio.SeqIO import parse
 import re
 
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv()  # 加载.env文件中的环境变量
+
 # 导入siRNA分析模块
 import sirna_analysis
 
 
+# 应用配置
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # 需要设置secret_key以使用flash
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # 从环境变量获取SECRET_KEY
+app.debug = os.environ.get('DEBUG', 'False').lower() == 'true'  # 从环境变量获取DEBUG模式
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16777216))  # 16MB
 
 # 配置日志记录
-log_dir = 'logs'
+log_dir = os.environ.get('LOG_DIR', 'logs')
+log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
 os.makedirs(log_dir, exist_ok=True)
 
 # 创建日志格式
@@ -36,22 +44,22 @@ log_format = logging.Formatter(
 file_handler = logging.FileHandler(
     f'{log_dir}/app_{datetime.now().strftime("%Y%m%d")}.log'
 )
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(getattr(logging, log_level))
 file_handler.setFormatter(log_format)
 
 # 配置控制台日志
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(logging.DEBUG if app.debug else getattr(logging, log_level))
 console_handler.setFormatter(log_format)
 
 # 将日志处理器添加到应用
 app.logger.addHandler(file_handler)
 app.logger.addHandler(console_handler)
-app.logger.setLevel(logging.INFO)
+app.logger.setLevel(getattr(logging, log_level))
 
 # 确保上传文件夹和生成XML文件夹存在
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-OUTPUTS_FOLDER = os.path.join('static', 'outputs')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join('static', 'uploads'))
+OUTPUTS_FOLDER = os.environ.get('OUTPUTS_FOLDER', os.path.join('static', 'outputs'))
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUTS_FOLDER, exist_ok=True)
 
@@ -59,8 +67,35 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUTS_FOLDER'] = OUTPUTS_FOLDER
 
 # Celery配置
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+# 从环境变量获取Redis配置，便于部署到不同环境
+# 迁移至服务器时，需要设置环境变量或修改以下默认值
+redis_host = os.environ.get('REDIS_HOST', 'localhost')
+redis_port = os.environ.get('REDIS_PORT', 6379)
+redis_password = os.environ.get('REDIS_PASSWORD', '')
+redis_db = os.environ.get('REDIS_DB', 0)
+
+# 构建Redis连接URL
+redis_url = f'redis://'
+if redis_password:
+    redis_url += f':{redis_password}@'
+redis_url += f'{redis_host}:{redis_port}/{redis_db}'
+
+# Redis迁移至服务器后可能出现的问题及解决方案：
+# 1. 连接失败：检查服务器防火墙是否开放6379端口，Redis配置是否允许外部连接
+# 2. 认证失败：确保REDIS_PASSWORD环境变量设置正确
+# 3. 性能问题：调整以下连接参数，优化连接池和超时设置
+# 4. 版本兼容：确保Redis服务器版本与Celery版本兼容
+
+# 基础Redis配置
+app.config['CELERY_BROKER_URL'] = redis_url
+app.config['CELERY_RESULT_BACKEND'] = redis_url
+
+# 优化Redis连接参数（迁移至服务器后建议启用）
+app.config['CELERY_BROKER_POOL_LIMIT'] = 10  # 连接池大小
+app.config['CELERY_BROKER_HEARTBEAT'] = 30  # 心跳检测，单位：秒
+app.config['CELERY_BROKER_CONNECTION_TIMEOUT'] = 20  # 连接超时，单位：秒
+app.config['CELERY_RESULT_BACKEND_MAX_RETRIES'] = 3  # 结果后端最大重试次数
+app.config['CELERY_RESULT_BACKEND_RETRY_INTERVAL'] = 1  # 结果后端重试间隔，单位：秒
 
 # 创建Celery实例
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
@@ -1028,5 +1063,14 @@ def blast_search_task(self, target_sequence):
 
 if __name__ == '__main__':
     import sys
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
-    app.run(debug=True, port=port)
+    # 从环境变量获取端口，或从命令行参数获取，或使用默认值
+    env_port = os.environ.get('PORT')
+    if env_port:
+        port = int(env_port)
+    else:
+        port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
+    
+    # 从环境变量获取主机地址
+    host = os.environ.get('HOST', '127.0.0.1')
+    
+    app.run(debug=app.debug, host=host, port=port)
