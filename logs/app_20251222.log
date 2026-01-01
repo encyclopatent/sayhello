@@ -1,0 +1,57 @@
+2025-12-22 21:42:20,253 - app - INFO - Received file upload request
+2025-12-22 21:42:20,257 - app - INFO - File saved successfully: static/uploads/25f2e44481834f638aaf57333fac7529_D252015BPCN.xlsx
+2025-12-22 21:42:20,349 - app - INFO - Async task submitted with ID: b74f1fa2-5f70-4347-b52e-c1f3adbd5a15
+2025-12-22 21:42:22,681 - app - INFO - Checking status for task: b74f1fa2-5f70-4347-b52e-c1f3adbd5a15
+2025-12-22 21:43:18,672 - app - INFO - Received file upload request
+2025-12-22 21:43:18,702 - app - INFO - File saved successfully: static/uploads/b1594b9f611045a984866a03d0ee38b7_D252015BPCN.xlsx
+2025-12-22 21:43:18,714 - app - INFO - Async task submitted with ID: 0eab423b-4d86-478f-905f-3d0f4a7e6f59
+2025-12-22 21:43:20,999 - app - INFO - Checking status for task: 0eab423b-4d86-478f-905f-3d0f4a7e6f59
+2025-12-22 21:43:56,790 - app - INFO - Received file upload request
+2025-12-22 21:43:56,819 - app - INFO - File saved successfully: static/uploads/f561f8f0919645448911f5951621e976_D252015BPCN.xlsx
+2025-12-22 21:43:56,822 - app - INFO - Async task submitted with ID: 8a4bd547-7644-49e1-95a5-874ca424f5fe
+2025-12-22 21:43:59,863 - app - INFO - Checking status for task: 8a4bd547-7644-49e1-95a5-874ca424f5fe
+2025-12-22 21:44:35,281 - app - INFO - Received file upload request
+2025-12-22 21:44:35,284 - app - INFO - File saved successfully: static/uploads/b5bccc0faa4342a2bea713b865a7c6e0_D252015BPCN.xlsx
+2025-12-22 21:44:35,292 - app - INFO - Async task submitted with ID: 277f2bca-0409-4db7-b46b-feeaa1a26075
+2025-12-22 21:44:37,615 - app - INFO - Checking status for task: 277f2bca-0409-4db7-b46b-feeaa1a26075
+2025-12-22 21:45:23,463 - app - INFO - Received file upload request
+2025-12-22 21:45:23,467 - app - INFO - File saved successfully: static/uploads/a9325200b71445bcb7d1d8d880893a02_D252015BPCN.xlsx
+2025-12-22 21:45:23,480 - app - INFO - Async task submitted with ID: eebd8e6d-d7e1-4288-85ad-f8b704626421
+2025-12-22 21:45:27,559 - app - INFO - Checking status for task: eebd8e6d-d7e1-4288-85ad-f8b704626421
+2025-12-22 21:45:50,436 - app - INFO - Received file upload request
+2025-12-22 21:45:50,441 - app - INFO - File saved successfully: static/uploads/547ffc86be574a7fad90ae405223e24c_D252015BPCN.xlsx
+2025-12-22 21:45:50,449 - app - INFO - Async task submitted with ID: a9637eb3-01b0-4f18-8ee3-09af153df1db
+2025-12-22 21:45:54,487 - app - INFO - Checking status for task: a9637eb3-01b0-4f18-8ee3-09af153df1db
+2025-12-22 21:46:19,782 - app - INFO - Request to download XML: D252015BPCN.xml
+2025-12-22 21:46:19,784 - app - INFO - Deleted XML file: static/outputs/D252015BPCN.xml
+2025-12-22 21:46:19,784 - app - INFO - Cleared session data after download
+2025-12-22 22:06:44,377 - app - INFO - Received file upload request
+2025-12-22 22:06:44,408 - app - INFO - File saved successfully: static/uploads/7e6b34bcbeb94e9c8f90497abb30477f_D252015BPCN.xlsx
+2025-12-22 22:06:44,425 - app - INFO - Async task submitted with ID: 829d1eef-6a4a-41c4-a12a-e563d02355af
+2025-12-22 22:06:46,827 - app - INFO - Checking status for task: 829d1eef-6a4a-41c4-a12a-e563d02355af
+2025-12-22 22:07:54,880 - app - INFO - Received file upload request
+2025-12-22 22:07:54,884 - app - INFO - File saved successfully: static/uploads/f7dac067b10741ecaa6d0af0f565344d_D252015BPCN.xlsx
+2025-12-22 22:07:54,899 - app - INFO - Async task submitted with ID: abf0486d-7209-48e9-85a0-ac6a5d22aa0b
+2025-12-22 22:07:57,331 - app - INFO - Checking status for task: abf0486d-7209-48e9-85a0-ac6a5d22aa0b
+2025-12-22 22:08:20,199 - app - INFO - Received file upload request
+2025-12-22 22:08:20,202 - app - INFO - File saved successfully: static/uploads/b65f00db28e64124ab491c987e99fb9d_D252015BPCN.xlsx
+2025-12-22 22:08:20,245 - app - INFO - Async task submitted with ID: 491d9d0f-f9c1-4eda-bb1f-3249f609389f
+2025-12-22 22:08:22,593 - app - INFO - Checking status for task: 491d9d0f-f9c1-4eda-bb1f-3249f609389f
+2025-12-22 22:08:37,496 - app - INFO - Request to download XML: D252015BPCN.xml
+2025-12-22 22:08:37,498 - app - INFO - Deleted XML file: static/outputs/D252015BPCN.xml
+2025-12-22 22:08:37,498 - app - INFO - Cleared session data after download
+2025-12-22 23:25:48,277 - app - INFO - Received file upload request
+2025-12-22 23:25:48,279 - app - INFO - File saved successfully: static/uploads/64a9cb1019d7408da461e7a0b8cf91dc_template_2.xlsx
+2025-12-22 23:25:48,346 - app - INFO - Async task submitted with ID: e2c791c4-3787-4295-8cb1-868e21447f89
+2025-12-22 23:25:50,359 - app - INFO - Checking status for task: e2c791c4-3787-4295-8cb1-868e21447f89
+2025-12-22 23:25:56,876 - app - INFO - Request to download XML: TEST123.xml
+2025-12-22 23:25:56,878 - app - INFO - Deleted XML file: static/outputs/TEST123.xml
+2025-12-22 23:25:56,879 - app - INFO - Cleared session data after download
+2025-12-22 23:57:56,814 - app - INFO - Received file upload request
+2025-12-22 23:57:56,819 - app - INFO - File saved successfully: static/uploads/f3118025ee074456a7e4d5eabea13893_D252015BPCN.xlsx
+2025-12-22 23:57:56,894 - app - INFO - Async task submitted with ID: 2d203c9d-2443-48e3-a3be-9c5bf7316f66
+2025-12-22 23:57:59,230 - app - INFO - Checking status for task: 2d203c9d-2443-48e3-a3be-9c5bf7316f66
+2025-12-23 00:03:29,979 - app - INFO - Received file upload request
+2025-12-23 00:03:29,984 - app - INFO - File saved successfully: static/uploads/d40153dcdb9b471bbe6ce39b7115e6aa_D252015BPCN.xlsx
+2025-12-23 00:03:29,998 - app - INFO - Async task submitted with ID: 9874044d-798b-4320-a21e-0bea94d8bb46
+2025-12-23 00:03:32,381 - app - INFO - Checking status for task: 9874044d-798b-4320-a21e-0bea94d8bb46

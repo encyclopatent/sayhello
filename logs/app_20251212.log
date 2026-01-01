@@ -1,0 +1,15 @@
+2025-12-12 22:32:25,989 - app - INFO - Test log message from test_logger.py
+2025-12-12 22:32:25,989 - app - WARNING - Test warning message from test_logger.py
+2025-12-12 22:32:25,989 - app - ERROR - Test error message from test_logger.py
+2025-12-12 22:50:25,495 - app - INFO - Received file upload request
+2025-12-12 22:50:25,496 - app - INFO - File saved successfully: static/uploads/b9c957f4135c48848ee0833a0a9e2ae0_template.xlsx
+2025-12-12 22:50:25,577 - app - INFO - Async task submitted with ID: b82a0db4-7b3e-4bb4-bedf-efc71e5796be
+2025-12-12 22:50:27,591 - app - INFO - Checking status for task: b82a0db4-7b3e-4bb4-bedf-efc71e5796be
+2025-12-12 22:51:11,897 - app - INFO - Received file upload request
+2025-12-12 22:51:11,898 - app - INFO - File saved successfully: static/uploads/c994b052b11648b8a9c804a5c5c7a39c_template3.xlsx
+2025-12-12 22:51:11,904 - app - INFO - Async task submitted with ID: 4e59dde4-f371-4294-b279-7d2609f4890b
+2025-12-12 22:51:13,921 - app - INFO - Checking status for task: 4e59dde4-f371-4294-b279-7d2609f4890b
+2025-12-13 08:33:27,623 - app - INFO - Received file upload request
+2025-12-13 08:33:27,624 - app - INFO - File saved successfully: static/uploads/681b6e4f033345c58a65b363a31fe767_template.xlsx
+2025-12-13 08:33:27,643 - app - INFO - Async task submitted with ID: 736a105e-060e-46a8-a33e-f9c77331918d
+2025-12-13 08:33:29,656 - app - INFO - Checking status for task: 736a105e-060e-46a8-a33e-f9c77331918d

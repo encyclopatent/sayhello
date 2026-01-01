@@ -1,0 +1,11 @@
+2025-12-13 13:04:29,198 - app - ERROR - siRNA file upload error: name 'fasta_seqs' is not defined
+2025-12-13 14:15:54,094 - app - ERROR - siRNA analysis error: This sheet is too large! Your sheet size is: 3757755, 8 Max sheet size is: 1048576, 16384
+2025-12-13 16:44:00,183 - app - INFO - ST26 page reset: cleared all session data
+2025-12-13 16:47:04,028 - app - INFO - Received file upload request
+2025-12-13 16:47:04,030 - app - INFO - File saved successfully: static/uploads/6d52b4e3509449cd95a5b3636b2df0b5_template.xlsx
+2025-12-13 16:47:04,116 - app - INFO - Async task submitted with ID: f38be081-0534-490f-b5b4-e9abc9931642
+2025-12-13 16:47:06,130 - app - INFO - Checking status for task: f38be081-0534-490f-b5b4-e9abc9931642
+2025-12-13 16:47:19,833 - app - INFO - Request to download XML: TEST123.xml
+2025-12-13 16:47:19,834 - app - INFO - Deleted XML file: static/outputs/TEST123.xml
+2025-12-13 16:47:19,834 - app - INFO - Deleted uploaded Excel file: static/uploads/6d52b4e3509449cd95a5b3636b2df0b5_template.xlsx
+2025-12-13 16:47:19,834 - app - INFO - Cleared session data after download

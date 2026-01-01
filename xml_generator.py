@@ -2,6 +2,7 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
 import os
+import re
 from parser import parse_sequence
 from datetime import datetime
 from parser import BASE_NAMES, PREDEFINED_MODS
@@ -88,29 +89,55 @@ def generate_xml(sequences, basic_data, output_folder):
 
     ET.SubElement(root, "ApplicantFileReference").text = basic_data['ApplicantFileReference']
     
-    if (basic_data.get('earliestpriorityIPOfficeCode') and 
-        basic_data.get('ApplicationNumberText') and 
-        basic_data.get('earliestpriorityFilingDate')):
-        earliest_priority = ET.SubElement(root, "EarliestPriorityApplicationIdentification")
-        ET.SubElement(earliest_priority, "IPOfficeCode").text = basic_data['earliestpriorityIPOfficeCode']
-        ET.SubElement(earliest_priority, "ApplicationNumberText").text = basic_data['ApplicationNumberText']
-        ET.SubElement(earliest_priority, "FilingDate").text = basic_data['earliestpriorityFilingDate']
+    # 处理最早优先权信息 - 只有当至少有一个字段有值时才生成对应的元素
+    earliest_priority_fields = {
+        'IPOfficeCode': basic_data.get('earliestpriorityIPOfficeCode'),
+        'ApplicationNumberText': basic_data.get('ApplicationNumberText'),
+        'FilingDate': basic_data.get('earliestpriorityFilingDate')
+    }
     
-    ET.SubElement(root, "ApplicantName", {"languageCode": "zh"}).text = basic_data['ApplicantName']
-    ET.SubElement(root, "ApplicantNameLatin").text = basic_data['ApplicantNameLatin']
-    ET.SubElement(root, "InventorName", {"languageCode": "zh"}).text = basic_data['InventorName']
-    ET.SubElement(root, "InventorNameLatin").text = basic_data['InventorNameLatin']
-    ET.SubElement(root, "InventionTitle", {"languageCode": "zh"}).text = basic_data['InventionTitle']
+    # 过滤掉空值字段
+    non_empty_fields = {k: v for k, v in earliest_priority_fields.items() if v}
+    
+    if non_empty_fields:
+        earliest_priority = ET.SubElement(root, "EarliestPriorityApplicationIdentification")
+        for field_name, field_value in non_empty_fields.items():
+            ET.SubElement(earliest_priority, field_name).text = field_value
+    
+    # 处理申请人名称 - 只有当ApplicantName有值时才生成对应元素，始终处理，不受优先权信息影响
+    applicant_name = basic_data.get('ApplicantName')
+    if applicant_name:
+        if re.match(r'^[A-Za-z0-9\s,\.\-\(\)\[\]\{\}\/\\\'"&:;!?@#$%^&*+=<>]*$', applicant_name):
+            ET.SubElement(root, "ApplicantName", {"languageCode": "en"}).text = applicant_name
+            ET.SubElement(root, "ApplicantNameLatin").text = ""
+        else:
+            ET.SubElement(root, "ApplicantName", {"languageCode": "zh"}).text = applicant_name
+            ET.SubElement(root, "ApplicantNameLatin").text = basic_data.get('ApplicantNameLatin', '')
+    
+    # 处理发明人名称 - 始终处理，不受优先权信息影响
+    inventor_name = basic_data.get('InventorName')
+    if inventor_name:
+        if re.match(r'^[A-Za-z0-9\s,\.\-\(\)\[\]\{\}\/\\\'"&:;!?@#$%^&*+=<>]*$', inventor_name):
+            ET.SubElement(root, "InventorName", {"languageCode": "en"}).text = inventor_name
+            ET.SubElement(root, "InventorNameLatin").text = ""
+        else:
+            ET.SubElement(root, "InventorName", {"languageCode": "zh"}).text = inventor_name
+            ET.SubElement(root, "InventorNameLatin").text = basic_data.get('InventorNameLatin', '')
+    
+    # 处理发明名称 - 始终处理，不受优先权信息影响
+    invention_title = basic_data.get('InventionTitle')
+    if invention_title:
+        if re.match(r'^[A-Za-z0-9\s,\.\-\(\)\[\]\{\}\/\\\'"&:;!?@#$%^&*+=<>]*$', invention_title):
+            ET.SubElement(root, "InventionTitle", {"languageCode": "en"}).text = invention_title
+        else:
+            ET.SubElement(root, "InventionTitle", {"languageCode": "zh"}).text = invention_title
     ET.SubElement(root, "SequenceTotalQuantity").text = str(len(sequences))
     sequence_id_counter = 1
     qualifier_counter = 2
 
     for seq_data in sequences:
-        sequence, raw_moltype, organism, qual_moltype, freetexts, ring_infos, hybrid_segments, _ = seq_data
+        sequence, raw_moltype, organism, qual_moltype, freetexts, ring_infos, hybrid_segments, check_ref, parsed_seq_data, line_number = seq_data
         hybrid_segments = hybrid_segments or []
-        
-        # 获取当前序列的行号（从1开始计数）
-        line_number = sequences.index(seq_data) + 1
         
         # 检查是否使用了默认分子类型
         if pd.isnull(raw_moltype):
@@ -128,7 +155,19 @@ def generate_xml(sequences, basic_data, output_folder):
         if pd.isnull(qual_moltype):
             qual_moltype = "other RNA" if moltype in ["DNA", "RNA"] else "protein"
             reminders.append(f"第{line_number}行：未指定限定符分子类型，使用了默认值'{qual_moltype}'")
-        naked_sequence, modifications, special_positions, original_moltype, has_degenerate_bases, ligand_removed = parse_sequence(sequence, raw_moltype, line_number)
+        
+        # 使用缓存的解析结果或重新解析
+        if parsed_seq_data:
+            # 使用缓存的解析结果
+            naked_sequence = parsed_seq_data['final_naked_sequence']
+            modifications = parsed_seq_data['modifications']
+            special_positions = parsed_seq_data['special_positions']
+            original_moltype = raw_moltype
+            has_degenerate_bases = parsed_seq_data['has_degenerate_bases']
+            ligand_removed = parsed_seq_data['ligand_removed']
+        else:
+            # 如果没有缓存结果，回退到重新解析
+            naked_sequence, modifications, special_positions, original_moltype, has_degenerate_bases, ligand_removed = parse_sequence(sequence, raw_moltype, line_number)
         
         # 检查是否移除了L96配体
         if ligand_removed:
@@ -144,6 +183,11 @@ def generate_xml(sequences, basic_data, output_folder):
                 if idx >= len(freetexts):
                     continue
                 freetext = freetexts[idx].lower()
+                
+                # 如果freetext包含"or"，不替换N
+                if 'or' in freetext:
+                    continue
+                    
                 replacement = None
                 
                 # 优先检查是否为PREDEFINED_MODS中的字符
@@ -282,31 +326,85 @@ def generate_xml(sequences, basic_data, output_folder):
         # 处理特殊位置
         if moltype == "AA":
             for x_pos, freetext in zip(special_positions, freetexts):
+                # 分离中英文
+                english_part, chinese_part = split_chinese_english(freetext)
+                
+                # 如果freetext包含中文但没有英文，使用默认英文
+                if chinese_part and not english_part:
+                    english_part = "custom modification"
+                
                 feature = ET.SubElement(insd_feature_table, "INSDFeature")
                 ET.SubElement(feature, "INSDFeature_key").text = "SITE"
                 ET.SubElement(feature, "INSDFeature_location").text = str(x_pos)
                 
                 quals = ET.SubElement(feature, "INSDFeature_quals")
-                qual = ET.SubElement(quals, "INSDQualifier")
-                qual.set("id", f"q{qualifier_counter}")
-                ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = freetext
+                add_qualifier_with_id(
+                    quals, 
+                    "note", 
+                    english_part, 
+                    f"q{qualifier_counter}",
+                    chinese_part if chinese_part else None
+                )
                 qualifier_counter += 1
         else:
             for n_pos, freetext in zip(special_positions, freetexts):
-                feature = ET.SubElement(insd_feature_table, "INSDFeature")
-                ET.SubElement(feature, "INSDFeature_key").text = "modified_base"
-                ET.SubElement(feature, "INSDFeature_location").text = str(n_pos)
+                # 分离中英文
+                english_part, chinese_part = split_chinese_english(freetext)
                 
-                quals = ET.SubElement(feature, "INSDFeature_quals")
+                # 如果freetext包含中文但没有英文，使用默认英文
+                if chinese_part and not english_part:
+                    english_part = "custom modification"
+                
+                # 构建完整的freetext用于检测"or"
+                # 注意："or"检测仍然使用原始freetext
+                full_freetext = freetext.lower()
+                
+                # 如果freetext包含"or"，添加misc_difference特征
+                if 'or' in full_freetext:
+                    # 添加misc_difference特征
+                    misc_feature = ET.SubElement(insd_feature_table, "INSDFeature")
+                    ET.SubElement(misc_feature, "INSDFeature_key").text = "misc_difference"
+                    ET.SubElement(misc_feature, "INSDFeature_location").text = str(n_pos)
+                    
+                    misc_quals = ET.SubElement(misc_feature, "INSDFeature_quals")
+                    add_qualifier_with_id(
+                        misc_quals, 
+                        "note", 
+                        english_part, 
+                        f"q{qualifier_counter}",
+                        chinese_part if chinese_part else None
+                    )
+                    qualifier_counter += 1
+                
+                # 无论是否包含"or"，都添加modified_base特征
+                base_feature = ET.SubElement(insd_feature_table, "INSDFeature")
+                ET.SubElement(base_feature, "INSDFeature_key").text = "modified_base"
+                ET.SubElement(base_feature, "INSDFeature_location").text = str(n_pos)
+                
+                base_quals = ET.SubElement(base_feature, "INSDFeature_quals")
+                
+                # 检查freetext是否在预定义修饰中（使用原始freetext的小写）
                 if freetext.lower() in PREDEFINED_MODS:
-                    add_qualifier(quals, "mod_base", freetext.lower())
+                    add_qualifier(base_quals, "mod_base", freetext.lower())
+                    # 如果包含"or"，同时添加note限定符
+                    if 'or' in full_freetext:
+                        add_qualifier_with_id(
+                            base_quals, 
+                            "note", 
+                            english_part, 
+                            f"q{qualifier_counter}",
+                            chinese_part if chinese_part else None
+                        )
+                        qualifier_counter += 1
                 else:
-                    add_qualifier(quals, "mod_base", "OTHER")
-                    qual = ET.SubElement(quals, "INSDQualifier")
-                    qual.set("id", f"q{qualifier_counter}")
-                    ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                    ET.SubElement(qual, "INSDQualifier_value").text = freetext
+                    add_qualifier(base_quals, "mod_base", "OTHER")
+                    add_qualifier_with_id(
+                        base_quals, 
+                        "note", 
+                        english_part, 
+                        f"q{qualifier_counter}",
+                        chinese_part if chinese_part else None
+                    )
                     qualifier_counter += 1
 
         # 处理环信息
@@ -345,11 +443,42 @@ def add_qualifier(quals, name, value):
     ET.SubElement(qual, "INSDQualifier_name").text = name
     ET.SubElement(qual, "INSDQualifier_value").text = value
 
-def add_qualifier_with_id(quals, name, value, id_value):
+def has_chinese(text):
+    """检测文本中是否包含中文"""
+    import re
+    return bool(re.search(r'[\u4e00-\u9fff]', text))
+
+def split_chinese_english(text):
+    """分离中英文文本
+    返回值：(english_part, chinese_part)
+    """
+    import re
+    # 提取中文部分
+    chinese_part = ''.join(re.findall(r'[\u4e00-\u9fff]+', text))
+    # 提取英文部分（保留空格和标点）
+    english_part = re.sub(r'[\u4e00-\u9fff]+', '', text).strip()
+    return english_part, chinese_part
+
+def add_qualifier_with_id(quals, name, value, id_value, non_english_value=None):
+    """添加带ID的限定符，支持非英文值"""
     qual = ET.SubElement(quals, "INSDQualifier")
     qual.set("id", id_value)
     ET.SubElement(qual, "INSDQualifier_name").text = name
     ET.SubElement(qual, "INSDQualifier_value").text = value
+    
+    # 如果有非英文值，添加NonEnglishQualifier_value元素
+    if non_english_value:
+        ET.SubElement(qual, "NonEnglishQualifier_value").text = non_english_value
+
+def add_qualifier(quals, name, value, non_english_value=None):
+    """添加限定符，支持非英文值"""
+    qual = ET.SubElement(quals, "INSDQualifier")
+    ET.SubElement(qual, "INSDQualifier_name").text = name
+    ET.SubElement(qual, "INSDQualifier_value").text = value
+    
+    # 如果有非英文值，添加NonEnglishQualifier_value元素
+    if non_english_value:
+        ET.SubElement(qual, "NonEnglishQualifier_value").text = non_english_value
 
 def write_xml_to_file(root, filename):
     header = '<?xml version="1.0" encoding="UTF-8"?>\n'

@@ -1,0 +1,45 @@
+2025-12-15 20:50:16,904 - app - INFO - Received file upload request
+2025-12-15 20:50:16,905 - app - INFO - File saved successfully: static/uploads/124e51b4ac0d4af1a601a571c68fbf46_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 20:50:16,971 - app - INFO - Async task submitted with ID: 449f6712-b2d8-45bb-9695-9f1726bec298
+2025-12-15 20:50:18,994 - app - INFO - Checking status for task: 449f6712-b2d8-45bb-9695-9f1726bec298
+2025-12-15 20:51:02,962 - app - INFO - Request to download XML: PA1500372.xml
+2025-12-15 20:51:02,964 - app - INFO - Deleted XML file: static/outputs/PA1500372.xml
+2025-12-15 20:51:02,964 - app - INFO - Deleted uploaded Excel file: static/uploads/124e51b4ac0d4af1a601a571c68fbf46_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 20:51:02,964 - app - INFO - Cleared session data after download
+2025-12-15 20:55:16,199 - app - INFO - Received file upload request
+2025-12-15 20:55:16,201 - app - INFO - File saved successfully: static/uploads/a1016a0029354906a3ce40956b4d1c64_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 20:55:16,214 - app - INFO - Async task submitted with ID: ac5d91ef-ea2a-4d60-8ebd-cf4c2c89c702
+2025-12-15 20:55:18,438 - app - INFO - Checking status for task: ac5d91ef-ea2a-4d60-8ebd-cf4c2c89c702
+2025-12-15 20:55:22,212 - app - INFO - Request to download XML: PA1500372.xml
+2025-12-15 20:55:22,212 - app - INFO - Deleted XML file: static/outputs/PA1500372.xml
+2025-12-15 20:55:22,213 - app - INFO - Deleted uploaded Excel file: static/uploads/a1016a0029354906a3ce40956b4d1c64_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 20:55:22,213 - app - INFO - Cleared session data after download
+2025-12-15 21:20:43,267 - app - INFO - Received file upload request
+2025-12-15 21:20:43,268 - app - INFO - File saved successfully: static/uploads/93460a973b084db79ee513b4ccad1aaf_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:20:43,334 - app - INFO - Async task submitted with ID: 02264cd4-d860-4cfd-aba7-81c562e9b70c
+2025-12-15 21:20:45,348 - app - INFO - Checking status for task: 02264cd4-d860-4cfd-aba7-81c562e9b70c
+2025-12-15 21:26:04,154 - app - INFO - Received file upload request
+2025-12-15 21:26:04,158 - app - INFO - File saved successfully: static/uploads/d0b80e6a7eec4d26acb27bb785398c25_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:26:04,176 - app - INFO - Async task submitted with ID: 607533ff-1175-4075-ad52-eba7788a447c
+2025-12-15 21:26:06,409 - app - INFO - Checking status for task: 607533ff-1175-4075-ad52-eba7788a447c
+2025-12-15 21:26:47,431 - app - INFO - Request to download XML: PA1500372.xml
+2025-12-15 21:26:47,432 - app - INFO - Deleted XML file: static/outputs/PA1500372.xml
+2025-12-15 21:26:47,432 - app - INFO - Deleted uploaded Excel file: static/uploads/d0b80e6a7eec4d26acb27bb785398c25_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:26:47,433 - app - INFO - Cleared session data after download
+2025-12-15 21:34:16,972 - app - INFO - Received file upload request
+2025-12-15 21:34:16,974 - app - INFO - File saved successfully: static/uploads/85f2a18a778e440ab83938c1da62a95a_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:34:17,048 - app - INFO - Async task submitted with ID: 4f08aa2a-5f5e-4812-b399-605baf9ba281
+2025-12-15 21:34:17,050 - app - INFO - Starting conversion task for file: static/uploads/85f2a18a778e440ab83938c1da62a95a_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:34:17,158 - app - INFO - Conversion completed successfully, generated XML: PA1500372.xml
+2025-12-15 21:34:19,282 - app - INFO - Checking status for task: 4f08aa2a-5f5e-4812-b399-605baf9ba281
+2025-12-15 21:34:29,323 - app - INFO - Request to download XML: PA1500372.xml
+2025-12-15 21:34:29,323 - app - INFO - Deleted XML file: static/outputs/PA1500372.xml
+2025-12-15 21:34:29,324 - app - INFO - Deleted uploaded Excel file: static/uploads/85f2a18a778e440ab83938c1da62a95a_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:34:29,324 - app - INFO - Cleared session data after download
+2025-12-15 22:05:58,663 - app - INFO - Started BLAST search task with ID: 19adcfe5-2ce0-4571-88a0-035e04e2664c
+2025-12-15 22:05:58,669 - app - INFO - Starting BLAST search for target sequence
+2025-12-15 22:06:51,198 - app - INFO - Deleted file: static/sirna_outputs/siRNA_匹配结果_主报告_20251215_220558.xlsx
+2025-12-15 22:06:51,199 - app - INFO - Deleted file: static/sirna_uploads/1215.xlsx
+2025-12-15 22:06:51,199 - app - INFO - Deleted file: static/sirna_uploads/WO_2025_199455_A1.fasta
+2025-12-15 22:06:51,199 - app - INFO - Cleared session data after siRNA download
+2025-12-15 22:07:04,457 - app - INFO - BLAST search completed, found 5 matches

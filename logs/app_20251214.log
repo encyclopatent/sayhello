@@ -1,0 +1,47 @@
+2025-12-14 19:57:09,227 - app - INFO - Started BLAST search task with ID: 36486d88-c346-40d2-92bd-0189c0376894
+2025-12-14 19:57:09,230 - app - INFO - Starting BLAST search for target sequence
+2025-12-14 19:58:13,670 - app - INFO - Deleted file: static/sirna_outputs/siRNA_匹配结果_主报告_20251214_195709.xlsx
+2025-12-14 19:58:13,671 - app - INFO - Deleted file: static/sirna_uploads/INHBE_siRNA.xlsx
+2025-12-14 19:58:13,671 - app - INFO - Deleted file: static/sirna_uploads/WO_2025_223532_A1.fasta
+2025-12-14 19:58:13,672 - app - INFO - Cleared session data after siRNA download
+2025-12-14 19:58:16,547 - app - INFO - BLAST search completed, found 6 matches
+2025-12-14 20:11:13,749 - app - INFO - Started BLAST search task with ID: 6b3b1bd4-c3ee-482f-972c-a32dea4c201f
+2025-12-14 20:11:13,751 - app - INFO - Starting BLAST search for target sequence
+2025-12-14 20:12:19,196 - app - INFO - BLAST search completed, found 6 matches
+2025-12-14 20:27:02,889 - app - INFO - Started BLAST search task with ID: 5c4449d8-2b8b-44c9-b029-4d55e282f28a
+2025-12-14 20:27:02,890 - app - INFO - Starting BLAST search for target sequence
+2025-12-14 20:28:11,228 - app - INFO - BLAST search completed, found 6 matches
+2025-12-14 22:31:36,807 - app - INFO - Received file upload request
+2025-12-14 22:31:36,810 - app - INFO - File saved successfully: static/uploads/05025b8a8cca473fa715055d885bd08d_template3.xlsx
+2025-12-14 22:31:36,832 - app - INFO - Async task submitted with ID: f3ea086d-0da4-4f2e-b2a3-bfe1200dbe9c
+2025-12-14 22:31:36,836 - app - INFO - Starting conversion task for file: static/uploads/05025b8a8cca473fa715055d885bd08d_template3.xlsx
+2025-12-14 22:31:36,930 - app - ERROR - Conversion task failed: 第1行序列位置 16 处：字符 'Z' 并非系统允许的碱基表示
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 718, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 16, in convert_excel_to_xml
+    sequence_summary = parser.get_sequence_summary(sequences)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 550, in get_sequence_summary
+    naked_sequence, modifications, special_positions, _, _, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=i)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 348, in parse_sequence
+    raise ValueError(f"第{line_number}行序列位置 {i+1} 处：{error_msg}")
+ValueError: 第1行序列位置 16 处：字符 'Z' 并非系统允许的碱基表示
+2025-12-14 22:31:39,021 - app - INFO - Checking status for task: f3ea086d-0da4-4f2e-b2a3-bfe1200dbe9c
+2025-12-14 22:31:48,152 - app - INFO - Received file upload request
+2025-12-14 22:31:48,182 - app - INFO - File saved successfully: static/uploads/f062c249fd094fd2aa9f7e5a56f6a2c8_template.xlsx
+2025-12-14 22:31:48,185 - app - INFO - Async task submitted with ID: 01b42e14-fa4c-4714-8aff-91254daf8a60
+2025-12-14 22:31:48,186 - app - INFO - Starting conversion task for file: static/uploads/f062c249fd094fd2aa9f7e5a56f6a2c8_template.xlsx
+2025-12-14 22:31:48,215 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+2025-12-14 22:31:50,413 - app - INFO - Checking status for task: 01b42e14-fa4c-4714-8aff-91254daf8a60
+2025-12-14 22:31:53,750 - app - INFO - Request to download XML: TEST123.xml
+2025-12-14 22:31:53,751 - app - INFO - Deleted XML file: static/outputs/TEST123.xml
+2025-12-14 22:31:53,751 - app - INFO - Deleted uploaded Excel file: static/uploads/f062c249fd094fd2aa9f7e5a56f6a2c8_template.xlsx
+2025-12-14 22:31:53,751 - app - INFO - Cleared session data after download
+2025-12-15 20:50:16,987 - app - INFO - Starting conversion task for file: static/uploads/124e51b4ac0d4af1a601a571c68fbf46_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 20:50:17,053 - app - INFO - Conversion completed successfully, generated XML: PA1500372.xml
+2025-12-15 20:55:16,219 - app - INFO - Starting conversion task for file: static/uploads/a1016a0029354906a3ce40956b4d1c64_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 20:55:16,334 - app - INFO - Conversion completed successfully, generated XML: PA1500372.xml
+2025-12-15 21:20:43,337 - app - INFO - Starting conversion task for file: static/uploads/93460a973b084db79ee513b4ccad1aaf_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:20:43,390 - app - INFO - Conversion completed successfully, generated XML: PA1500372.xml
+2025-12-15 21:26:04,181 - app - INFO - Starting conversion task for file: static/uploads/d0b80e6a7eec4d26acb27bb785398c25_Z232278BPWO-EN-input2-2.xlsx
+2025-12-15 21:26:04,242 - app - INFO - Conversion completed successfully, generated XML: PA1500372.xml

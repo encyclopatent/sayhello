@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>化合物拆解分析工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        /* 化合物拆解工具特定样式 */
+        .fragment-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .file-input-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .file-input-group {
+            margin-bottom: 20px;
+        }
+        
+        .file-input-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .form-hint {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .form-hint a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .form-hint a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-input-group input[type="file"] {
+            margin-bottom: 10px;
+        }
+        
+        .controls-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: #e9ecef;
+            color: var(--text-dark);
+        }
+
+        .btn-secondary:hover {
+            background-color: #dee2e6;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 30px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+        }
+
+        .result-item a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .result-item a:hover {
+            text-decoration: underline;
+        }
+
+        .status-message {
+            display: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-message.processing {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 添加动态加载动画 */
+        .status-message.processing::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #0c5460 0%, #17a2b8 50%, #0c5460 100%);
+            background-size: 200% 100%;
+            animation: loadingBar 2s infinite;
+        }
+        
+        @keyframes loadingBar {
+            0% {
+                background-position: 0% 0%;
+            }
+            100% {
+                background-position: 200% 0%;
+            }
+        }
+        
+        /* 添加模块收起的动画效果 */
+        .file-input-section,
+        .controls-section {
+            transition: all 0.5s ease;
+            max-height: 200px;
+            overflow: hidden;
+        }
+        
+        .file-input-section.collapsed,
+        .controls-section.collapsed {
+            max-height: 0;
+            padding: 0 30px;
+            margin-bottom: 0;
+        }
+        
+        /* 添加处理过程中的动态效果 */
+        .processing-dots {
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .processing-dots::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% {
+                content: '';
+            }
+            40% {
+                content: '.';
+            }
+            60% {
+                content: '..';
+            }
+            80%, 100% {
+                content: '...';
+            }
+        }
+        
+        /* 摘要信息样式 */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        /* 片段统计表格样式 */
+        .fragment-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .fragment-stats-table th,
+        .fragment-stats-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .fragment-stats-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .fragment-stats-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="fragment-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>🧪 化合物拆解分析工具</h1>
+            <a href="{{ url_for('main') }}" class="btn btn-secondary">返回主页</a>
+        </div>
+        
+        <div class="file-input-section">
+            <h2>文件上传</h2>
+            <form id="fragment-form">
+                <div class="file-input-group">
+                    <label for="excel-file">Excel文件</label>
+                    <span class="form-hint">请上传包含化合物SMILES的Excel文件，第一行为列名，第二行为核心结构（化合物编号为'core'），后续为待分析化合物</span>
+                    <input type="file" id="excel-file" name="excel_file" accept=".xlsx, .xls" required>
+                </div>
+            </form>
+        </div>
+        
+        <div class="controls-section" id="controls-section">
+            <div>
+                <h3>操作</h3>
+                <p class="form-hint">点击"开始分析"按钮处理化合物并生成结果</p>
+            </div>
+            <div>
+                <button id="process-btn" class="btn btn-primary">开始分析</button>
+                <button id="reset-btn" class="btn btn-secondary">重置</button>
+            </div>
+        </div>
+        
+        <div id="status-message" class="status-message"></div>
+        
+        <div id="results-section" class="results-section">
+            <h2>处理结果</h2>
+            <div class="result-item">
+                <strong>处理结果表格：</strong>
+                <a id="result-link" href="" target="_blank">下载结果</a>
+            </div>
+            <div class="result-item">
+                <strong>片段统计表格：</strong>
+                <a id="stats-link" href="" target="_blank">下载统计</a>
+            </div>
+            <div class="result-item">
+                <strong>分子结构图片：</strong>
+                <span id="images-info"></span>
+            </div>
+        </div>
+        
+        <!-- 处理结果摘要部分 -->
+        <div id="summary-section" class="results-section">
+            <h2>处理结果摘要</h2>
+            <div id="summary-content"></div>
+        </div>
+        
+        <!-- 核心结构展示部分 -->
+        <div id="core-structure-section" class="results-section">
+            <h2>核心结构与位点信息</h2>
+            <div id="core-structure-content"></div>
+        </div>
+        
+        <!-- 片段统计结果部分 -->
+        <div id="fragment-stats-section" class="results-section">
+            <h2>片段统计结果</h2>
+            <div id="fragment-stats-content"></div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('fragment-form');
+            const processBtn = document.getElementById('process-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const statusMessage = document.getElementById('status-message');
+            const resultsSection = document.getElementById('results-section');
+            const resultLink = document.getElementById('result-link');
+            const statsLink = document.getElementById('stats-link');
+            const imagesInfo = document.getElementById('images-info');
+            
+            // 显示状态消息
+            function showStatus(message, type) {
+                if (type === 'processing') {
+                    message += '<span class="processing-dots"></span>';
+                }
+                statusMessage.innerHTML = message;
+                statusMessage.className = `status-message ${type} show`;
+            }
+            
+            // 隐藏状态消息
+            function hideStatus() {
+                statusMessage.className = 'status-message';
+            }
+            
+            // 处理表单提交
+            processBtn.addEventListener('click', function() {
+                const fileInput = document.getElementById('excel-file');
+                if (!fileInput.files[0]) {
+                    showStatus('请选择一个Excel文件', 'error');
+                    return;
+                }
+                
+                showStatus('正在处理，请稍候...', 'processing');
+                processBtn.disabled = true;
+                
+                // 收起文件上传和操作模块
+                const fileInputSection = document.querySelector('.file-input-section');
+                const controlsSection = document.getElementById('controls-section');
+                fileInputSection.classList.add('collapsed');
+                controlsSection.classList.add('collapsed');
+                
+                const formData = new FormData(form);
+                
+                fetch('/fragment/process', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received data:', data);
+                    if (data.status === 'success') {
+                        showStatus('处理完成！', 'success');
+                        resultsSection.className = 'results-section show';
+                        
+                        // 设置下载链接
+                        const resultFilename = data.result_path.split('/').pop();
+                        const statsFilename = data.stats_path.split('/').pop();
+                        resultLink.href = `/fragment/download/${resultFilename}`;
+                        statsLink.href = `/fragment/download/${statsFilename}`;
+                        
+                        // 显示图片信息
+                        imagesInfo.textContent = `图片已生成在服务器上: ${data.images_dir}`;
+                        
+                        // 显示处理结果摘要
+                        const summaryContent = document.getElementById('summary-content');
+                        const summarySection = document.getElementById('summary-section');
+                        
+                        console.log('Summary data:', data.summary);
+                        
+                        let summaryHtml = '<div class="summary-grid">';
+                        summaryHtml += `<div class="summary-item"><strong>总化合物数：</strong>${data.summary.total_compounds || 0}</div>`;
+                        summaryHtml += `<div class="summary-item"><strong>成功处理：</strong>${data.summary.processed_compounds || 0}</div>`;
+                        summaryHtml += `<div class="summary-item"><strong>跳过：</strong>${data.summary.skip_count || 0}</div>`;
+                        summaryHtml += `<div class="summary-item"><strong>无核心结构：</strong>${(data.summary.no_core_compounds && data.summary.no_core_compounds.length > 0) ? data.summary.no_core_compounds.join(', ') : '无'}</div>`;
+                        summaryHtml += `<div class="summary-item"><strong>无效SMILES：</strong>${(data.summary.invalid_smiles_compounds && data.summary.invalid_smiles_compounds.length > 0) ? data.summary.invalid_smiles_compounds.join(', ') : '无'}</div>`;
+                        summaryHtml += `<div class="summary-item"><strong>总片段数：</strong>${data.summary.total_fragments || 0}</div>`;
+                        summaryHtml += '</div>';
+                        
+                        console.log('Summary HTML:', summaryHtml);
+                        summaryContent.innerHTML = summaryHtml;
+                        summarySection.classList.add('show');
+                        console.log('Summary section class:', summarySection.className);
+                        
+                        // 显示核心结构与位点信息
+                        const coreStructureContent = document.getElementById('core-structure-content');
+                        const coreStructureSection = document.getElementById('core-structure-section');
+                        
+                        console.log('Core structure data:', data.summary.core_structure);
+                        
+                        let coreHtml = '';
+                        const coreStructure = data.summary.core_structure;
+                        if (coreStructure) {
+                            coreHtml += '<div class="core-structure-container">';
+                            
+                            // 显示核心结构图片
+                            if (coreStructure.img_path) {
+                                const coreImgPath = `/${coreStructure.img_path}`;
+                                coreHtml += `<div class="core-structure-image">`;
+                                coreHtml += `<h3>核心结构</h3>`;
+                                coreHtml += `<img src="${coreImgPath}" alt="核心结构" width="500" height="500">`;
+                                coreHtml += `</div>`;
+                            }
+                            
+                            // 不显示核心结构SMILES（根据用户需求）
+                            /*if (coreStructure.smiles) {
+                                coreHtml += `<div class="core-structure-smiles">`;
+                                coreHtml += `<h3>SMILES</h3>`;
+                                coreHtml += `<code>${coreStructure.smiles}</code>`;
+                                coreHtml += `</div>`;
+                            }*/
+                            
+                            // 显示位点信息
+                            if (coreStructure.sites && coreStructure.sites.length > 0) {
+                                coreHtml += `<div class="core-structure-sites">`;
+                                coreHtml += `<h3>位点信息</h3>`;
+                                coreHtml += `<ul>`;
+                                for (const site of coreStructure.sites) {
+                                    coreHtml += `<li>位点 ${site}</li>`;
+                                }
+                                coreHtml += `</ul>`;
+                                coreHtml += `</div>`;
+                            }
+                            
+                            coreHtml += '</div>';
+                        } else {
+                            coreHtml += '<p>未找到核心结构信息</p>';
+                        }
+                        
+                        console.log('Core structure HTML:', coreHtml);
+                        coreStructureContent.innerHTML = coreHtml;
+                        coreStructureSection.classList.add('show');
+                        console.log('Core structure section class:', coreStructureSection.className);
+                        
+                        // 显示片段统计结果
+                        const fragmentStatsContent = document.getElementById('fragment-stats-content');
+                        const fragmentStatsSection = document.getElementById('fragment-stats-section');
+                        
+                        console.log('Fragment stats data:', data.summary.fragment_stats);
+                        console.log('Fragment records:', data.summary.fragment_records);
+                        
+                        let statsHtml = '<table class="fragment-stats-table">';
+                        statsHtml += '<thead><tr><th>连接位点</th><th>片段图片</th><th>片段名称</th><th>出现频次</th><th>出现的化合物</th></tr></thead>';
+                        statsHtml += '<tbody>';
+                        
+                        // 修复：确保片段统计结果始终显示，即使数据格式有问题
+                        let hasData = false;
+                        try {
+                            // 检查fragment_stats是否存在且有数据
+                            if (data.summary.fragment_stats && typeof data.summary.fragment_stats === 'object') {
+                                // 遍历片段统计数据
+                                for (const siteKey in data.summary.fragment_stats) {
+                                    if (data.summary.fragment_stats.hasOwnProperty(siteKey)) {
+                                        hasData = true;
+                                        for (const fragSmiles in data.summary.fragment_stats[siteKey]) {
+                                            if (data.summary.fragment_stats[siteKey].hasOwnProperty(fragSmiles)) {
+                                                const fragData = data.summary.fragment_stats[siteKey][fragSmiles];
+                                                const fragRecord = data.summary.fragment_records ? data.summary.fragment_records[fragSmiles] : {};
+                                                const chemName = fragRecord.chem_name || '';
+                                                
+                                                // 检查是否有图片路径
+                                                let imgPath = '';
+                                                if (fragRecord.img_path) {
+                                                    // 使用后端提供的完整相对路径
+                                                    imgPath = `/${fragRecord.img_path}`;
+                                                }
+                                                const imgHtml = imgPath ? `<img src="${imgPath}" width="100" height="100" alt="片段结构">` : '无图片';
+                                                
+                                                statsHtml += '<tr>';
+                                                statsHtml += `<td>${siteKey}</td>`;
+                                                statsHtml += `<td>${imgHtml}</td>`;
+                                                statsHtml += `<td>${chemName}</td>`;
+                                                statsHtml += `<td>${fragData.count || 0}</td>`;
+                                                statsHtml += `<td>${fragData.cpd_ids ? fragData.cpd_ids.join(', ') : ''}</td>`;
+                                                statsHtml += '</tr>';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error processing fragment stats:', error);
+                            statsHtml += '<tr><td colspan="5">处理统计数据时出错</td></tr>';
+                        }
+                        
+                        if (!hasData) {
+                            statsHtml += '<tr><td colspan="5">暂无片段统计数据</td></tr>';
+                        }
+                        
+                        statsHtml += '</tbody></table>';
+                        console.log('Stats HTML:', statsHtml);
+                        fragmentStatsContent.innerHTML = statsHtml;
+                        
+                        // 确保统计结果区域总是显示
+                        fragmentStatsSection.classList.add('show');
+                        console.log('Stats section class:', fragmentStatsSection.className);
+                    } else {
+                        showStatus(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('处理失败，请检查日志', 'error');
+                    console.error('Error:', error);
+                })
+                .finally(() => {
+                    processBtn.disabled = false;
+                    // 保持模块收起状态，不再恢复显示
+                });
+            });
+            
+            // 重置表单
+            resetBtn.addEventListener('click', function() {
+                form.reset();
+                hideStatus();
+                resultsSection.className = 'results-section';
+                summarySection.className = 'results-section';
+                fragmentStatsSection.className = 'results-section';
+                coreStructureSection.className = 'results-section';
+                
+                // 恢复文件上传和操作模块显示
+                const fileInputSection = document.querySelector('.file-input-section');
+                const controlsSection = document.getElementById('controls-section');
+                fileInputSection.classList.remove('collapsed');
+                controlsSection.classList.remove('collapsed');
+                
+                // 启用处理按钮
+                processBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>

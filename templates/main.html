@@ -1,0 +1,144 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>生物序列分析工具集</title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* 主页面特定样式 */
+    .tools-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 30px;
+      margin: 40px 0;
+    }
+    
+    .tool-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      padding: 40px;
+      width: 350px;
+      text-align: center;
+      transition: var(--transition);
+    }
+    
+    .tool-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+    
+    .tool-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+      display: block;
+    }
+    
+    .tool-title {
+      color: var(--primary-color);
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    
+    .tool-description {
+      color: var(--text-secondary);
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+    
+    .tool-btn {
+      display: inline-block;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 12px 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: var(--transition);
+    }
+    
+    .tool-btn:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .welcome-section {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .welcome-section h1 {
+      font-size: 32px;
+      margin-bottom: 15px;
+      color: var(--text-dark);
+    }
+    
+    .welcome-section p {
+      color: var(--text-secondary);
+      font-size: 18px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="welcome-section">
+    <h1>🧬 生物序列分析工具集</h1>
+    <p>个人工具分享，结果仅供参考</p>
+  </div>
+  
+  <div class="tools-container">
+    <!-- ST26工具卡片 -->
+    <div class="tool-card">
+      <span class="tool-icon">📄</span>
+      <h2 class="tool-title">ST26 XML生成工具</h2>
+      <p class="tool-description">
+        快速将Excel格式的序列数据转换为符合ST26格式的XML文件，支持DNA、RNA和氨基酸序列的处理与验证。
+      </p>
+      <a href="{{ url_for('st26_index') }}" class="tool-btn">
+        进入ST26工具
+      </a>
+    </div>
+    
+    <!-- siRNA工具卡片 -->
+    <div class="tool-card">
+      <span class="tool-icon">🔬</span>
+      <h2 class="tool-title">siRNA序列匹配工具</h2>
+      <p class="tool-description">
+        分析siRNA序列与靶序列的匹配情况，支持正义链和反义链检测，帮助评估是否为现有技术公开。
+      </p>
+      <a href="{{ url_for('sirna_index') }}" class="tool-btn">
+        进入siRNA工具
+      </a>
+    </div>
+    
+    <!-- 化合物拆解工具卡片 -->
+    <div class="tool-card">
+      <span class="tool-icon">🧪</span>
+      <h2 class="tool-title">化合物拆解分析工具</h2>
+      <p class="tool-description">
+        将包含核心结构的化合物拆解为片段，支持结构匹配、片段提取和可视化，帮助分析化合物结构特征。
+      </p>
+      <a href="{{ url_for('fragment_index') }}" class="tool-btn">
+        进入拆解工具
+      </a>
+    </div>
+    
+    <!-- 序列比对工具卡片 -->
+    <div class="tool-card">
+      <span class="tool-icon">🧬</span>
+      <h2 class="tool-title">序列比对工具</h2>
+      <p class="tool-description">
+        进行序列比对分析，支持全局比对和局部比对，可查看序列同一性和特定位点匹配情况，检测关键位点。
+      </p>
+      <a href="{{ url_for('alignment_index') }}" class="tool-btn">
+        进入比对工具
+      </a>
+    </div>
+  </div>
+</body>
+</html>

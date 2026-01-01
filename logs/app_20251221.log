@@ -1,0 +1,93 @@
+2025-12-21 15:58:02,429 - app - INFO - Started BLAST search task with ID: 5e4679ab-d421-45ce-969e-970649788a8a
+2025-12-21 15:58:02,440 - app - INFO - Starting BLAST search for target sequence
+2025-12-21 15:59:06,393 - app - INFO - BLAST search completed, found 6 matches
+2025-12-22 21:42:20,354 - app - INFO - Starting conversion task for file: static/uploads/25f2e44481834f638aaf57333fac7529_D252015BPCN.xlsx
+2025-12-22 21:42:20,457 - app - ERROR - Conversion task failed: 第7行DNA序列包含1个N，但只有0个freetext定义
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 9, in convert_excel_to_xml
+    sequences = parser.read_sequences_from_excel(file_path)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 499, in read_sequences_from_excel
+    raise ValueError(f"第{row_idx+1}行{current_moltype}序列包含{n_count}个N，但只有{len(freetext_values)}个freetext定义")
+ValueError: 第7行DNA序列包含1个N，但只有0个freetext定义
+2025-12-22 21:43:18,716 - app - INFO - Starting conversion task for file: static/uploads/b1594b9f611045a984866a03d0ee38b7_D252015BPCN.xlsx
+2025-12-22 21:43:18,745 - app - ERROR - Conversion task failed: 第7行DNA序列包含1个N，但只有0个freetext定义
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 9, in convert_excel_to_xml
+    sequences = parser.read_sequences_from_excel(file_path)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 499, in read_sequences_from_excel
+    raise ValueError(f"第{row_idx+1}行{current_moltype}序列包含{n_count}个N，但只有{len(freetext_values)}个freetext定义")
+ValueError: 第7行DNA序列包含1个N，但只有0个freetext定义
+2025-12-22 21:43:56,823 - app - INFO - Starting conversion task for file: static/uploads/f561f8f0919645448911f5951621e976_D252015BPCN.xlsx
+2025-12-22 21:43:56,839 - app - ERROR - Conversion task failed: 第7行DNA序列包含1个N，但只有0个freetext定义
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 9, in convert_excel_to_xml
+    sequences = parser.read_sequences_from_excel(file_path)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 499, in read_sequences_from_excel
+    raise ValueError(f"第{row_idx+1}行{current_moltype}序列包含{n_count}个N，但只有{len(freetext_values)}个freetext定义")
+ValueError: 第7行DNA序列包含1个N，但只有0个freetext定义
+2025-12-22 21:44:35,295 - app - INFO - Starting conversion task for file: static/uploads/b5bccc0faa4342a2bea713b865a7c6e0_D252015BPCN.xlsx
+2025-12-22 21:44:35,342 - app - ERROR - Conversion task failed: 第15行序列位置 72 处：字符 '-' 并非系统允许的碱基表示
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 16, in convert_excel_to_xml
+    sequence_summary = parser.get_sequence_summary(sequences)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 577, in get_sequence_summary
+    naked_sequence, modifications, special_positions, _, current_has_degenerate, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=line_number)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 302, in parse_sequence
+    raise ValueError(f"第{line_number}行序列位置 {i+1} 处：{error_msg}")
+ValueError: 第15行序列位置 72 处：字符 '-' 并非系统允许的碱基表示
+2025-12-22 21:45:23,481 - app - INFO - Starting conversion task for file: static/uploads/a9325200b71445bcb7d1d8d880893a02_D252015BPCN.xlsx
+2025-12-22 21:45:23,525 - app - ERROR - Conversion task failed: 第16行序列位置 13 处：字符 '/' 并非系统允许的碱基表示
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 16, in convert_excel_to_xml
+    sequence_summary = parser.get_sequence_summary(sequences)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 577, in get_sequence_summary
+    naked_sequence, modifications, special_positions, _, current_has_degenerate, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=line_number)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 302, in parse_sequence
+    raise ValueError(f"第{line_number}行序列位置 {i+1} 处：{error_msg}")
+ValueError: 第16行序列位置 13 处：字符 '/' 并非系统允许的碱基表示
+2025-12-22 21:45:50,451 - app - INFO - Starting conversion task for file: static/uploads/547ffc86be574a7fad90ae405223e24c_D252015BPCN.xlsx
+2025-12-22 21:45:50,528 - app - INFO - Conversion completed successfully, generated XML: D252015BPCN.xml
+2025-12-22 22:06:44,428 - app - INFO - Starting conversion task for file: static/uploads/7e6b34bcbeb94e9c8f90497abb30477f_D252015BPCN.xlsx
+2025-12-22 22:06:44,466 - app - ERROR - Conversion task failed: 第21行序列位置 4 处：字符 'I' 并非系统允许的碱基表示
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 16, in convert_excel_to_xml
+    sequence_summary = parser.get_sequence_summary(sequences)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 577, in get_sequence_summary
+    naked_sequence, modifications, special_positions, _, current_has_degenerate, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=line_number)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 302, in parse_sequence
+    raise ValueError(f"第{line_number}行序列位置 {i+1} 处：{error_msg}")
+ValueError: 第21行序列位置 4 处：字符 'I' 并非系统允许的碱基表示
+2025-12-22 22:07:54,900 - app - INFO - Starting conversion task for file: static/uploads/f7dac067b10741ecaa6d0af0f565344d_D252015BPCN.xlsx
+2025-12-22 22:07:54,941 - app - ERROR - Conversion task failed: 第21行序列位置 4 处：字符 'I' 并非系统允许的碱基表示
+Traceback (most recent call last):
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/app.py", line 818, in convert_excel_task
+    convert_excel_to_xml(file_path, output_folder)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/st26autonew.py", line 16, in convert_excel_to_xml
+    sequence_summary = parser.get_sequence_summary(sequences)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 577, in get_sequence_summary
+    naked_sequence, modifications, special_positions, _, current_has_degenerate, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=line_number)
+  File "/Users/zhaoyongjiang/Downloads/SAYHELLO/parser.py", line 302, in parse_sequence
+    raise ValueError(f"第{line_number}行序列位置 {i+1} 处：{error_msg}")
+ValueError: 第21行序列位置 4 处：字符 'I' 并非系统允许的碱基表示
+2025-12-22 22:08:20,246 - app - INFO - Starting conversion task for file: static/uploads/b65f00db28e64124ab491c987e99fb9d_D252015BPCN.xlsx
+2025-12-22 22:08:20,282 - app - INFO - Conversion completed successfully, generated XML: D252015BPCN.xml
+2025-12-22 23:25:48,354 - app - INFO - Starting conversion task for file: static/uploads/64a9cb1019d7408da461e7a0b8cf91dc_template_2.xlsx
+2025-12-22 23:25:48,392 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+2025-12-22 23:57:56,899 - app - INFO - Starting conversion task for file: static/uploads/f3118025ee074456a7e4d5eabea13893_D252015BPCN.xlsx
+2025-12-22 23:57:56,936 - app - INFO - Conversion completed successfully, generated XML: D252015BPCN.xml
+2025-12-23 00:03:30,000 - app - INFO - Starting conversion task for file: static/uploads/d40153dcdb9b471bbe6ce39b7115e6aa_D252015BPCN.xlsx
+2025-12-23 00:03:30,043 - app - INFO - Conversion completed successfully, generated XML: D252015BPCN.xml
+2025-12-30 20:13:27,751 - app - INFO - Starting BLAST search for target sequence
+2025-12-30 20:14:33,468 - app - INFO - BLAST search completed, found 6 matches

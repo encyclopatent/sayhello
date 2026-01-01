@@ -1,0 +1,312 @@
+ 
+ -------------- celery@zhaoyongjiangdeiMac.local v5.6.0 (recovery)
+--- ***** ----- 
+-- ******* ---- macOS-26.2-arm64-arm-64bit 2025-12-16 21:27:44
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         app:0x12a4ed090
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/0
+- *** --- * --- .> concurrency: 8 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . app.blast_search_task
+  . app.convert_excel_task
+
+[2025-12-16 21:27:44,679: WARNING/MainProcess] /opt/anaconda3/envs/SAYHELLO/lib/python3.10/site-packages/celery/app/utils.py:203: CDeprecationWarning: 
+    The 'CELERY_RESULT_BACKEND' setting is deprecated and scheduled for removal in
+    version 6.0.0. Use the result_backend instead
+
+  deprecated.warn(description=f'The {setting!r} setting',
+
+[2025-12-16 21:27:44,679: WARNING/MainProcess] Please run `celery upgrade settings path/to/settings.py` to avoid these warnings and to allow a smoother upgrade to Celery 6.0.
+[2025-12-16 21:27:44,868: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2025-12-16 21:27:44,869: INFO/MainProcess] mingle: searching for neighbors
+[2025-12-16 21:27:45,875: INFO/MainProcess] mingle: all alone
+[2025-12-16 21:27:45,888: INFO/MainProcess] celery@zhaoyongjiangdeiMac.local ready.
+[2025-12-16 21:30:21,994: INFO/MainProcess] Task app.convert_excel_task[51cbc43c-322e-4461-9c46-789e9e49a94e] received
+[2025-12-16 21:30:21,996: WARNING/ForkPoolWorker-8] [2025-12-16 21:30:21,995] INFO in app: Starting conversion task for file: static/uploads/5f565a1917544a5388149ded10cb347e_template_2.xlsx
+2025-12-16 21:30:21,995 - app - INFO - Starting conversion task for file: static/uploads/5f565a1917544a5388149ded10cb347e_template_2.xlsx
+[2025-12-16 21:30:21,995: INFO/ForkPoolWorker-8] Starting conversion task for file: static/uploads/5f565a1917544a5388149ded10cb347e_template_2.xlsx
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] 
+=== 读取的基础数据 ===
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] ApplicantFileReference: TEST123
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] earliestpriorityIPOfficeCode: CN
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] ApplicationNumberText: 20241111111111
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] earliestpriorityFilingDate: 2024-05-01
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] ApplicantName: 测试有限公司
+[2025-12-16 21:30:22,106: WARNING/ForkPoolWorker-8] ApplicantNameLatin: TEST Technology Co., Ltd.
+[2025-12-16 21:30:22,107: WARNING/ForkPoolWorker-8] InventorName: 莫某某
+[2025-12-16 21:30:22,107: WARNING/ForkPoolWorker-8] InventorNameLatin: morgen
+[2025-12-16 21:30:22,107: WARNING/ForkPoolWorker-8] InventionTitle: 测试分子
+[2025-12-16 21:30:22,107: WARNING/ForkPoolWorker-8] ====================
+[2025-12-16 21:30:22,108: WARNING/ForkPoolWorker-8] 
+=== 序列数据统计 ===
+[2025-12-16 21:30:22,108: WARNING/ForkPoolWorker-8] 序列总条数: 4
+[2025-12-16 21:30:22,109: WARNING/ForkPoolWorker-8] DNA序列条数: 1
+[2025-12-16 21:30:22,109: WARNING/ForkPoolWorker-8] RNA序列条数: 2
+[2025-12-16 21:30:22,109: WARNING/ForkPoolWorker-8] AA序列条数: 1
+[2025-12-16 21:30:22,109: WARNING/ForkPoolWorker-8] 
+=== 序列详细信息 ===
+[2025-12-16 21:30:22,109: WARNING/ForkPoolWorker-8] +--------+--------+---------------------+
+|  序号  |  类型  |        来源         |
++========+========+=====================+
+|   1    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   2    |   AA   | synthetic construct |
++--------+--------+---------------------+
+|   3    |  DNA   | synthetic construct |
++--------+--------+---------------------+
+|   4    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+[2025-12-16 21:30:22,110: WARNING/ForkPoolWorker-8] ====================
+[2025-12-16 21:30:22,110: WARNING/ForkPoolWorker-8] 
+=== 提醒信息 ===
+[2025-12-16 21:30:22,110: WARNING/ForkPoolWorker-8] 第3行：序列包含简并碱基（M/R/W/S/Y/K/V/H/D/B），请核查是否为预期使用
+[2025-12-16 21:30:22,111: WARNING/ForkPoolWorker-8] 第4行：检测到并移除了L96配体，未将其加工为注释
+[2025-12-16 21:30:22,111: WARNING/ForkPoolWorker-8] ================
+[2025-12-16 21:30:22,112: WARNING/ForkPoolWorker-8] XML文件已生成: TEST123.xml
+[2025-12-16 21:30:22,112: WARNING/ForkPoolWorker-8] [2025-12-16 21:30:22,112] INFO in app: Conversion completed successfully, generated XML: TEST123.xml
+2025-12-16 21:30:22,112 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+[2025-12-16 21:30:22,112: INFO/ForkPoolWorker-8] Conversion completed successfully, generated XML: TEST123.xml
+[2025-12-16 21:30:22,113: INFO/ForkPoolWorker-8] Task app.convert_excel_task[51cbc43c-322e-4461-9c46-789e9e49a94e] succeeded in 0.11825670800010357s: ('TEST123.xml', {'total_count': 4, 'type_counts': {'DNA': 1, 'RNA': 2, 'AA': 1}, 'details': [{...}, {...}, {...}, {...}], 'has_degenerate_bases': True, 'has_ligand_ignored': True}, ['第3行：序列包含简并碱基（M/R/W/S/Y/K/V/H/D/B），请核查是否为预期使用', '第4行：检测到并移除了L96配体，未将其加工为注释'])
+[2025-12-16 21:32:57,148: INFO/MainProcess] Task app.convert_excel_task[5071667d-b23c-43a7-890d-ddd42b730979] received
+[2025-12-16 21:32:57,149: WARNING/ForkPoolWorker-8] [2025-12-16 21:32:57,148] INFO in app: Starting conversion task for file: static/uploads/ccd625d18840417b8357d97e8883be2d_template_2.xlsx
+2025-12-16 21:32:57,148 - app - INFO - Starting conversion task for file: static/uploads/ccd625d18840417b8357d97e8883be2d_template_2.xlsx
+[2025-12-16 21:32:57,148: INFO/ForkPoolWorker-8] Starting conversion task for file: static/uploads/ccd625d18840417b8357d97e8883be2d_template_2.xlsx
+[2025-12-16 21:32:57,179: WARNING/ForkPoolWorker-8] 
+=== 读取的基础数据 ===
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] ApplicantFileReference: TEST123
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] earliestpriorityIPOfficeCode: CN
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] ApplicationNumberText: 20241111111111
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] earliestpriorityFilingDate: 2024-05-01
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] ApplicantName: 测试有限公司
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] ApplicantNameLatin: TEST Technology Co., Ltd.
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] InventorName: 莫某某
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] InventorNameLatin: morgen
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] InventionTitle: 测试分子
+[2025-12-16 21:32:57,180: WARNING/ForkPoolWorker-8] ====================
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] 
+=== 序列数据统计 ===
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] 序列总条数: 4
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] DNA序列条数: 1
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] RNA序列条数: 2
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] AA序列条数: 1
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] 
+=== 序列详细信息 ===
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] +--------+--------+---------------------+
+|  序号  |  类型  |        来源         |
++========+========+=====================+
+|   1    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   2    |   AA   | synthetic construct |
++--------+--------+---------------------+
+|   3    |  DNA   | synthetic construct |
++--------+--------+---------------------+
+|   4    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+[2025-12-16 21:32:57,181: WARNING/ForkPoolWorker-8] ====================
+[2025-12-16 21:32:57,182: WARNING/ForkPoolWorker-8] 
+=== 提醒信息 ===
+[2025-12-16 21:32:57,182: WARNING/ForkPoolWorker-8] 第3行：序列包含简并碱基（M/R/W/S/Y/K/V/H/D/B），请核查是否为预期使用
+[2025-12-16 21:32:57,182: WARNING/ForkPoolWorker-8] 第4行：检测到并移除了L96配体，未将其加工为注释
+[2025-12-16 21:32:57,182: WARNING/ForkPoolWorker-8] ================
+[2025-12-16 21:32:57,183: WARNING/ForkPoolWorker-8] XML文件已生成: TEST123.xml
+[2025-12-16 21:32:57,183: WARNING/ForkPoolWorker-8] [2025-12-16 21:32:57,183] INFO in app: Conversion completed successfully, generated XML: TEST123.xml
+2025-12-16 21:32:57,183 - app - INFO - Conversion completed successfully, generated XML: TEST123.xml
+[2025-12-16 21:32:57,183: INFO/ForkPoolWorker-8] Conversion completed successfully, generated XML: TEST123.xml
+[2025-12-16 21:32:57,184: INFO/ForkPoolWorker-8] Task app.convert_excel_task[5071667d-b23c-43a7-890d-ddd42b730979] succeeded in 0.036120791000030295s: ('TEST123.xml', {'total_count': 4, 'type_counts': {'DNA': 1, 'RNA': 2, 'AA': 1}, 'details': [{...}, {...}, {...}, {...}], 'has_degenerate_bases': True, 'has_ligand_ignored': True}, ['第3行：序列包含简并碱基（M/R/W/S/Y/K/V/H/D/B），请核查是否为预期使用', '第4行：检测到并移除了L96配体，未将其加工为注释'])
+[2025-12-16 22:09:00,309: INFO/MainProcess] Task app.convert_excel_task[334456a2-9562-46aa-a27f-a8ca836605ed] received
+[2025-12-16 22:09:00,310: WARNING/ForkPoolWorker-8] [2025-12-16 22:09:00,309] INFO in app: Starting conversion task for file: static/uploads/7b4a2769ab244d3aa9b8dec81ce9f2ad_Z232278BPWO-EN-input2-2.xlsx
+2025-12-16 22:09:00,309 - app - INFO - Starting conversion task for file: static/uploads/7b4a2769ab244d3aa9b8dec81ce9f2ad_Z232278BPWO-EN-input2-2.xlsx
+[2025-12-16 22:09:00,309: INFO/ForkPoolWorker-8] Starting conversion task for file: static/uploads/7b4a2769ab244d3aa9b8dec81ce9f2ad_Z232278BPWO-EN-input2-2.xlsx
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] 
+=== 读取的基础数据 ===
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] ApplicantFileReference: PA1500372
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] earliestpriorityIPOfficeCode: CN
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] ApplicationNumberText: 202310199895.5
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] earliestpriorityFilingDate: 2023-01-20
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] ApplicantName: CSPC Zhongqi Pharmaceutical Technology (Shijiazhuang) Co., Ltd
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] ApplicantNameLatin: CSPC Zhongqi Pharmaceutical Technology (Shijiazhuang) Co., Ltd
+[2025-12-16 22:09:00,344: WARNING/ForkPoolWorker-8] InventorName: Su Xiaoye
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] InventorNameLatin: Su Xiaoye
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] InventionTitle: MODIFIED NUCLEOSIDE MONOMER AND DOUBLE-STRANDED RIBONUCLEIC ACID
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] ====================
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] 
+=== 序列数据统计 ===
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] 序列总条数: 77
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] DNA序列条数: 0
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] RNA序列条数: 77
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] AA序列条数: 0
+[2025-12-16 22:09:00,345: WARNING/ForkPoolWorker-8] 
+=== 序列详细信息 ===
+[2025-12-16 22:09:00,346: WARNING/ForkPoolWorker-8] +--------+--------+---------------------+
+|  序号  |  类型  |        来源         |
++========+========+=====================+
+|   1    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   2    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   3    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   4    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   5    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   6    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   7    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   8    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   9    |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   10   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   11   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   12   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   13   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   14   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   15   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   16   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   17   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   18   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   19   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   20   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   21   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   22   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   23   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   24   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   25   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   26   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   27   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   28   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   29   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   30   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   31   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   32   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   33   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   34   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   35   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   36   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   37   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   38   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   39   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   40   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   41   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   42   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   43   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   44   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   45   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   46   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   47   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   48   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   49   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   50   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   51   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   52   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   53   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   54   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   55   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   56   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   57   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   58   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   59   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   60   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   61   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   62   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   63   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   64   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   65   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   66   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   67   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   68   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   69   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   70   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   71   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   72   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   73   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   74   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   75   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   76   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+|   77   |  RNA   | synthetic construct |
++--------+--------+---------------------+
+[2025-12-16 22:09:00,347: WARNING/ForkPoolWorker-8] ====================
+[2025-12-16 22:09:00,357: WARNING/ForkPoolWorker-8] XML文件已生成: PA1500372.xml
+[2025-12-16 22:09:00,358: WARNING/ForkPoolWorker-8] [2025-12-16 22:09:00,357] INFO in app: Conversion completed successfully, generated XML: PA1500372.xml
+2025-12-16 22:09:00,357 - app - INFO - Conversion completed successfully, generated XML: PA1500372.xml
+[2025-12-16 22:09:00,357: INFO/ForkPoolWorker-8] Conversion completed successfully, generated XML: PA1500372.xml
+[2025-12-16 22:09:00,359: INFO/ForkPoolWorker-8] Task app.convert_excel_task[334456a2-9562-46aa-a27f-a8ca836605ed] succeeded in 0.04970000000002983s: ('PA1500372.xml', {'total_count': 77, 'type_counts': {'DNA': 0, 'RNA': 77, 'AA': 0}, 'details': [{...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}, {...}], 'has_degenerate_bases': False, 'has_ligand_ignored': False}, [])
+
+worker: Warm shutdown (MainProcess)

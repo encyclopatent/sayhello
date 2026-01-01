@@ -1,5 +1,5 @@
 certifi==2021.5.30
-click==7.1.2
+click==8.0.3
 Flask==1.1.2
 gunicorn==20.0.4
 itsdangerous==1.1.0
@@ -7,3 +7,7 @@ Jinja2==2.11.2
 MarkupSafe==2.0.1
 Werkzeug==1.0.1
 wincertstore==0.2
+celery==5.2.7
+redis==4.5.1
+openpyxl==3.1.2
+

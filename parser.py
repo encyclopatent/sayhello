@@ -143,7 +143,6 @@ def parse_sequence(seq, moltype, line_number=None):
     naked_sequence = []
     modifications = []
     special_positions = []
-    position_map = {}
     i = 0
     raw_moltype = moltype
     moltype = moltype.upper() if pd.notnull(moltype) else "RNA"
@@ -152,61 +151,42 @@ def parse_sequence(seq, moltype, line_number=None):
     # 预处理：检测并移除DNA/RNA序列结尾的L96或-L96配体
     ligand_removed = new_format_ligand_removed
     if moltype in ["RNA", "DNA"]:
-        # 转换为大写进行检测
-        seq_upper = seq.upper()
-        
-        # 检测并移除结尾的L96或-L96
-        if seq_upper.endswith("-L96"):
-            # 移除-L96，保留前面的序列
-            seq = seq[:-4]
-            ligand_removed = True
-        elif seq_upper.endswith("L96"):
-            # 移除L96，保留前面的序列
-            seq = seq[:-3]
-            ligand_removed = True
+        seq_len = len(seq)
+        if seq_len >= 3:
+            if seq[-3:].upper() == "L96":
+                seq = seq[:-3]
+                ligand_removed = True
+            elif seq_len >= 4 and seq[-4:].upper() == "-L96":
+                seq = seq[:-4]
+                ligand_removed = True
     
     # 定义简并碱基
     DEGENERATE_BASES = {'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B'}
+    # 预编译常用正则表达式
+    PV_PREFIX_PATTERNS = [
+        (r'^[Pp][Vv]-', 3),   # pv-, Pv-, PV-, pV- (开头)
+        (r'^[Vv][Pp]-', 3),   # vp-, Vp-, VP-, vP- (开头)
+        (r'^[Pp][Vv]', 2),    # pv, Pv, PV, pV (开头)
+        (r'^[Vv][Pp]', 2),    # vp, Vp, VP, vP (开头)
+    ]
 
     # 处理pv修饰的各种变体：Pv、PV、VP、Pv-、PV-、VP-
     if moltype in ["RNA", "DNA"]:
-        # 定义有效的修饰模式，包括序列中间的情况
-        valid_mod_patterns = [
-            (r'^[Pp][Vv]-', 3, True),   # pv-, Pv-, PV-, pV- (开头)
-            (r'^[Vv][Pp]-', 3, True),   # vp-, Vp-, VP-, vP- (开头)
-            (r'^[Pp][Vv]', 2, True),    # pv, Pv, PV, pV (开头)
-            (r'^[Vv][Pp]', 2, True),    # vp, Vp, VP, vP (开头)
-            (r'[Pp][Vv]-', 3, False),   # pv-, Pv-, PV-, pV- (中间)
-            (r'[Vv][Pp]-', 3, False),   # vp-, Vp-, VP-, vP- (中间)
-            (r'[Pp][Vv]', 2, False),    # pv, Pv, PV, pV (中间)
-            (r'[Vv][Pp]', 2, False),    # vp, Vp, VP, vP (中间)
-        ]
-        
-        # 先检查序列开头的修饰符
-        prefix_match = None
-        for pattern, length, is_prefix in valid_mod_patterns:
-            if not is_prefix:
-                continue  # 只检查开头模式
-                
-            # 确保序列长度足够匹配当前模式
-            if len(seq) >= length:
+        seq_len = len(seq)
+        for pattern, length in PV_PREFIX_PATTERNS:
+            if seq_len >= length:
                 match = re.match(pattern, seq)
                 if match:
-                    prefix_match = match
-                    mod_end_pos = len(prefix_match.group(0))
-                    
-                    # 确保修饰符后有有效碱基
-                    if mod_end_pos < len(seq):
-                        # 获取修饰符后的碱基
+                    mod_end_pos = len(match.group(0))
+                    if mod_end_pos < seq_len:
                         base_after_mod = seq[mod_end_pos].lower()
                         modifications.append((1, 'pv', base_after_mod))
-                        # 去掉修饰前缀，从修饰符结束位置开始处理
                         seq = seq[mod_end_pos:]
-                        i = 0
-                    break
+                        break
 
     # 解析序列主体
-    while i < len(seq):
+    seq_len = len(seq)
+    while i < seq_len:
         current_char = seq[i]
         
         if moltype == "AA":
@@ -219,122 +199,96 @@ def parse_sequence(seq, moltype, line_number=None):
                     raise ValueError(f"第{len(naked_sequence)+1}号氨基酸：{error_msg}")
             
             naked_sequence.append(current_char_upper)
-            current_base_pos = len(naked_sequence)
-            position_map[i] = current_base_pos
-            
             if current_char_upper == 'X':
-                special_positions.append(current_base_pos)
+                special_positions.append(len(naked_sequence))
             i += 1
         else:
             # 检查当前字符是否为修饰符（m, f, e, s），如果是，先收集修饰符
             if current_char in 'mfse':
-                # 收集修饰符
-                modifiers = [current_char.lower()]
-                i += 1
-                while i < len(seq) and seq[i] in 'mfse':
+                # 收集所有连续的修饰符
+                modifiers = []
+                while i < seq_len and seq[i] in 'mfse':
                     modifiers.append(seq[i].lower())
                     i += 1
                 
                 # 确保修饰符后有碱基
-                if i >= len(seq):
-                    # 没有碱基对应，忽略这些修饰符
+                if i >= seq_len:
                     continue
                     
                 # 获取修饰符后的碱基
-                current_char = seq[i]
+                base_char = seq[i]
+                base_char_lower = base_char.lower()
                 
-                # 处理修饰符后的碱基
-                if current_char in DEGENERATE_BASES:
+                # 处理碱基
+                if base_char in DEGENERATE_BASES:
                     has_degenerate_bases = True
-                    naked_sequence.append(current_char)
+                    naked_sequence.append(base_char)
                     current_base_pos = len(naked_sequence)
-                    position_map[i] = current_base_pos
                     i += 1
-                    
-                    # 记录修饰符
-                    for mod in modifiers:
-                        if mod in ['m', 'f', 'e']:
-                            modifications.append((current_base_pos, mod, current_char.lower()))
-                        elif mod == 's':
-                            if i < len(seq) and seq[i].lower() in 'agcut':
-                                next_base_pos = current_base_pos + 1
-                                modifications.append((f"{current_base_pos}^{next_base_pos}", 's', current_char.lower()))
-                
-                elif current_char.lower() in 'agcut':
-                    naked_sequence.append(current_char)
+                elif base_char_lower in 'agcut':
+                    naked_sequence.append(base_char)
                     current_base_pos = len(naked_sequence)
-                    position_map[i] = current_base_pos
                     i += 1
-                    
-                    # 记录修饰符
-                    for mod in modifiers:
-                        if mod in ['m', 'f', 'e']:
-                            modifications.append((current_base_pos, mod, current_char.lower()))
-                        elif mod == 's':
-                            if i < len(seq) and seq[i].lower() in 'agcut':
-                                next_base_pos = current_base_pos + 1
-                                modifications.append((f"{current_base_pos}^{next_base_pos}", 's', current_char.lower()))
-                
                 else:
-                    # 修饰符后的字符不是有效碱基，忽略这些修饰符和字符
+                    # 修饰符后的字符不是有效碱基，忽略
                     i += 1
                     continue
+                    
+                # 处理修饰符
+                for mod in modifiers:
+                    if mod in ['m', 'f', 'e']:
+                        modifications.append((current_base_pos, mod, base_char_lower))
+                    elif mod == 's' and i < seq_len and seq[i].lower() in 'agcut':
+                        modifications.append((f"{current_base_pos}^{current_base_pos + 1}", 's', base_char_lower))
             
             # 处理简并碱基（必须大写）
             elif current_char in DEGENERATE_BASES:
                 has_degenerate_bases = True
-                # 保存原始大写简并碱基
                 naked_sequence.append(current_char)
                 current_base_pos = len(naked_sequence)
-                position_map[i] = current_base_pos
+                base_char_lower = current_char.lower()
                 i += 1
                 
                 # 收集修饰符
-                modifiers = []
-                while i < len(seq) and seq[i] in 'mfse':
-                    modifiers.append(seq[i].lower())
-                    i += 1
+                if i < seq_len and seq[i] in 'mfse':
+                    modifiers = []
+                    while i < seq_len and seq[i] in 'mfse':
+                        modifiers.append(seq[i].lower())
+                        i += 1
                     
-                # 处理修饰符，记录小写的碱基字母
-                for mod in modifiers:
-                    if mod in ['m', 'f', 'e']:
-                        modifications.append((current_base_pos, mod, current_char.lower()))
-                    elif mod == 's':
-                        if i < len(seq) and seq[i].lower() in 'agcut':
-                            next_base_pos = len(naked_sequence) + 1
-                            modifications.append((f"{current_base_pos}^{next_base_pos}", 's', current_char.lower()))
+                    # 处理修饰符
+                    for mod in modifiers:
+                        if mod in ['m', 'f', 'e']:
+                            modifications.append((current_base_pos, mod, base_char_lower))
+                        elif mod == 's' and i < seq_len and seq[i].lower() in 'agcut':
+                            modifications.append((f"{current_base_pos}^{current_base_pos + 1}", 's', base_char_lower))
             
             # 处理普通碱基（保持大小写，但记录修饰时使用小写）
             elif current_char.lower() in 'agcut':
-                # 保存原始大小写
                 naked_sequence.append(current_char)
                 current_base_pos = len(naked_sequence)
-                position_map[i] = current_base_pos
+                base_char_lower = current_char.lower()
                 i += 1
                 
                 # 收集修饰符
-                modifiers = []
-                while i < len(seq) and seq[i] in 'mfse':
-                    modifiers.append(seq[i].lower())
-                    i += 1
+                if i < seq_len and seq[i] in 'mfse':
+                    modifiers = []
+                    while i < seq_len and seq[i] in 'mfse':
+                        modifiers.append(seq[i].lower())
+                        i += 1
                     
-                # 处理修饰符，记录小写的碱基字母
-                for mod in modifiers:
-                    if mod in ['m', 'f', 'e']:
-                        modifications.append((current_base_pos, mod, current_char.lower()))
-                    elif mod == 's':
-                        if i < len(seq) and seq[i].lower() in 'agcut':
-                            next_base_pos = len(naked_sequence) + 1
-                            modifications.append((f"{current_base_pos}^{next_base_pos}", 's', current_char.lower()))
+                    # 处理修饰符
+                    for mod in modifiers:
+                        if mod in ['m', 'f', 'e']:
+                            modifications.append((current_base_pos, mod, base_char_lower))
+                        elif mod == 's' and i < seq_len and seq[i].lower() in 'agcut':
+                            modifications.append((f"{current_base_pos}^{current_base_pos + 1}", 's', base_char_lower))
             
             # 处理特殊位置N（未知碱基）
             elif current_char.upper() == 'N':
-                # 保存原始大小写
                 naked_sequence.append(current_char)
-                current_base_pos = len(naked_sequence)
                 if moltype in ["DNA", "RNA"]:
-                    special_positions.append(current_base_pos)
-                position_map[i] = current_base_pos
+                    special_positions.append(len(naked_sequence))
                 i += 1
             else:
                 # 检查是否为非法的修饰符（小写字母且不在允许的修饰符列表中）
@@ -351,7 +305,11 @@ def parse_sequence(seq, moltype, line_number=None):
 
     base_sequence = ''.join(naked_sequence)
     # 替换所有的u为t，无论大小写，以符合ST26标准
-    final_naked_sequence = base_sequence if moltype == "AA" else base_sequence.replace('u', 't').replace('U', 'T')
+    if moltype == "AA":
+        final_naked_sequence = base_sequence
+    else:
+        # 更高效的大小写替换
+        final_naked_sequence = base_sequence.translate(str.maketrans('uU', 'tT'))
 
     return final_naked_sequence, modifications, special_positions, raw_moltype, has_degenerate_bases, ligand_removed
 
@@ -388,32 +346,80 @@ def read_basic_data_from_excel(file_path):
 def read_sequences_from_excel(file_path):
     df = pd.read_excel(file_path, sheet_name='seqdata', engine='openpyxl')
     
-    # 动态定位关键列
-    # 尝试多种可能的列名
-    seq_col = next((col for col in df.columns if any(keyword in str(col).lower() for keyword in ['序列', 'sequence', 'seq'])), None)
-    moltype_col = next((col for col in df.columns if any(keyword in str(col).lower() for keyword in ['分子类型', 'moltype', '类型'])), None)
-    organism_col = next((col for col in df.columns if any(keyword in str(col).lower() for keyword in ['来源', 'organism', 'source'])), None)
-    qual_moltype_col = next((col for col in df.columns if any(keyword in str(col).lower() for keyword in ['修饰类型', 'qualifier', 'qual_moltype'])), None)
-    ring_col = next((col for col in df.columns if '环信息' in str(col)), None)
-    hybrid_col = next((col for col in df.columns if '杂合信息' in str(col)), None)
-    check_col = next((col for col in df.columns if '翻译校验' in str(col)), None)  # 新增校验列
+    # 动态定位关键列 - 使用集合交集提高查找效率
+    col_names = [str(col).lower() for col in df.columns]
     
-    # 如果没有找到关键列，使用默认索引
+    # 预编译常用正则表达式
+    segment_pattern = re.compile(r'第[一二三四五六七八九十]+区段')
+    chinese_num_pattern = re.compile(r'第([一二三四五六七八九十]+)区段')
+    ring_pattern = re.compile(r'region\s*[:：]?\s*(\d+)\.\.(\d+).*note\s*[:：]?\s*(.+)', re.I)
+    hybrid_segment_pattern1 = re.compile(r'\s*(\d+)\s*\.\.\s*(\d+)\s*(RNA|DNA)\s*', re.IGNORECASE)
+    hybrid_segment_pattern2 = re.compile(r'\s*(\d+)\s*-\s*(\d+)\s*(RNA|DNA)\s*', re.IGNORECASE)
+    
+    # 序列列
+    seq_col = None
+    for i, col in enumerate(col_names):
+        if any(keyword in col for keyword in ['序列', 'sequence', 'seq']):
+            seq_col = df.columns[i]
+            break
     if seq_col is None:
         seq_col = df.columns[0]
+    
+    # 分子类型列
+    moltype_col = None
+    for i, col in enumerate(col_names):
+        if any(keyword in col for keyword in ['分子类型', 'moltype', '类型']):
+            moltype_col = df.columns[i]
+            break
     if moltype_col is None and len(df.columns) > 1:
         moltype_col = df.columns[1]
+    
+    # 来源列
+    organism_col = None
+    for i, col in enumerate(col_names):
+        if any(keyword in col for keyword in ['来源', 'organism', 'source']):
+            organism_col = df.columns[i]
+            break
     if organism_col is None and len(df.columns) > 2:
         organism_col = df.columns[2]
+    
+    # 修饰类型列
+    qual_moltype_col = None
+    for i, col in enumerate(col_names):
+        if any(keyword in col for keyword in ['修饰类型', 'qualifier', 'qual_moltype']):
+            qual_moltype_col = df.columns[i]
+            break
     if qual_moltype_col is None and len(df.columns) > 3:
         qual_moltype_col = df.columns[3]
+    
+    # 其他列
+    ring_col = None
+    for i, col in enumerate(df.columns):
+        if '环信息' in str(col):
+            ring_col = col
+            break
+    
+    hybrid_col = None
+    for i, col in enumerate(df.columns):
+        if '杂合信息' in str(col):
+            hybrid_col = col
+            break
+    
+    check_col = None
+    for i, col in enumerate(df.columns):
+        if '翻译校验' in str(col):
+            check_col = col
+            break
     
     # 处理区段列
     segment_cols = []
     if hybrid_col:
-        segment_cols = [col for col in df.columns if re.search(r'第[一二三四五六七八九十]+区段', str(col))]
+        for col in df.columns:
+            if re.search(r'第[一二三四五六七八九十]+区段', str(col)):
+                segment_cols.append(col)
+        
         def get_segment_num(col_name):
-            match = re.search(r'第([一二三四五六七八九十]+)区段', str(col_name))
+            match = chinese_num_pattern.search(str(col_name))
             if match:
                 chinese_num = match.group(1)
                 num_map = {'一':1,'二':2,'三':3,'四':4,'五':5,
@@ -435,11 +441,16 @@ def read_sequences_from_excel(file_path):
         qual_moltype = row[qual_moltype_col] if qual_moltype_col else None
         check_ref = str(row[check_col]).strip() if check_col and pd.notna(row[check_col]) else None
         
+        # 确保seq是字符串
+        if not isinstance(seq, str):
+            seq = str(seq) if pd.notna(seq) else ""
+        
         # 解析环信息
         ring_infos = []
         if raw_moltype and str(raw_moltype).upper() == "AA" and ring_col is not None and pd.notna(row[ring_col]):
-            for item in re.split(r'[；;]', str(row[ring_col])):
-                match = re.search(r'region\s*[:：]?\s*(\d+)\.\.(\d+).*note\s*[:：]?\s*(.+)', item.strip(), re.I)
+            ring_text = str(row[ring_col])
+            for item in re.split(r'[；;]', ring_text):
+                match = ring_pattern.search(item.strip())
                 if match:
                     ring_infos.append({
                         'start': int(match.group(1)),
@@ -458,8 +469,7 @@ def read_sequences_from_excel(file_path):
                 for seg_col in segment_cols:
                     if pd.notna(row[seg_col]):
                         seg_str = str(row[seg_col]).strip()
-                        match = re.match(r'\s*(\d+)\s*\.\.\s*(\d+)\s*(RNA|DNA)\s*', seg_str, re.IGNORECASE) or \
-                               re.match(r'\s*(\d+)\s*-\s*(\d+)\s*(RNA|DNA)\s*', seg_str, re.IGNORECASE)
+                        match = hybrid_segment_pattern1.match(seg_str) or hybrid_segment_pattern2.match(seg_str)
                         
                         if match:
                             start = int(match.group(1))
@@ -479,10 +489,6 @@ def read_sequences_from_excel(file_path):
                         else:
                             raise ValueError(f"第{row_idx+1}行区段格式错误，应为'起始..结束 类型'或'起始-结束 类型'")
         
-        # 确保seq是字符串
-        if not isinstance(seq, str):
-            seq = str(seq) if pd.notna(seq) else ""
-        
         # 处理freetext
         current_moltype = str(raw_moltype).upper() if pd.notnull(raw_moltype) else "RNA"
         freetext_values = [str(row[col]) for col in freetext_cols if pd.notna(row[col])]
@@ -498,6 +504,22 @@ def read_sequences_from_excel(file_path):
                 raise ValueError(f"第{row_idx+1}行AA序列包含{x_count}个X，但只有{len(freetext_values)}个freetext定义")
             freetext_to_use = freetext_values[:x_count]
         
+        # 解析序列，避免后续重复解析
+        parsed_seq_data = None
+        if seq:
+            try:
+                final_naked_sequence, modifications, special_positions, _, has_degenerate_bases, ligand_removed = parse_sequence(seq, raw_moltype, line_number=row_idx+1)
+                parsed_seq_data = {
+                    'final_naked_sequence': final_naked_sequence,
+                    'modifications': modifications,
+                    'special_positions': special_positions,
+                    'has_degenerate_bases': has_degenerate_bases,
+                    'ligand_removed': ligand_removed
+                }
+            except Exception as e:
+                # 保持向后兼容，解析失败时返回None
+                parsed_seq_data = None
+        
         sequences.append((
             seq,
             raw_moltype,
@@ -506,7 +528,9 @@ def read_sequences_from_excel(file_path):
             freetext_to_use,
             ring_infos,
             hybrid_segments,
-            check_ref
+            check_ref,
+            parsed_seq_data,  # 添加解析后的序列数据
+            row_idx + 1  # 添加行号信息（从1开始计数）
         ))
     
     return sequences
@@ -528,28 +552,33 @@ def get_sequence_summary(sequences):
     has_ligand_ignored = False  # 标记是否有任何序列包含被忽略的配体
     
     for i, seq_data in enumerate(sequences, 1):
-        sequence, raw_moltype, organism, qual_moltype, freetext_values, ring_infos, hybrid_segments, _ = seq_data
+        sequence, raw_moltype, organism, qual_moltype, freetext_values, ring_infos, hybrid_segments, check_ref, parsed_seq_data, line_number = seq_data
         moltype = str(raw_moltype).upper() if pd.notnull(raw_moltype) else "RNA"
         organism = organism if pd.notnull(organism) else "synthetic construct"
         
-        # 检测当前序列是否包含简并碱基（只检测大写字母）
-        current_has_degenerate = False
-        if moltype in ['DNA', 'RNA'] and isinstance(sequence, str):
-            DEGENERATE_BASES = {'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B'}
-            current_has_degenerate = any(base in DEGENERATE_BASES for base in sequence)
-            has_degenerate_bases = has_degenerate_bases or current_has_degenerate
-        
-        # 计算裸序列长度和修饰碱基个数
+        # 使用缓存的解析结果或重新解析
         naked_length = 0
         modification_count = 0
         modifications = []
         special_positions = []
         naked_sequence = ""
         ligand_removed = False
-        if isinstance(sequence, str):
-            naked_sequence, modifications, special_positions, _, _, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=i)
-            naked_length = len(naked_sequence)
-            modification_count = len(modifications)
+        current_has_degenerate = False
+        
+        if parsed_seq_data:
+            # 使用缓存的解析结果
+            naked_sequence = parsed_seq_data['final_naked_sequence']
+            modifications = parsed_seq_data['modifications']
+            special_positions = parsed_seq_data['special_positions']
+            current_has_degenerate = parsed_seq_data['has_degenerate_bases']
+            ligand_removed = parsed_seq_data['ligand_removed']
+        elif isinstance(sequence, str):
+            # 如果没有缓存结果，回退到重新解析
+            naked_sequence, modifications, special_positions, _, current_has_degenerate, ligand_removed = parse_sequence(sequence, raw_moltype, line_number=line_number)
+        
+        naked_length = len(naked_sequence)
+        modification_count = len(modifications)
+        has_degenerate_bases = has_degenerate_bases or current_has_degenerate
         
         # 生成修饰和特殊说明
         modification_special_notes = []
@@ -665,6 +694,7 @@ def print_sequence_info(sequences):
     """打印序列数据统计信息"""
     from tabulate import tabulate
     
+    
     print("\n=== 序列数据统计 ===")
     print(f"序列总条数: {len(sequences)}")
     
@@ -684,7 +714,7 @@ def print_sequence_info(sequences):
     
     table_data = []
     for i, seq_data in enumerate(sequences, 1):
-        sequence, raw_moltype, organism, _, _, _, _, _ = seq_data
+        sequence, raw_moltype, organism, _, _, _, _, _, _, _ = seq_data
         moltype = str(raw_moltype).upper() if pd.notnull(raw_moltype) else "RNA"
         organism = organism if pd.notnull(organism) else "synthetic construct"
         
