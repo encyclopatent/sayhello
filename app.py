@@ -1071,6 +1071,6 @@ if __name__ == '__main__':
         port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     
     # 从环境变量获取主机地址
-    host = os.environ.get('HOST', '127.0.0.1')
+    host = os.environ.get('HOST', '0.0.0.0')  # 改为0.0.0.0，允许外部访问
     
     app.run(debug=app.debug, host=host, port=port)
