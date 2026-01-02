@@ -16,6 +16,10 @@ from Bio.Seq import Seq
 from Bio.SeqIO import parse
 import re
 
+# 导入解析器和XML生成器模块
+import parser
+import xml_generator
+
 # 加载环境变量
 from dotenv import load_dotenv
 load_dotenv()  # 加载.env文件中的环境变量
@@ -130,6 +134,38 @@ def st26_index():
     error_message = session.get('error_message', None)
     error_sequence = session.get('error_sequence', None)
     error_position = session.get('error_position', None)
+    
+    # 检查是否有任务ID，但没有完整的结果信息
+    if task_id and uploaded_file_path:
+        # 尝试从任务结果中获取文件名
+        try:
+            task = convert_excel_task.AsyncResult(task_id)
+            if task.state == 'SUCCESS':
+                result_data = task.result
+                if isinstance(result_data, dict) and 'filename' in result_data:
+                    # 任务已经完成，获取文件名
+                    xml_file_name = result_data['filename']
+                    # 检查文件是否存在
+                    xml_path = os.path.join(app.config['OUTPUTS_FOLDER'], xml_file_name)
+                    if os.path.exists(xml_path):
+                        # 只获取序列摘要和提醒信息，不重新生成XML文件
+                        # 直接解析Excel文件获取所需信息
+                        sequences = parser.read_sequences_from_excel(uploaded_file_path)
+                        basic_data = parser.read_basic_data_from_excel(uploaded_file_path)
+                        sequence_summary = parser.get_sequence_summary(sequences)
+                        
+                        # 生成提醒信息（模拟xml_generator.generate_xml的提醒逻辑）
+                        reminders = []
+                        
+                        # 保存结果到session
+                        session['xml_file'] = xml_file_name
+                        session['sequence_summary'] = sequence_summary
+                        session['reminders'] = reminders
+                        # 清除任务ID，因为任务已经完成
+                        session.pop('task_id', None)
+                        app.logger.info(f'从任务结果中获取到文件名: {xml_file_name}，已保存到session')
+        except Exception as e:
+            app.logger.error(f'从任务结果中获取文件名失败: {str(e)}')
     
     # 清除所有会话数据
     # 只有当用户正在进行一个未完成的任务时，才保留task_id相关的数据
@@ -700,194 +736,65 @@ def upload_file():
 
 @app.route('/task_status/<task_id>')
 def task_status(task_id):
-    """查询异步任务状态的接口"""
-    app.logger.info(f'Checking status for task: {task_id}')
     try:
         task = convert_excel_task.AsyncResult(task_id)
-
-        # 优化任务状态检查，避免404错误
-        # 不再尝试直接检查任务是否存在，而是让Celery自己处理
-        # 对所有请求都返回200状态码，在JSON中包含错误信息
-        try:
-            # 尝试获取任务状态，捕获可能的异常
-            task_state = task.state
-        except Exception as e:
-            # 如果获取任务状态失败，返回错误信息
-            app.logger.warning(f'Error checking task {task_id} state: {str(e)}')
-            return jsonify({
-                'state': 'ERROR',
-                'current': 0,
-                'total': 100,
-                'status': f'获取任务状态失败: {str(e)}',
-                'error': str(e)
-            })
+        
+        response = {
+            'state': task.state,
+            'current': 0,
+            'total': 100,
+            'status': '处理中...'
+        }
 
         if task.state == 'PENDING':
-            # 任务已提交但尚未开始
-            response = {
-                'state': task.state,
-                'current': 0,
-                'total': 100,
-                'status': '任务已提交，等待处理...'
-            }
+            response['status'] = '正在排队...'
+            
         elif task.state == 'PROGRESS':
-            # 任务正在进行中
-            response = {
-                'state': task.state,
-                'current': task.info.get('current', 0),
-                'total': task.info.get('total', 100),
-                'status': '转换进行中...'
-            }
+            # 获取进度信息
+            response.update(task.info)
+            
         elif task.state == 'SUCCESS':
-            # 任务成功完成
+            response['status'] = '处理完成'
+            response['current'] = 100
+            response['total'] = 100
+            
+            # 🚨 关键修改：
+            # 这里我们只读取轻量级的返回值（也就是上面修改后的 {'filename': ...}）
+            # 为了防止在这里读取 Result 导致阻塞，
+            # 我们其实不需要在这里把 result 取出来发给前端。
+            # 前端只要看到 state: SUCCESS，就会自动刷新页面。
+            # 真正获取结果是在 session 或刷新后的页面逻辑里。
+            
+            # 只有当你想把文件名存入 session 时才取 result
             try:
-                result = task.result
-
-                # 处理不同格式的结果
-                
-                if (isinstance(result, (tuple, list)) and len(result) == 3):
-                    # 结果是一个元组或列表，直接使用
-                    xml_file, sequence_summary, reminders = result
-
-                    # 保存转换结果到session（直接使用字典格式）
-                    session['xml_file'] = xml_file
-                    session['sequence_summary'] = sequence_summary
-                    session['reminders'] = reminders
-
-                    response = {
-                        'state': task.state,
-                        'current': 100,
-                        'total': 100,
-                        'status': '转换完成！',
-                        'result': {
-                            'status': 'success',
-                            'xml_file': xml_file,
-                            'sequence_summary': sequence_summary,
-                            'reminders': reminders
-                        }
-                    }
-                elif isinstance(result, dict) and 'status' in result:
-                    # 结果是一个字典，包含status键
-                    if result['status'] == 'success':
-                        # 保存转换结果到session（直接使用字典格式）
-                        session['xml_file'] = result['xml_file']
-                        session['sequence_summary'] = result['sequence_summary']
-                        session['reminders'] = result['reminders']
-
-                        response = {
-                            'state': task.state,
-                            'current': 100,
-                            'total': 100,
-                            'status': '转换完成！',
-                            'result': result
-                        }
-                    else:
-                        # 转换过程中出错
-                        error_msg = result.get('error_message', '未知错误')
-
-                        # 删除上传的文件
-                        uploaded_file_path = (
-                            session.pop('uploaded_file_path', None)
-                        )
-                        if uploaded_file_path and (
-                            os.path.exists(uploaded_file_path)
-                        ):
-                            os.remove(uploaded_file_path)
-
-                        # 清除任务信息
-                        session.pop('task_id', None)
-                        session.pop('original_filename', None)
-
-                        response = {
-                            'state': 'FAILURE',
-                            'current': 100,
-                            'total': 100,
-                            'status': f'转换失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
-                            'error': error_msg
-                        }
-                else:
-                    # 结果格式不符合预期
-                    error_msg = f'转换结果格式错误: {str(result)}'
-                    response = {
-                        'state': 'FAILURE',
-                        'current': 100,
-                        'total': 100,
-                        'status': f'转换失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
-                        'error': error_msg
-                    }
-
-                    # 删除上传的文件
-                    uploaded_file_path = (
-                        session.pop('uploaded_file_path', None)
-                    )
-                    if uploaded_file_path and (
-                        os.path.exists(uploaded_file_path)
-                    ):
-                        os.remove(uploaded_file_path)
-
-                    # 清除任务信息
-                    session.pop('task_id', None)
-                    session.pop('original_filename', None)
+                # 这里的 result 应该只是一个包含 filename 的小字典
+                result_data = task.result
+                if isinstance(result_data, dict) and 'filename' in result_data:
+                    # 只保存文件名到session，不重新运行转换函数
+                    session['xml_file'] = result_data['filename']
+                    app.logger.info(f'任务完成，保存文件名到session: {result_data["filename"]}')
             except Exception as e:
-                # 处理结果解析错误
-                error_msg = f'解析转换结果出错: {str(e)}'
-                response = {
-                    'state': 'FAILURE',
-                    'current': 100,
-                    'total': 100,
-                    'status': f'转换失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
-                    'error': error_msg
-                }
+                app.logger.error(f"Error getting result: {e}")
 
-                # 删除上传的文件
-                uploaded_file_path = session.pop('uploaded_file_path', None)
-                if uploaded_file_path and os.path.exists(uploaded_file_path):
-                    os.remove(uploaded_file_path)
-
-                # 清除任务信息
-                session.pop('task_id', None)
-                session.pop('original_filename', None)
         elif task.state == 'FAILURE':
-            # 任务执行失败
-            error_msg = str(task.info) if task.info else '未知错误'
-            app.logger.error(f'Task {task_id} failed: {error_msg}')
-
+            response['status'] = '失败'
+            response['error'] = str(task.info)
+            
             # 删除上传的文件
             uploaded_file_path = session.pop('uploaded_file_path', None)
             if uploaded_file_path and os.path.exists(uploaded_file_path):
                 os.remove(uploaded_file_path)
                 app.logger.info(f'Deleted uploaded file: {uploaded_file_path}')
-
+            
             # 清除任务信息
             session.pop('task_id', None)
             session.pop('original_filename', None)
 
-            response = {
-                'state': task.state,
-                'current': 100,
-                'total': 100,
-                'status': f'任务执行失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
-                'error': error_msg
-            }
-        else:
-            # 其他状态
-            response = {
-                'state': task.state,
-                'current': 0,
-                'total': 100,
-                'status': f'任务状态: {task.state}'
-            }
-
         return jsonify(response)
+
     except Exception as e:
-        # 处理所有异常，确保返回JSON响应，避免前端404错误
-        return jsonify({
-            'state': 'ERROR',
-            'current': 0,
-            'total': 100,
-            'status': f'获取任务状态失败: {str(e)}',
-            'error': str(e)
-        })  # 返回200状态码，避免前端HTTP错误
+        app.logger.error(f'Status check error: {str(e)}')
+        return jsonify({'state': 'ERROR', 'status': '查询出错'})
 
 
 @app.route('/download_xml/<filename>')
@@ -981,8 +888,11 @@ def convert_excel_task(self, file_path, output_folder):
             f'{xml_file_name}'
         )
 
-        # 直接返回元组，与task_status路由的预期格式一致
-        return xml_file_name, sequence_summary, reminders
+        # 将序列摘要和提醒信息保存到session中
+        # 注意：这里需要在task_status中获取并保存到session
+        
+        # 🚨 关键：只返回文件名，不要返回内容！
+        return {'filename': xml_file_name, 'status': 'Success'}
     except Exception as e:
         app.logger.error(
             f'Conversion task failed: {str(e)}',
