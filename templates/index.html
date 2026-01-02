@@ -222,7 +222,13 @@
         // 开始轮询任务状态
         const pollInterval = setInterval(() => {
           fetch(`/task_status/${taskId}`, {
-            cache: 'no-cache'
+            method: 'GET',
+            cache: 'no-cache',
+            credentials: 'include', // 包含Cookie，保持Session
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest' // 标识为AJAX请求
+            }
           })
             .then(response => {
               if (!response.ok) {
