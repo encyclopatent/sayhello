@@ -3,15 +3,24 @@ import subprocess
 from Bio import AlignIO
 import os
 
-def create_aligner(mode='global'):
-    """创建双模式蛋白质序列比对器"""
-    aligner = PairwiseAligner(scoring='blastp')
-    aligner.mode = mode
-    if mode == 'global':
-        aligner.open_gap_score = -10
-        aligner.extend_gap_score = -0.5
+def create_aligner(mode): 
+    # 1. 创建对齐器实例 
+    aligner = PairwiseAligner() 
+    
+    # 2. 加载 BLOSUM62 矩阵 (这是 BLASTP 的标准矩阵) 
+    try: 
+        matrix = substitution_matrices.load("BLOSUM62") 
+        aligner.substitution_matrix = matrix 
+    except Exception as e: 
+        # 如果加载失败（极少数情况），打印警告或使用默认 
+        print(f"Warning: Could not load BLOSUM62 matrix: {e}") 
 
-    aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
+    # 3. 设置模式 
+    if mode == 'global': 
+        aligner.mode = 'global' 
+    else: 
+        aligner.mode = 'local' # 假设你有局部比对的需求 
+        
     return aligner
 
 def calculate_identity(t_aligned, q_aligned):

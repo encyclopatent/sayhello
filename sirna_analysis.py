@@ -218,7 +218,9 @@ def find_best_match(query_pos, literature_results):
 def parse_sequences_from_excel(excel_path, preview_mode=False):
     """解析Excel文件中的序列"""
     try:
-        df = pd.read_excel(excel_path)
+        df = pd.read_excel(excel_path, engine='openpyxl')
+        # 添加dropna操作，解决幽灵数据问题
+        df.dropna(how='all', inplace=True)
         
         # 验证列数
         if len(df.columns) < 2:

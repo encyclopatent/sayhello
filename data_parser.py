@@ -142,7 +142,9 @@ def parse_sequence(seq, moltype):
     return final_naked_sequence, modifications, special_positions, raw_moltype
 
 def read_basic_data_from_excel(file_path):
-    df = pd.read_excel(file_path, sheet_name='basicdata')
+    df = pd.read_excel(file_path, sheet_name='basicdata', engine='openpyxl')
+    # 添加dropna操作，解决幽灵数据问题
+    df.dropna(how='all', inplace=True)
     basic_data = {}
     for index, row in df.iterrows():
         field = row['Field']
@@ -166,7 +168,9 @@ def read_basic_data_from_excel(file_path):
     return basic_data
 
 def read_sequences_from_excel(file_path):
-    df = pd.read_excel(file_path, sheet_name='seqdata')
+    df = pd.read_excel(file_path, sheet_name='seqdata', engine='openpyxl')
+    # 添加dropna操作，解决幽灵数据问题
+    df.dropna(how='all', inplace=True)
     
     # 动态定位列
     ring_col = next((col for col in df.columns if '环信息' in str(col)), None)

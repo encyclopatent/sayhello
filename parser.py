@@ -315,6 +315,8 @@ def parse_sequence(seq, moltype, line_number=None):
 
 def read_basic_data_from_excel(file_path):
     df = pd.read_excel(file_path, sheet_name='basicdata', engine='openpyxl')
+    # 添加dropna操作，解决幽灵数据问题
+    df.dropna(how='all', inplace=True)
     basic_data = {}
     
     # 动态定位Field和Value列
@@ -345,6 +347,8 @@ def read_basic_data_from_excel(file_path):
 
 def read_sequences_from_excel(file_path):
     df = pd.read_excel(file_path, sheet_name='seqdata', engine='openpyxl')
+    # 添加dropna操作，解决幽灵数据问题
+    df.dropna(how='all', inplace=True)
     
     # 动态定位关键列 - 使用集合交集提高查找效率
     col_names = [str(col).lower() for col in df.columns]
