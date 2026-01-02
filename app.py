@@ -167,6 +167,23 @@ def st26_index():
         except Exception as e:
             app.logger.error(f'从任务结果中获取文件名失败: {str(e)}')
     
+    # 检查是否有xml_file，但没有sequence_summary或reminders
+    if xml_file and not sequence_summary and uploaded_file_path:
+        # 直接解析Excel文件获取所需信息
+        try:
+            sequences = parser.read_sequences_from_excel(uploaded_file_path)
+            sequence_summary = parser.get_sequence_summary(sequences)
+            
+            # 生成提醒信息（模拟xml_generator.generate_xml的提醒逻辑）
+            reminders = []
+            
+            # 保存结果到session
+            session['sequence_summary'] = sequence_summary
+            session['reminders'] = reminders
+            app.logger.info(f'从Excel文件中获取到序列摘要和提醒信息，已保存到session')
+        except Exception as e:
+            app.logger.error(f'从Excel文件中获取序列摘要和提醒信息失败: {str(e)}')
+    
     # 清除所有会话数据
     # 只有当用户正在进行一个未完成的任务时，才保留task_id相关的数据
     # 这样可以确保每次重新访问页面时都不会显示上一个用户的残留数据
@@ -177,9 +194,14 @@ def st26_index():
         session['task_id'] = task_id
         session['uploaded_file_path'] = uploaded_file_path
         session['original_filename'] = original_filename
-    else:
-        # 否则，清除所有会话数据
+    elif not xml_file:
+        # 没有任务ID，也没有XML文件，清除所有会话数据
         session.clear()
+    # 否则，如果有XML文件，保留会话数据，以便显示转化完成的信息
+    
+    # 确保当有xml_file时，传递给模板的task_id是null
+    if xml_file:
+        task_id = None
     
     response.set_data(render_template(
         'index.html',
@@ -765,14 +787,50 @@ def task_status(task_id):
             # 前端只要看到 state: SUCCESS，就会自动刷新页面。
             # 真正获取结果是在 session 或刷新后的页面逻辑里。
             
-            # 只有当你想把文件名存入 session 时才取 result
+            # 处理任务完成后的数据保存
             try:
-                # 这里的 result 应该只是一个包含 filename 的小字典
                 result_data = task.result
-                if isinstance(result_data, dict) and 'filename' in result_data:
-                    # 只保存文件名到session，不重新运行转换函数
-                    session['xml_file'] = result_data['filename']
-                    app.logger.info(f'任务完成，保存文件名到session: {result_data["filename"]}')
+                if isinstance(result_data, list) and len(result_data) >= 3:
+                    # 任务结果格式：[filename, sequence_summary, reminders]
+                    xml_filename = result_data[0]
+                    sequence_summary = result_data[1]
+                    reminders = result_data[2]
+                    
+                    # 保存所有必要数据到session
+                    session['xml_file'] = xml_filename
+                    session['sequence_summary'] = sequence_summary
+                    session['reminders'] = reminders
+                    
+                    # 清除任务ID，因为任务已经完成
+                    session.pop('task_id', None)
+                    app.logger.info(f'任务完成，保存所有必要数据到session: {xml_filename}')
+                    
+                elif isinstance(result_data, dict) and 'filename' in result_data:
+                    # 兼容旧格式
+                    xml_filename = result_data['filename']
+                    sequence_summary = result_data.get('sequence_summary')
+                    reminders = result_data.get('reminders', [])
+                    
+                    # 保存文件名到session
+                    session['xml_file'] = xml_filename
+                    
+                    # 如果没有提供sequence_summary，尝试从Excel文件解析
+                    if not sequence_summary:
+                        uploaded_file_path = session.get('uploaded_file_path')
+                        if uploaded_file_path and os.path.exists(uploaded_file_path):
+                            sequences = parser.read_sequences_from_excel(uploaded_file_path)
+                            sequence_summary = parser.get_sequence_summary(sequences)
+                            session['sequence_summary'] = sequence_summary
+                    
+                    # 保存提醒信息
+                    session['reminders'] = reminders or []
+                    
+                    # 清除任务ID，因为任务已经完成
+                    session.pop('task_id', None)
+                    app.logger.info(f'任务完成，保存文件名到session: {xml_filename}')
+                else:
+                    app.logger.warning(f"任务结果格式异常: {result_data}")
+                    
             except Exception as e:
                 app.logger.error(f"Error getting result: {e}")
 
