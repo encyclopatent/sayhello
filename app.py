@@ -835,20 +835,47 @@ def download_xml(filename):
 def clear_task(task_id):
     """清除任务信息的接口"""
     try:
-        # 删除上传的文件
-        uploaded_file_path = session.pop('uploaded_file_path', None)
-        if uploaded_file_path and os.path.exists(uploaded_file_path):
-            os.remove(uploaded_file_path)
-
-        # 清除session中的任务信息
-        session.pop('task_id', None)
-        session.pop('original_filename', None)
-        session.pop('xml_file', None)
-        session.pop('sequence_summary', None)
-        session.pop('reminders', None)
-        session.pop('error_message', None)
-        session.pop('error_sequence', None)
-        session.pop('error_position', None)
+        # 检查任务状态 - 如果任务已完成，只清除进行中的数据
+        try:
+            task = convert_excel_task.AsyncResult(task_id)
+            task_state = task.state
+            
+            # 如果任务已完成，只清除进行中的数据，保留结果数据
+            if task_state == 'SUCCESS':
+                # 只清除进行中的数据，保留已完成的结果
+                session.pop('task_id', None)
+                session.pop('uploaded_file_path', None)
+                session.pop('original_filename', None)
+                session.pop('error_message', None)
+                session.pop('error_sequence', None)
+                session.pop('error_position', None)
+                # 保留: xml_file, sequence_summary, reminders (这些都是结果数据)
+                
+                app.logger.info(f'清除已完成任务 {task_id} 的进行中数据，保留结果数据')
+                
+            else:
+                # 任务未完成，清除所有数据
+                uploaded_file_path = session.pop('uploaded_file_path', None)
+                if uploaded_file_path and os.path.exists(uploaded_file_path):
+                    os.remove(uploaded_file_path)
+                
+                session.pop('task_id', None)
+                session.pop('original_filename', None)
+                session.pop('xml_file', None)
+                session.pop('sequence_summary', None)
+                session.pop('reminders', None)
+                session.pop('error_message', None)
+                session.pop('error_sequence', None)
+                session.pop('error_position', None)
+                
+                app.logger.info(f'清除未完成任务 {task_id} 的所有数据')
+                
+        except Exception as task_check_error:
+            app.logger.warning(f'无法检查任务状态 {task_id}: {task_check_error}')
+            # 任务检查失败时，只清除基本数据
+            session.pop('task_id', None)
+            session.pop('uploaded_file_path', None)
+            session.pop('original_filename', None)
 
         return jsonify({'status': 'success', 'message': '任务信息已清除'})
     except Exception as e:
