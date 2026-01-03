@@ -15,6 +15,7 @@
   </h1>
   <div class="nav-buttons">
     <a href="/" class="btn btn-secondary">返回主页</a>
+    <button id="clear-all-btn" class="btn btn-danger">清除所有数据</button>
   </div>
   
   <div class="section">
@@ -141,143 +142,366 @@
   </div>
 
   <script>
-    // 文件上传交互脚本
-    const fileInput = document.getElementById('fileInput');
-    const uploadArea = document.querySelector('.upload-area');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    // 页面卸载事件监听器 - 清除未完成的任务
-    window.addEventListener('beforeunload', function() {
-      const taskId = {{ session.get('task_id', None)|tojson }};
-      const hasXmlFile = {{ 'true' if 'xml_file' in session else 'false' }};
+    document.addEventListener('DOMContentLoaded', function() {
+      // 文件上传交互脚本
+      const fileInput = document.getElementById('fileInput');
+      const uploadArea = document.querySelector('.upload-area');
+      const submitBtn = document.getElementById('submitBtn');
+      const clearAllBtn = document.getElementById('clear-all-btn');
       
-      // 如果有任务ID但还没有XML文件（任务未完成或未下载），则清除任务
-      if (taskId && taskId !== 'null' && !hasXmlFile) {
-        // 使用navigator.sendBeacon代替fetch，确保在页面卸载时请求能被发送
-        const url = '/clear_task/' + taskId;
-        const data = new FormData();
+      // 添加清除按钮点击事件
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+          if (confirm('确定要清除所有数据吗？这将删除当前上传的文件和转换结果。')) {
+            fetch('/clear_all', {
+              method: 'POST',
+              credentials: 'include'
+            })
+            .then(function(response) {
+              return response.json();
+            })
+            .then(function(data) {
+              if (data.status === 'success') {
+                // 清除成功，刷新页面
+                window.location.reload();
+              } else {
+                alert('清除失败: ' + data.message);
+              }
+            })
+            .catch(function(error) {
+              console.error('清除请求出错:', error);
+              alert('清除请求失败，请稍后重试。');
+            });
+          }
+        });
+      }
+      
+      // 下载状态标记
+      let isDownloading = false;
+      
+      // 页面刷新标记
+      let isPageRefresh = false;
+      
+      // 通过performance API检测页面刷新
+      if (performance.navigation.type === 1) {
+        isPageRefresh = true;
+        console.log('检测到页面刷新');
         
-        if (navigator.sendBeacon) {
-          navigator.sendBeacon(url, data).catch(error => {
-            console.error('清除任务失败:', error);
-          });
-        } else {
-          // 降级处理，使用同步XMLHttpRequest
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', url, false);
-          xhr.send(data);
+        // 如果页面有数据，询问用户是否清除
+        const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
+        if (hasXmlFile === 'true') {
+          // 使用确认对话框询问用户是否清除数据
+          const shouldClearData = confirm('检测到您正在刷新页面，是否要清除当前结果？点击"确定"将清除结果，点击"取消"将保留结果。');
+          
+          if (shouldClearData) {
+            console.log('用户选择清除数据，正在执行清除操作...');
+            // 发送清除请求
+            fetch('/clear_all', {
+              method: 'POST',
+              credentials: 'include'
+            })
+            .then(function(response) {
+              return response.json();
+            })
+            .then(function(data) {
+              if (data.status === 'success') {
+                console.log('清除数据成功');
+                // 刷新页面以反映清除后的状态
+                window.location.reload();
+              } else {
+                console.error('清除失败:', data.message);
+              }
+            })
+            .catch(function(error) {
+              console.error('清除请求出错:', error);
+            });
+          } else {
+            console.log('用户选择保留数据');
+          }
         }
       }
-    });
-    
-    uploadArea.addEventListener('click', () => {
-      fileInput.click();
-    });
-    
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length > 0) {
-        submitBtn.click(); // 自动提交表单
-      }
-    });
-    
-    // 拖放功能
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('drag-over');
-    });
-    
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('drag-over');
-    });
-    
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('drag-over');
       
-      if (e.dataTransfer.files.length) {
-        fileInput.files = e.dataTransfer.files;
-        submitBtn.click(); // 自动提交表单
+      // 监听下载链接点击事件
+      document.addEventListener('click', function(e) {
+        if (e.target && (e.target.classList.contains('xml-download') || e.target.closest('.xml-download'))) {
+          isDownloading = true;
+          // 2秒后重置下载状态
+          setTimeout(() => {
+            isDownloading = false;
+          }, 2000);
+        }
+      });
+
+      // 页面加载时检查是否从主页导航进入，如果是则清除数据
+      document.addEventListener('DOMContentLoaded', function() {
+        const referrer = document.referrer;
+        const currentUrl = window.location.href;
+        
+        // 检查是否从主页导航进入ST26页面
+        if (referrer && referrer !== currentUrl && referrer.includes('/')) {
+          // 排除刷新页面的情况（referrer包含/st26）
+          if (!referrer.includes('/st26')) {
+            console.log('检测到从主页导航进入，清除之前的数据');
+            isPageRefresh = false; // 确保这是新导航
+            
+            // 如果session中有XML数据，清除所有数据
+            const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
+            if (hasXmlFile === 'true') {
+              console.log('发现之前的XML数据，开始清除');
+              fetch('/clear_all', {
+                method: 'POST',
+                credentials: 'include'
+              })
+              .then(function(response) {
+                return response.json();
+              })
+              .then(function(data) {
+                if (data.status === 'success') {
+                  console.log('从主页导航进入的数据清除成功');
+                  // 刷新页面以反映清除后的状态
+                  window.location.reload();
+                } else {
+                  console.error('清除失败:', data.message);
+                }
+              })
+              .catch(function(error) {
+                console.error('清除请求出错:', error);
+              });
+            }
+          }
+        }
+      });
+
+      // 页面卸载事件监听器 - 清除未完成的任务
+      window.addEventListener('beforeunload', function(e) {
+        // 如果正在下载文件，不执行清除操作
+        if (isDownloading) {
+          return;
+        }
+        
+        const taskId = "{{ session.get('task_id', '') }}";
+        const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
+        
+        // 只有在没有XML文件且不在下载状态时才清除任务
+        if (taskId && taskId !== '' && taskId !== 'null' && hasXmlFile !== 'true' && !isDownloading) {
+          const url = '/clear_task/' + taskId;
+          
+          // 使用 sendBeacon 方法（最可靠）
+          if (navigator.sendBeacon) {
+            const data = new Blob([''], { type: 'application/x-www-form-urlencoded' });
+            navigator.sendBeacon(url, data);
+          } else {
+            // 备用方案：使用 fetch with keepalive
+            fetch(url, {
+              method: 'POST',
+              keepalive: true,
+              credentials: 'include'
+            }).catch(function(error) {
+              // 忽略页面卸载时的错误，这是预期的
+            });
+          }
+        }
+      });
+      
+      uploadArea.addEventListener('click', function() {
+        fileInput.click();
+      });
+      
+      fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+          submitBtn.click(); // 自动提交表单
+        }
+      });
+      
+      // 拖放功能
+      uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+      });
+      
+      uploadArea.addEventListener('dragleave', function() {
+        uploadArea.classList.remove('drag-over');
+      });
+      
+      uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          submitBtn.click(); // 自动提交表单
+        }
+      });
+      
+      // 任务轮询代码
+       const taskId = "{{ session.get('task_id', '') }}";
+       const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
+      
+      if (taskId && taskId !== '' && taskId !== 'null' && hasXmlFile !== 'true') {
+        const progressArea = document.getElementById('task-progress');
+        const statusText = document.getElementById('progress-status');
+        const progressBar = document.getElementById('progress-bar');
+        
+        if (progressArea) {
+          progressArea.classList.remove('hidden');
+          statusText.textContent = '🚀 正在连接服务器...';
+        }
+        
+        const pollTaskStatus = function() {
+          fetch(`/task_status/${taskId}`, {
+            method: 'GET',
+            cache: 'no-cache',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(function(response) {
+            if (!response.ok) {
+              throw new Error(`HTTP状态码: ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(function(data) {
+            if (statusText) statusText.textContent = data.status || '处理中...';
+            
+            if (progressBar && data.total > 0) {
+              const progress = Math.round((data.current / data.total) * 100);
+              progressBar.style.width = `${progress}%`;
+              progressBar.textContent = `${progress}%`;
+            }
+            
+            if (data.state === 'SUCCESS' || data.state === 'FAILURE') {
+              console.log('任务完成，显示下载链接...');
+              if (statusText) {
+                statusText.textContent = '✅ 处理完成，正在加载下载链接...';
+                
+                // 隐藏进度条
+                if (progressBar) {
+                  progressBar.style.width = '100%';
+                  progressBar.textContent = '100%';
+                }
+                
+                // 获取XML文件信息并显示下载链接
+                 fetch('/get_xml_info', {
+                   method: 'GET',
+                   credentials: 'include'
+                 })
+                 .then(response => response.json())
+                 .then(data => {
+                   if (data.status === 'success' && data.xml_file) {
+                     // 动态创建下载区域
+                     let downloadSectionHtml = `
+                       <p><b>XML文件已成功生成！</b></p>
+                       <p>文件名: ${data.xml_file}</p>
+                       <a href="/download_xml/${encodeURIComponent(data.xml_file)}" class="xml-download">
+                         下载XML文件并删除缓存数据
+                       </a>
+                     `;
+                     
+                     // 如果有提醒信息，添加提醒区域
+                     if (data.reminders && data.reminders.length > 0) {
+                       downloadSectionHtml += `
+                         <div class="reminder-box" style="margin-top: 15px;">
+                           <h3 class="reminder-title">⚠️ 处理提醒</h3>
+                           ${data.reminders.map(reminder => `<p class="reminder-item">${reminder}</p>`).join('')}
+                         </div>
+                       `;
+                     }
+                     
+                     // 如果有序列摘要，添加序列摘要区域
+                     if (data.sequence_summary) {
+                       downloadSectionHtml += `
+                         <div class="status-box" style="margin-top: 15px;">
+                           <p><b>序列信息摘要</b></p>
+                           <div class="sequence-summary">
+                             <p>总序列数: ${data.sequence_summary.total_count}</p>
+                             <p>DNA序列: ${data.sequence_summary.type_counts.DNA} | RNA序列: ${data.sequence_summary.type_counts.RNA} | 氨基酸序列: ${data.sequence_summary.type_counts.AA}</p>
+                           </div>
+                           <table class="sequence-table">
+                             <thead>
+                               <tr>
+                                 <th>序号</th>
+                                 <th>类型</th>
+                                 <th>来源</th>
+                                 <th>长度</th>
+                                 <th>修饰和特殊说明</th>
+                               </tr>
+                             </thead>
+                             <tbody>
+                               ${data.sequence_summary.details.map(seq => `
+                                 <tr>
+                                   <td>${seq.id}</td>
+                                   <td>${seq.type}</td>
+                                   <td>${seq.organism}</td>
+                                   <td>${seq.naked_length}</td>
+                                   <td>${seq.modification_special_notes}</td>
+                                 </tr>
+                               `).join('')}
+                             </tbody>
+                           </table>
+                         </div>
+                       `;
+                     }
+                     
+                     const downloadSection = document.createElement('div');
+                     downloadSection.className = 'status-box';
+                     downloadSection.innerHTML = downloadSectionHtml;
+                     
+                     // 插入到处理状态区域后面
+                     const progressArea = document.getElementById('task-progress');
+                     if (progressArea && progressArea.parentNode) {
+                       progressArea.parentNode.insertBefore(downloadSection, progressArea.nextSibling);
+                     } else {
+                       // 如果进度区域不存在，则添加到任务状态区域
+                       statusText.parentNode.parentNode.appendChild(downloadSection);
+                     }
+                     
+                     // 更新状态文本
+                     statusText.textContent = '✅ 处理完成，点击下方下载链接获取结果';
+                   } else {
+                     // 如果获取XML信息失败，提供刷新按钮
+                     statusText.textContent = '✅ 处理完成，请手动刷新页面查看结果';
+                     const refreshBtn = document.createElement('button');
+                     refreshBtn.textContent = '刷新页面';
+                     refreshBtn.className = 'btn btn-primary';
+                     refreshBtn.style.marginLeft = '10px';
+                     refreshBtn.onclick = function() {
+                       window.location.reload();
+                     };
+                     statusText.parentNode.appendChild(refreshBtn);
+                   }
+                 })
+                .catch(error => {
+                  console.error('获取XML信息失败:', error);
+                  // 出错时提供刷新按钮
+                  statusText.textContent = '✅ 处理完成，请手动刷新页面查看结果';
+                  const refreshBtn = document.createElement('button');
+                  refreshBtn.textContent = '刷新页面';
+                  refreshBtn.className = 'btn btn-primary';
+                  refreshBtn.style.marginLeft = '10px';
+                  refreshBtn.onclick = function() {
+                    window.location.reload();
+                  };
+                  statusText.parentNode.appendChild(refreshBtn);
+                });
+              }
+            } else {
+              // 继续轮询
+              setTimeout(pollTaskStatus, 2000);
+            }
+          })
+          .catch(function(error) {
+            console.error('轮询任务状态失败:', error);
+            if (statusText) statusText.textContent = '❌ 连接失败，正在重试...';
+            setTimeout(pollTaskStatus, 5000);
+          });
+        };
+        
+        // 开始轮询
+        pollTaskStatus();
       }
-    });
-  </script>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-     // 1. 获取 Jinja2 传递的变量 
-     const taskId = {{ session.get('task_id', None)|tojson }}; 
-     // 注意：这里处理布尔值的方式要确保 JS 能读懂 
-     const hasXmlFile = {{ 'true' if 'xml_file' in session else 'false' }};
- 
-     // 2. 判断是否需要轮询 
-     if (taskId && taskId !== 'null' && !hasXmlFile) { 
-         
-         // 获取页面元素 
-         const progressArea = document.getElementById('task-progress'); 
-         const statusText = document.getElementById('progress-status'); 
-         const progressBar = document.getElementById('progress-bar'); 
- 
-         // 显示进度条区域 
-         if (progressArea) { 
-             progressArea.classList.remove('hidden'); 
-             statusText.textContent = '🚀 正在连接服务器...'; 
-         } 
- 
-         // 3. 定义轮询函数 (递归方式，而非 setInterval) 
-         const pollTaskStatus = () => { 
-             fetch(`/task_status/${taskId}`, { 
-                 method: 'GET', 
-                 cache: 'no-cache', 
-                 credentials: 'include', 
-                 headers: { 
-                     'Content-Type': 'application/json', 
-                     'X-Requested-With': 'XMLHttpRequest' 
-                 } 
-             }) 
-             .then(response => { 
-                 // 如果服务器报错 (502/500) 或拒绝连接 
-                 if (!response.ok) { 
-                     throw new Error(`HTTP状态码: ${response.status}`); 
-                 } 
-                 return response.json(); 
-             }) 
-             .then(data => { 
-                 // --- 成功获取数据，更新 UI --- 
-                 if (statusText) statusText.textContent = data.status || '处理中...'; 
-                 
-                 if (progressBar && data.total > 0) { 
-                     const progress = Math.round((data.current / data.total) * 100); 
-                     progressBar.style.width = `${progress}%`; 
-                     progressBar.textContent = `${progress}%`; // 可选：在进度条上显示数字 
-                 } 
- 
-                 // --- 判断任务状态 --- 
-                 if (data.state === 'SUCCESS' || data.state === 'FAILURE') { 
-                     // 任务结束：1秒后刷新页面 
-                     console.log('任务完成，准备刷新...'); 
-                     if (statusText) statusText.textContent = '✅ 处理完成，正在跳转...'; 
-                     setTimeout(() => { 
-                         window.location.reload(); 
-                     }, 1000); 
-                 } else { 
-                     // 任务进行中：休息 2 秒后再查 
-                     // 关键点：只有成功返回后，才触发下一次，绝对不会堵塞服务器 
-                     setTimeout(pollTaskStatus, 2000); 
-                 } 
-             }) 
-             .catch(error => { 
-                 console.error("轮询连接失败:", error); 
-                 if (statusText) statusText.textContent = '⚠️ 服务器繁忙，正在重试...'; 
-                 
-                 // --- 容错机制 --- 
-                 // 如果遇到“拒绝连接”或网络错误，休息 5 秒再试 
-                 // 给 uWSGI 足够的重启时间 
-                 setTimeout(pollTaskStatus, 5000); 
-             }); 
-         }; 
- 
-         // 4. 启动第一次轮询 
-         pollTaskStatus(); 
-     } 
     });
   </script>
 

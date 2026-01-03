@@ -117,14 +117,19 @@ def main():
 
 @app.route('/st26')
 def st26_index():
-    """ST26工具主页面 - 纯显示功能，不处理任何Celery任务逻辑"""
+    """ST26工具主页面 - 智能数据管理"""
+    from flask import request
+    
     # 设置响应头，防止浏览器缓存页面
     response = make_response()
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     
-    # 只从session读取数据，绝不连接Redis或Celery
+    # 检查是否是新的导航进入
+    is_new_navigation = request.args.get('new', 'false').lower() == 'true'
+    
+    # 获取当前session数据
     xml_file = session.get('xml_file', None)
     sequence_summary = session.get('sequence_summary', None)
     reminders = session.get('reminders', None)
@@ -134,14 +139,23 @@ def st26_index():
     error_sequence = session.get('error_sequence', None)
     error_position = session.get('error_position', None)
     
-    # 如果session里已经有xml_file了，说明任务肯定做完了
-    # 此时隐藏task_id，避免前端继续轮询
-    if xml_file:
-        task_id = None
+    # 智能数据管理策略
+    if is_new_navigation:
+        # 新导航进入：清除所有之前的数据，让用户重新开始
+        if xml_file or task_id or error_message:
+            app.logger.info(f"用户从主页重新进入ST26，清除之前的数据: xml_file={xml_file}, task_id={task_id}")
+            session.clear()
+            # 重新设置为None
+            xml_file = sequence_summary = reminders = task_id = original_filename = error_message = error_sequence = error_position = None
+    else:
+        # 页面刷新：保留数据，适度清理
+        if xml_file and task_id:
+            app.logger.info(f"任务已完成，隐藏task_id，保留XML结果: {xml_file}")
+            task_id = None
     
-    # 清理旧数据：如果没有任务也没有文件，清除所有session数据
-    if not task_id and not xml_file:
-        session.clear()
+    # 记录访问状态
+    if not xml_file and not task_id and not error_message:
+        app.logger.info("用户首次访问ST26页面，保持空白状态")
     
     response.set_data(render_template(
         'index.html',
@@ -696,6 +710,30 @@ def upload_file():
         return redirect(url_for('st26_index'))
 
 
+@app.route('/get_xml_info')
+def get_xml_info():
+    """获取XML文件信息的接口，用于任务完成后动态显示下载链接"""
+    try:
+        xml_file = session.get('xml_file', None)
+        if xml_file:
+            return jsonify({
+                'status': 'success',
+                'xml_file': xml_file,
+                'sequence_summary': session.get('sequence_summary', None),
+                'reminders': session.get('reminders', None)
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': '未找到XML文件信息'
+            })
+    except Exception as e:
+        app.logger.error(f'获取XML信息失败: {str(e)}')
+        return jsonify({
+            'status': 'error',
+            'message': f'获取XML信息失败: {str(e)}'
+        })
+
 @app.route('/task_status/<task_id>')
 def task_status(task_id):
     try:
@@ -725,40 +763,113 @@ def task_status(task_id):
             # 刷新后的主页就能直接从 Session 读到文件名了
             
             # 只有当 Session 里还没存的时候才存（防止重复操作）
+            app.logger.info(f"检查 Session 中是否已有 xml_file: {'xml_file' in session}")
             if 'xml_file' not in session:
                 try:
-                    # 获取 Celery 返回的轻量级字典 {'filename': 'xxx.xml'} 
-                    result_data = task.result
-                    
-                    if isinstance(result_data, dict) and 'filename' in result_data:
-                        filename = result_data['filename']
-                        session['xml_file'] = filename
-                        
-                        # 尝试获取更多数据（如果存在）
-                        sequence_summary = result_data.get('sequence_summary')
-                        reminders = result_data.get('reminders', [])
-                        
-                        # 如果没有提供sequence_summary，尝试从Excel文件解析
-                        if not sequence_summary:
-                            uploaded_file_path = session.get('uploaded_file_path')
-                            if uploaded_file_path and os.path.exists(uploaded_file_path):
-                                sequences = parser.read_sequences_from_excel(uploaded_file_path)
-                                sequence_summary = parser.get_sequence_summary(sequences)
-                        
-                        # 保存到session
+                    # 获取 Celery 返回的元组 (filename, sequence_summary, reminders)
+                    result = task.result
+                    app.logger.info(f"获取到任务结果: {type(result)}, 内容: {result}")
+
+                    # 处理不同格式的结果
+                    if (isinstance(result, (tuple, list)) and len(result) == 3):
+                        # 结果是一个元组或列表，直接使用
+                        xml_file, sequence_summary, reminders = result
+                        app.logger.info(f"解包结果: xml_file={xml_file}, sequence_summary类型={type(sequence_summary)}, reminders类型={type(reminders)}")
+
+                        # 保存转换结果到session
+                        session['xml_file'] = xml_file
                         session['sequence_summary'] = sequence_summary
                         session['reminders'] = reminders
                         
                         # 清除任务ID，因为任务已经完成
                         session.pop('task_id', None)
                         
-                        # 记录日志，方便调试
-                        app.logger.info(f"任务完成，已通过轮询接口保存 Session: {filename}")
+                        app.logger.info(f"任务完成，已通过轮询接口保存 Session: {xml_file}")
+                        app.logger.info(f"Session 中的数据: xml_file={session.get('xml_file')}, sequence_summary存在={'sequence_summary' in session}, reminders存在={'reminders' in session}")
+                    elif isinstance(result, dict) and 'status' in result:
+                        # 结果是一个字典，包含status键
+                        if result['status'] == 'success':
+                            # 保存转换结果到session
+                            session['xml_file'] = result['xml_file']
+                            session['sequence_summary'] = (
+                                result['sequence_summary']
+                            )
+                            session['reminders'] = result['reminders']
+                            
+                            # 清除任务ID，因为任务已经完成
+                            session.pop('task_id', None)
+                            
+                            app.logger.info(f"任务完成，已通过轮询接口保存 Session: {result['xml_file']}")
+                        else:
+                            # 转换过程中出错
+                            error_msg = result.get('error_message', '未知错误')
+                            
+                            # 删除上传的文件
+                            uploaded_file_path = (
+                                session.pop('uploaded_file_path', None)
+                            )
+                            if uploaded_file_path and (
+                                os.path.exists(uploaded_file_path)
+                            ):
+                                os.remove(uploaded_file_path)
+
+                            # 清除任务信息
+                            session.pop('task_id', None)
+                            session.pop('original_filename', None)
+                            
+                            response = {
+                                'state': 'FAILURE',
+                                'current': 100,
+                                'total': 100,
+                                'status': f'转换失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
+                                'error': error_msg
+                            }
                     else:
-                        app.logger.warning(f"任务结果格式异常: {result_data}")
+                        # 结果格式不符合预期
+                        error_msg = f'转换结果格式错误: {str(result)}'
+                        app.logger.error(error_msg)
                         
+                        # 删除上传的文件
+                        uploaded_file_path = (
+                            session.pop('uploaded_file_path', None)
+                        )
+                        if uploaded_file_path and (
+                            os.path.exists(uploaded_file_path)
+                        ):
+                            os.remove(uploaded_file_path)
+
+                        # 清除任务信息
+                        session.pop('task_id', None)
+                        session.pop('original_filename', None)
+                        
+                        response = {
+                            'state': 'FAILURE',
+                            'current': 100,
+                            'total': 100,
+                            'status': f'转换失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
+                            'error': error_msg
+                        }
                 except Exception as e:
-                    app.logger.error(f"保存结果到 Session 失败: {e}")
+                    # 处理结果解析错误
+                    error_msg = f'解析转换结果出错: {str(e)}'
+                    app.logger.error(error_msg)
+
+                    # 删除上传的文件
+                    uploaded_file_path = session.pop('uploaded_file_path', None)
+                    if uploaded_file_path and os.path.exists(uploaded_file_path):
+                        os.remove(uploaded_file_path)
+
+                    # 清除任务信息
+                    session.pop('task_id', None)
+                    session.pop('original_filename', None)
+                    
+                    response = {
+                        'state': 'FAILURE',
+                        'current': 100,
+                        'total': 100,
+                        'status': f'转换失败: {error_msg}。数据文件已经删除，请修改后重新上传。',
+                        'error': error_msg
+                    }
 
         elif task.state == 'FAILURE':
             response['status'] = '失败'
@@ -826,7 +937,7 @@ def download_xml(filename):
     return send_file(
             buffer,
             as_attachment=True,
-            download_name=filename,
+            attachment_filename=filename,
             mimetype='text/xml'
         )
 
@@ -835,10 +946,14 @@ def download_xml(filename):
 def clear_task(task_id):
     """清除任务信息的接口"""
     try:
+        app.logger.info(f'开始清除任务 {task_id}')
+        
         # 检查任务状态 - 如果任务已完成，只清除进行中的数据
         try:
+            # 检查任务是否存在
             task = convert_excel_task.AsyncResult(task_id)
             task_state = task.state
+            app.logger.info(f'任务 {task_id} 当前状态: {task_state}')
             
             # 如果任务已完成，只清除进行中的数据，保留结果数据
             if task_state == 'SUCCESS':
@@ -853,8 +968,29 @@ def clear_task(task_id):
                 
                 app.logger.info(f'清除已完成任务 {task_id} 的进行中数据，保留结果数据')
                 
-            else:
+            elif task_state in ['PENDING', 'STARTED', 'RETRY']:
                 # 任务未完成，清除所有数据
+                uploaded_file_path = session.pop('uploaded_file_path', None)
+                if uploaded_file_path and os.path.exists(uploaded_file_path):
+                    os.remove(uploaded_file_path)
+                
+                # 尝试撤销任务（如果任务仍在运行）
+                celery.control.revoke(task_id, terminate=True)
+                app.logger.info(f'已撤销运行中的任务: {task_id}')
+                
+                session.pop('task_id', None)
+                session.pop('original_filename', None)
+                session.pop('xml_file', None)
+                session.pop('sequence_summary', None)
+                session.pop('reminders', None)
+                session.pop('error_message', None)
+                session.pop('error_sequence', None)
+                session.pop('error_position', None)
+                
+                app.logger.info(f'清除未完成任务 {task_id} 的所有数据')
+                
+            elif task_state in ['FAILURE', 'REVOKED']:
+                # 任务已失败或被撤销，清除所有数据
                 uploaded_file_path = session.pop('uploaded_file_path', None)
                 if uploaded_file_path and os.path.exists(uploaded_file_path):
                     os.remove(uploaded_file_path)
@@ -868,7 +1004,12 @@ def clear_task(task_id):
                 session.pop('error_sequence', None)
                 session.pop('error_position', None)
                 
-                app.logger.info(f'清除未完成任务 {task_id} 的所有数据')
+                app.logger.info(f'清除失败/撤销任务 {task_id} 的所有数据')
+                
+            else:
+                # 未知状态，仅清除基本数据
+                session.pop('task_id', None)
+                app.logger.info(f'未知状态任务 {task_id}，仅清除task_id')
                 
         except Exception as task_check_error:
             app.logger.warning(f'无法检查任务状态 {task_id}: {task_check_error}')
@@ -876,17 +1017,48 @@ def clear_task(task_id):
             session.pop('task_id', None)
             session.pop('uploaded_file_path', None)
             session.pop('original_filename', None)
-
+            
+            return jsonify({'status': 'warning', 'message': f'任务状态检查失败，仅清除了基本数据'})
+            
         return jsonify({'status': 'success', 'message': '任务信息已清除'})
     except Exception as e:
+        app.logger.error(f'清除任务时出错: {str(e)}', exc_info=True)
+        return jsonify({'status': 'error', 'message': f'清除任务时出错: {str(e)}'}), 500
+
+
+@app.route('/clear_all', methods=['GET', 'POST'])
+def clear_all():
+    """清除所有任务信息和数据的接口"""
+    try:
+        app.logger.info('开始清除所有任务数据')
+        
+        # 获取当前的任务ID（如果有的话）
+        task_id = session.get('task_id')
+        
+        # 如果有任务ID，删除上传的文件
+        if task_id:
+            uploaded_file_path = session.get('uploaded_file_path')
+            if uploaded_file_path and os.path.exists(uploaded_file_path):
+                os.remove(uploaded_file_path)
+                app.logger.info(f'已删除上传的文件: {uploaded_file_path}')
+        
+        # 清除所有session数据
+        session.clear()
+        
+        app.logger.info('已清除所有任务数据和session信息')
+        
+        return jsonify({'status': 'success', 'message': '所有数据已清除'})
+    except Exception as e:
+        app.logger.error(f'清除所有数据时出错: {str(e)}', exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @celery.task(bind=True)
 def convert_excel_task(self, file_path, output_folder):
     """异步转换Excel为XML的Celery任务"""
-    app.logger.info(f'Starting conversion task for file: {file_path}')
     try:
+        app.logger.info(f'Starting conversion task for file: {file_path}')
+        
         # 设置任务状态
         self.update_state(state='PROGRESS', meta={'current': 0, 'total': 100})
 
@@ -899,16 +1071,14 @@ def convert_excel_task(self, file_path, output_folder):
             f'{xml_file_name}'
         )
 
-        # 将序列摘要和提醒信息保存到session中
-        # 注意：这里需要在task_status中获取并保存到session
-        
-        # 🚨 关键：只返回文件名，不要返回内容！
-        return {'filename': xml_file_name, 'status': 'Success'}
+        # 直接返回元组，与task_status路由的预期格式一致
+        return xml_file_name, sequence_summary, reminders
     except Exception as e:
         app.logger.error(
             f'Conversion task failed: {str(e)}',
             exc_info=True
         )
+        
         return {
             'status': 'error',
             'error_message': str(e)

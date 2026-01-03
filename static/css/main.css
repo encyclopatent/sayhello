@@ -95,6 +95,45 @@ h2 {
   background-color: #218838;
 }
 
+/* 通用按钮样式 */
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white !important;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white !important;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
 /* 提示框样式 */
 .instructions, .disclaimer {
   background-color: var(--light-gray);
