@@ -1078,10 +1078,12 @@ def clear_task(task_id):
             
             return jsonify({'status': 'warning', 'message': f'任务状态检查失败，仅清除了基本数据'})
             
-        return jsonify({'status': 'success', 'message': '任务信息已清除'})
+        # 返回简单的响应，不使用jsonify，因为sendBeacon无法处理JSON响应
+        return '', 204
     except Exception as e:
         app.logger.error(f'清除任务时出错: {str(e)}', exc_info=True)
-        return jsonify({'status': 'error', 'message': f'清除任务时出错: {str(e)}'}), 500
+        # 即使出错也返回空响应，因为页面即将关闭
+        return '', 500
 
 
 @app.route('/clear_all', methods=['GET', 'POST'])
@@ -1105,10 +1107,16 @@ def clear_all():
         
         app.logger.info('已清除所有任务数据和session信息')
         
-        return jsonify({'status': 'success', 'message': '所有数据已清除'})
+        # 如果是POST请求（可能是通过sendBeacon调用），返回空响应
+        if request.method == 'POST':
+            return '', 204
+        else:
+            # GET请求返回JSON响应
+            return jsonify({'status': 'success', 'message': '所有数据已清除'})
     except Exception as e:
         app.logger.error(f'清除所有数据时出错: {str(e)}', exc_info=True)
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        # 即使出错也返回空响应，因为页面即将关闭
+        return '', 500
 
 
 @celery.task(bind=True)
