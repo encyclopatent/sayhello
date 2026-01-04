@@ -52,18 +52,35 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         global_map = {}
     else:
         best_global = global_alignments[0]
-        global_identity = calculate_identity(best_global[0], best_global[1])
+        # --- 修改开始 ---
+        try:
+            # 尝试使用新版写法 (Python 3.8+ / Biopython 1.80+)
+            seq_a = best_global[0]
+            seq_b = best_global[1]
+        except NotImplementedError:
+            # 针对你的服务器环境 (Python 3.6 / Biopython 1.79)
+            # 将对齐结果格式化为字符串，通常格式为三行：
+            # 第一行：序列A (带gap)
+            # 第二行：匹配符号 (|)
+            # 第三行：序列B (带gap)
+            lines = str(best_global).split('\n')
+            seq_a = lines[0]
+            seq_b = lines[2]
+        
+        global_identity = calculate_identity(seq_a, seq_b)
+        # --- 修改结束 ---
+        
         # 生成全局映射
         global_map = {}
         t_pos, q_pos = -1, -1
-        for t, q in zip(best_global[0], best_global[1]):
+        for t, q in zip(seq_a, seq_b):
             t_pos += t != '-'
             q_pos += q != '-'
             if t != '-' and q != '-':
                 global_map[t_pos] = q_pos
         # 保存比对后的序列
-        aligned_sequences['global']['target'] = str(best_global[0])
-        aligned_sequences['global']['query'] = str(best_global[1])
+        aligned_sequences['global']['target'] = str(seq_a)
+        aligned_sequences['global']['query'] = str(seq_b)
 
     # 执行局部比对
     local_aligner = create_aligner('local')
@@ -73,18 +90,35 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         local_map = {}
     else:
         best_local = local_alignments[0]
-        local_identity = calculate_identity(best_local[0], best_local[1])
+        # --- 修改开始 ---
+        try:
+            # 尝试使用新版写法 (Python 3.8+ / Biopython 1.80+)
+            seq_a = best_local[0]
+            seq_b = best_local[1]
+        except NotImplementedError:
+            # 针对你的服务器环境 (Python 3.6 / Biopython 1.79)
+            # 将对齐结果格式化为字符串，通常格式为三行：
+            # 第一行：序列A (带gap)
+            # 第二行：匹配符号 (|)
+            # 第三行：序列B (带gap)
+            lines = str(best_local).split('\n')
+            seq_a = lines[0]
+            seq_b = lines[2]
+        
+        local_identity = calculate_identity(seq_a, seq_b)
+        # --- 修改结束 ---
+        
         # 生成局部映射
         local_map = {}
         t_pos, q_pos = -1, -1
-        for t, q in zip(best_local[0], best_local[1]):
+        for t, q in zip(seq_a, seq_b):
             t_pos += t != '-'
             q_pos += q != '-'
             if t != '-' and q != '-':
                 local_map[t_pos] = q_pos
         # 保存比对后的序列
-        aligned_sequences['local']['target'] = str(best_local[0])
-        aligned_sequences['local']['query'] = str(best_local[1])
+        aligned_sequences['local']['target'] = str(seq_a)
+        aligned_sequences['local']['query'] = str(seq_b)
 
     # 初始化各工具相关变量
     clustalw_identity = 0.0

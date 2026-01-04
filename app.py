@@ -9,6 +9,7 @@ import uuid
 import logging
 from datetime import datetime
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from st26autonew import convert_excel_to_xml
 from celery import Celery
 import pandas as pd
@@ -30,6 +31,8 @@ import sirna_analysis
 
 # 应用配置
 app = Flask(__name__)
+# 应用ProxyFix中间件，让Flask知道它在HTTPS代理后面运行
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # 从环境变量获取SECRET_KEY
 app.debug = os.environ.get('DEBUG', 'False').lower() == 'true'  # 从环境变量获取DEBUG模式
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16777216))  # 16MB
@@ -657,7 +660,7 @@ def upload_file():
             '⚠️ 未选择文件',
             'error'
         )
-        return redirect(url_for('st26_index'))
+        return redirect(url_for('result_page', task_id=task.id))
 
     file = request.files['file']
     if file.filename == '':
@@ -703,7 +706,7 @@ def upload_file():
             flash(f'⚠️ 提交转换任务出错: {str(e)}。数据文件已经删除，请稍后重试。', 'error')
             return redirect(url_for('st26_index'))
 
-        return redirect(url_for('st26_index'))
+        return redirect(url_for('result_page', task_id=task.id))
     else:
         app.logger.warning(f'Invalid file format: {file.filename}')
         flash('⚠️ 文件格式不正确，请上传 .xlsx 文件', 'error')
@@ -714,15 +717,34 @@ def upload_file():
 def get_xml_info():
     """获取XML文件信息的接口，用于任务完成后动态显示下载链接"""
     try:
+        # 获取当前任务ID
+        task_id = request.args.get('task_id')
+        if not task_id:
+            return jsonify({
+                'status': 'error',
+                'message': '未提供任务ID'
+            }), 400
+        
+        # 获取session中的数据，但验证是否与当前任务ID匹配
+        session_task_id = session.get('task_id')
         xml_file = session.get('xml_file', None)
-        if xml_file:
+        
+        # 只有当session中的任务ID与当前任务ID匹配时，才返回结果
+        if session_task_id and task_id and session_task_id == task_id and xml_file:
             return jsonify({
                 'status': 'success',
                 'xml_file': xml_file,
                 'sequence_summary': session.get('sequence_summary', None),
                 'reminders': session.get('reminders', None)
             })
+        elif not session_task_id or task_id != session_task_id:
+            # 如果任务ID不匹配或者session中没有任务ID，返回错误
+            return jsonify({
+                'status': 'error',
+                'message': '未找到当前任务的结果信息'
+            })
         else:
+            # 如果没有xml_file，返回错误
             return jsonify({
                 'status': 'error',
                 'message': '未找到XML文件信息'
@@ -940,6 +962,42 @@ def download_xml(filename):
             attachment_filename=filename,
             mimetype='text/xml'
         )
+
+
+@app.route('/result')
+def result_page():
+    """显示处理结果页面的路由"""
+    task_id = request.args.get('task_id')
+    if not task_id:
+        return redirect(url_for('st26_index'))
+    
+    # 检查任务状态，只显示当前任务的结果
+    try:
+        task = convert_excel_task.AsyncResult(task_id)
+        task_state = task.state
+        
+        # 如果任务尚未开始，清理之前的session数据
+        if task_state in ['PENDING', 'PROGRESS']:
+            # 清空之前可能存在的任务结果，避免显示多个结果
+            session.pop('xml_file', None)
+            session.pop('sequence_summary', None)
+            session.pop('reminders', None)
+            session.pop('error_message', None)
+            session.pop('error_sequence', None)
+            session.pop('error_position', None)
+    except Exception as e:
+        app.logger.error(f'检查任务状态时出错: {str(e)}')
+    
+    # 获取当前任务的session数据（如果有的话）
+    xml_file = session.get('xml_file')
+    sequence_summary = session.get('sequence_summary')
+    reminders = session.get('reminders')
+    
+    return render_template('result.html', 
+                          task_id=task_id, 
+                          xml_file=xml_file,
+                          sequence_summary=sequence_summary,
+                          reminders=reminders)
 
 
 @app.route('/clear_task/<task_id>', methods=['GET', 'POST'])

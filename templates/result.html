@@ -1,0 +1,597 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>ST26 XML生成工具 - 处理结果</title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.3">
+  <!-- 引入CSS文件 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+  <h1>
+    <b>ST26格式序列表XML生成工具</b>
+  </h1>
+  <div class="nav-buttons">
+    <a href="/" class="btn btn-secondary">返回主页</a>
+    <a href="/st26" class="btn btn-primary">上传新文件</a>
+    <button id="clear-all-btn" class="btn btn-danger">清除所有数据</button>
+  </div>
+  
+  <div class="section">
+    <h2><b>上传结果与处理状态</b></h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="status-box">
+            <p>{{ message }}</p>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    
+    <!-- 上传成功状态 -->
+    <div id="upload-success" class="status-box">
+      <p><b>上传成功，文件已上传到服务器</b></p>
+      <p>文件: {{ original_filename }}</p>
+    </div>
+    
+    <!-- 任务进度显示区域 -->
+    <div id="task-progress" class="status-box">
+      <div id="progress-status">上传完成，正在处理...</div>
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+    </div>
+    
+    <!-- 转换错误显示区域 -->
+    <div id="conversion-error" class="status-box hidden error-area">
+      <p class="error-title"><b>⚠️ 转换失败：</b></p>
+      <p id="error-message"></p>
+    </div>
+    
+    {% if xml_file %}
+      <div class="status-box">
+        <p><b>XML文件已成功生成！</b></p>
+        <p>文件名: {{ xml_file }}</p>
+        <a href="{{ url_for('download_xml', filename=xml_file) }}" class="xml-download">
+          下载XML文件并删除缓存数据
+        </a>
+      </div>
+    {% endif %}
+    
+    {% if reminders or sequence_summary %}
+      <div class="status-box">
+        <div class="reminder-box">
+          <h3 class="reminder-title">⚠️ 处理提醒</h3>
+          
+          <!-- 从reminders列表中来的提醒 -->
+          {% if reminders %}
+            {% for reminder in reminders %}
+              <p class="reminder-item">{{ reminder }}</p>
+            {% endfor %}
+          {% endif %}
+          
+          <!-- 从sequence_summary中来的通用提醒 -->
+          {% if sequence_summary %}
+            <!-- 移除了L96配体的通用提醒，因为已在xml_generator.py中添加了带行号的详细提醒 -->
+            <!-- 移除了简并碱基的通用提醒，因为已在xml_generator.py中添加了带行号的详细提醒 -->
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if sequence_summary %}
+      <div class="status-box">
+        <p><b>序列信息摘要</b></p>
+        <div class="sequence-summary">
+          <p>总序列数: {{ sequence_summary.total_count }}</p>
+          <p>DNA序列: {{ sequence_summary.type_counts.DNA }} | RNA序列: {{ sequence_summary.type_counts.RNA }} | 氨基酸序列: {{ sequence_summary.type_counts.AA }}</p>
+        </div>
+        
+        <table class="sequence-table">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>类型</th>
+              <th>来源</th>
+              <th>长度</th>
+              <th>修饰和特殊说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for seq in sequence_summary.details %}
+            <tr>
+              <td>{{ seq.id }}</td>
+              <td>{{ seq.type }}</td>
+              <td>{{ seq.organism }}</td>
+              <td>{{ seq.naked_length }}</td>
+              <td>{{ seq.modification_special_notes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 获取任务ID
+      const taskId = "{{ task_id }}";
+      console.log('当前任务ID:', taskId);
+      
+      // 获取DOM元素
+      const progressBar = document.getElementById('progress-bar');
+      const progressStatus = document.getElementById('progress-status');
+      const taskProgress = document.getElementById('task-progress');
+      const conversionError = document.getElementById('conversion-error');
+      const errorMessage = document.getElementById('error-message');
+      const statusText = document.getElementById('progress-status');
+      const clearAllBtn = document.getElementById('clear-all-btn');
+      const uploadSuccess = document.getElementById('upload-success');
+      
+      // 添加清除按钮点击事件
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+          if (confirm('确定要清除所有数据吗？这将删除当前上传的文件和转换结果。')) {
+            // 添加loading状态提示
+            clearAllBtn.disabled = true;
+            clearAllBtn.textContent = '清除中...';
+            
+            fetch('/clear_all', {
+              method: 'POST',
+              credentials: 'include'
+            })
+            .then(function(response) {
+              if (!response.ok) {
+                throw new Error('Network response was not ok');
+              }
+              return response.json();
+            })
+            .then(function(data) {
+              console.log('清除响应:', data);
+              if (data.status === 'success') {
+                // 清除成功，重定向到ST26首页
+                window.location.href = '/st26';
+              } else {
+                alert('清除失败: ' + (data.message || '未知错误'));
+                clearAllBtn.disabled = false;
+                clearAllBtn.textContent = '清除所有数据';
+              }
+            })
+            .catch(function(error) {
+              console.error('清除请求出错:', error);
+              alert('清除请求失败，请稍后重试。错误: ' + error.message);
+              clearAllBtn.disabled = false;
+              clearAllBtn.textContent = '清除所有数据';
+            });
+          }
+        });
+      }
+      
+      // 下载状态标记
+      let isDownloading = false;
+      
+      // 状态轮询变量
+      let statusInterval = null;
+      
+      // 创建下载部分的函数
+      function createDownloadSection(data) {
+        // 防止重复创建下载区域
+        const existingDownloadSection = document.querySelector('.download-section');
+        if (existingDownloadSection) {
+          console.log('下载区域已存在，跳过重复创建');
+          return;
+        }
+        
+        let downloadSectionHtml = `
+          <p><b>XML文件已成功生成！</b></p>
+          <p>文件名: ${data.xml_file}</p>
+          <a href="/download_xml/${encodeURIComponent(data.xml_file)}" class="xml-download">
+            下载XML文件并删除缓存数据
+          </a>
+        `;
+        
+        // 如果有提醒信息，添加提醒区域
+        if (data.reminders && data.reminders.length > 0) {
+          downloadSectionHtml += `
+            <div class="reminder-box" style="margin-top: 15px;">
+              <h3 class="reminder-title">⚠️ 处理提醒</h3>
+              ${data.reminders.map(reminder => `<p class="reminder-item">${reminder}</p>`).join('')}
+            </div>
+          `;
+        }
+        
+        // 如果有序列摘要，添加序列摘要区域
+        if (data.sequence_summary) {
+          downloadSectionHtml += `
+            <div class="status-box" style="margin-top: 15px;">
+              <p><b>序列信息摘要</b></p>
+              <div class="sequence-summary">
+                <p>总序列数: ${data.sequence_summary.total_count}</p>
+                <p>DNA序列: ${data.sequence_summary.type_counts.DNA} | RNA序列: ${data.sequence_summary.type_counts.RNA} | 氨基酸序列: ${data.sequence_summary.type_counts.AA}</p>
+              </div>
+              <table class="sequence-table">
+                <thead>
+                  <tr>
+                    <th>序号</th>
+                    <th>类型</th>
+                    <th>来源</th>
+                    <th>长度</th>
+                    <th>修饰和特殊说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.sequence_summary.details.map(seq => `
+                    <tr>
+                      <td>${seq.id}</td>
+                      <td>${seq.type}</td>
+                      <td>${seq.organism}</td>
+                      <td>${seq.naked_length}</td>
+                      <td>${seq.modification_special_notes}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+        
+        const downloadSection = document.createElement('div');
+        downloadSection.className = 'status-box download-section';
+        downloadSection.innerHTML = downloadSectionHtml;
+        
+        // 插入到处理状态区域后面
+        const progressArea = document.getElementById('task-progress');
+        if (progressArea && progressArea.parentNode) {
+          progressArea.parentNode.insertBefore(downloadSection, progressArea.nextSibling);
+        } else {
+          // 如果进度区域不存在，则添加到任务状态区域
+          statusText.parentNode.parentNode.appendChild(downloadSection);
+        }
+        
+        // 更新状态文本
+        statusText.textContent = '✅ 处理完成，点击下方下载链接获取结果';
+      }
+      
+      // 显示查看结果按钮的函数
+      function showViewResultButton() {
+        // 检查是否已经创建过按钮
+        const existingBtn = document.querySelector('.view-result-btn');
+        if (existingBtn) {
+          return;
+        }
+        
+        // 检查页面是否已经有结果（XML文件或序列摘要）
+        const xmlFileExists = document.querySelector('.xml-download') !== null;
+        const sequenceSummaryExists = document.querySelector('.sequence-table') !== null;
+        
+        // 如果已经有结果，则不显示查看结果按钮
+        if (xmlFileExists || sequenceSummaryExists) {
+          console.log('页面已有结果，不显示查看结果按钮');
+          return;
+        }
+        
+        const viewBtn = document.createElement('button');
+        viewBtn.textContent = '查看结果';
+        viewBtn.className = 'btn btn-primary view-result-btn';
+        viewBtn.style.marginLeft = '10px';
+        
+        const handleViewResult = () => {
+          // 临时移除beforeunload事件监听器
+          window.removeEventListener('beforeunload', handleViewResult);
+          // 隐藏查看结果按钮
+          viewBtn.style.display = 'none';
+          window.location.reload();
+        };
+        
+        viewBtn.onclick = handleViewResult;
+        
+        // 添加到状态条后面
+        const progressArea = document.getElementById('task-progress');
+        if (progressArea && progressArea.parentNode) {
+          progressArea.parentNode.appendChild(viewBtn);
+        } else {
+          statusText.parentNode.parentNode.appendChild(viewBtn);
+        }
+      }
+      
+      // 监听下载链接点击事件
+      document.addEventListener('click', function(e) {
+        if (e.target && (e.target.classList.contains('xml-download') || e.target.closest('.xml-download'))) {
+          isDownloading = true;
+          // 2秒后重置下载状态
+          setTimeout(() => {
+            isDownloading = false;
+          }, 2000);
+        }
+      });
+      
+      // 检查是否有任务ID
+      if (taskId) {
+        // 轮询任务状态
+        function checkTaskStatus() {
+          fetch('/task_status/' + taskId, {
+            method: 'GET',
+            credentials: 'include'
+          })
+          .then(function(response) {
+            return response.json();
+          })
+          .then(function(data) {
+            console.log('任务状态:', data);
+            
+            if (data.state === 'PENDING') {
+              // 任务在排队中
+              if (progressStatus) {
+                progressStatus.textContent = '上传完成，正在排队...';
+              }
+              // 显示上传成功状态，隐藏进度条
+              if (uploadSuccess) {
+                uploadSuccess.classList.remove('hidden');
+              }
+              if (taskProgress) {
+                taskProgress.classList.remove('hidden');
+              }
+            } else if (data.state === 'PROGRESS') {
+              // 任务进行中
+              if (progressBar) {
+                const percent = Math.round((data.current / data.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+              }
+              if (progressStatus) {
+                progressStatus.textContent = '上传完成，正在处理... (' + data.current + '/' + data.total + ')';
+              }
+              // 确保上传成功状态和进度条都显示
+              if (uploadSuccess) {
+                uploadSuccess.classList.remove('hidden');
+              }
+              if (taskProgress) {
+                taskProgress.classList.remove('hidden');
+              }
+            } else if (data.state === 'SUCCESS') {
+              // 任务成功完成
+              console.log('任务完成，显示下载链接...');
+              
+              // 停止轮询
+              if (typeof statusInterval !== 'undefined') {
+                clearInterval(statusInterval);
+              }
+              
+              if (statusText) {
+                statusText.textContent = '✅ 处理完成，正在加载下载链接...';
+                
+                // 完全隐藏进度条
+                if (progressBar) {
+                  progressBar.style.width = '100%';
+                  progressBar.textContent = '100%';
+                }
+                
+                // 隐藏进度条容器
+                if (taskProgress) {
+                  taskProgress.style.display = 'none';
+                }
+                
+                // 隐藏上传成功状态
+                if (uploadSuccess) {
+                  uploadSuccess.style.display = 'none';
+                }
+                
+                // 检查是否已经显示过下载链接，避免重复创建
+                const existingDownloadSection = document.querySelector('.download-section');
+                if (existingDownloadSection) {
+                  console.log('下载链接已存在，跳过重复创建');
+                  return;
+                }
+                
+                // 获取XML文件信息并显示下载链接
+                fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
+                  method: 'GET',
+                  credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                  if (data.status === 'success' && data.xml_file) {
+                    // 显示下载链接
+                    createDownloadSection(data);
+                    
+                    // 一旦显示结果，停止检查任务状态
+                    if (typeof statusInterval !== 'undefined') {
+                      clearInterval(statusInterval);
+                    }
+                  } else {
+                    // 如果获取XML信息失败，自动重试3次
+                    statusText.textContent = '✅ 处理完成，正在加载下载链接...';
+                    let retryCount = 0;
+                    const maxRetries = 3;
+                    
+                    const retryFetchXmlInfo = () => {
+                      retryCount++;
+                      console.log(`第${retryCount}次重试获取XML信息...`);
+                      
+                      fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
+                        method: 'GET',
+                        credentials: 'include'
+                      })
+                      .then(response => response.json())
+                      .then(data => {
+                        if (data.status === 'success' && data.xml_file) {
+                          // 重试成功，显示下载链接
+                          createDownloadSection(data);
+                          return;
+                        }
+                        
+                        if (retryCount < maxRetries) {
+                          setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
+                        } else {
+                          // 重试3次后仍失败，显示查看结果按钮
+                          statusText.textContent = '✅ 处理完成';
+                          showViewResultButton();
+                          
+                          // 停止检查任务状态
+                          if (typeof statusInterval !== 'undefined') {
+                            clearInterval(statusInterval);
+                          }
+                        }
+                      })
+                      .catch(error => {
+                        console.error('重试获取XML信息失败:', error);
+                        if (retryCount < maxRetries) {
+                          setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
+                        } else {
+                          // 重试3次后仍失败，显示查看结果按钮
+                          statusText.textContent = '✅ 处理完成';
+                          showViewResultButton();
+                        }
+                      });
+                    };
+                    
+                    // 开始重试
+                    setTimeout(retryFetchXmlInfo, 1000);
+                  }
+                })
+                .catch(error => {
+                  console.error('获取XML信息失败:', error);
+                  // 出错时自动重试3次
+                  statusText.textContent = '✅ 处理完成，正在加载下载链接...';
+                  let retryCount = 0;
+                  const maxRetries = 3;
+                  
+                  const retryFetchXmlInfo = () => {
+                    retryCount++;
+                    console.log(`第${retryCount}次重试获取XML信息...`);
+                    
+                    fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
+                      method: 'GET',
+                      credentials: 'include'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      if (data.status === 'success' && data.xml_file) {
+                        // 重试成功，显示下载链接
+                        createDownloadSection(data);
+                        
+                        // 一旦显示结果，停止检查任务状态
+                        if (typeof statusInterval !== 'undefined') {
+                          clearInterval(statusInterval);
+                        }
+                        return;
+                      }
+                      
+                      if (retryCount < maxRetries) {
+                        setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
+                      } else {
+                        // 重试3次后仍失败，显示查看结果按钮
+                        statusText.textContent = '✅ 处理完成';
+                        showViewResultButton();
+                        
+                        // 停止检查任务状态
+                        if (typeof statusInterval !== 'undefined') {
+                          clearInterval(statusInterval);
+                        }
+                      }
+                    })
+                    .catch(error => {
+                      console.error('重试获取XML信息失败:', error);
+                      if (retryCount < maxRetries) {
+                        setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
+                      } else {
+                        // 重试3次后仍失败，显示查看结果按钮
+                        statusText.textContent = '✅ 处理完成';
+                        showViewResultButton();
+                      }
+                    });
+                  };
+                  
+                  // 开始重试
+                  setTimeout(retryFetchXmlInfo, 1000);
+                });
+              }
+            } else if (data.state === 'FAILURE') {
+              // 任务失败
+              console.log('任务失败:', data);
+              if (conversionError) {
+                conversionError.classList.remove('hidden');
+              }
+              if (errorMessage) {
+                errorMessage.textContent = data.traceback || '未知错误';
+              }
+            }
+          })
+          .catch(function(error) {
+            console.error('检查任务状态出错:', error);
+          });
+        }
+        
+        // 初始检查
+        checkTaskStatus();
+        
+        // 每2秒检查一次状态
+        statusInterval = setInterval(checkTaskStatus, 2000);
+      }
+      
+      // 页面卸载事件监听器 - 只在用户关闭页面时清除任务，而不是在页面刷新时
+      let pageUnloading = false;
+      
+      // 检测页面是否正在刷新，而不是关闭
+      let perfEntries = performance.getEntriesByType('navigation');
+      let isPageRefresh = false;
+      
+      if (perfEntries.length > 0 && perfEntries[0].type === 'reload') {
+        isPageRefresh = true;
+      }
+      
+      window.addEventListener('beforeunload', function(e) {
+        // 如果正在下载文件，不执行清除操作
+        if (isDownloading) {
+          return;
+        }
+        
+        // 如果页面正在刷新，不清除任务
+        if (isPageRefresh) {
+          return;
+        }
+        
+        // 标记页面正在卸载
+        pageUnloading = true;
+        
+        const taskId = "{{ task_id }}";
+        const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
+        const hasTaskId = "{{ 'true' if 'task_id' in session else 'false' }}";
+        
+        // 只有在没有XML文件且没有任务ID且不在下载状态时才清除任务
+        if (taskId && taskId !== '' && taskId !== 'null' && hasXmlFile !== 'true' && hasTaskId !== 'true' && !isDownloading) {
+          const url = '/clear_task/' + taskId;
+          
+          // 使用 sendBeacon 方法（最可靠）
+          if (navigator.sendBeacon) {
+            const data = new Blob([''], { type: 'application/x-www-form-urlencoded' });
+            navigator.sendBeacon(url, data);
+          } else {
+            // 备用方案：使用 fetch with keepalive
+            fetch(url, {
+              method: 'POST',
+              keepalive: true,
+              credentials: 'include'
+            }).catch(function(error) {
+              console.error('发送清除请求失败:', error);
+            });
+          }
+        }
+      });
+      
+      // 页面加载时检查是否是刷新
+      window.addEventListener('pageshow', function(e) {
+        if (e.persisted || performance.navigation.type === 1) {
+          // 页面是从缓存中恢复的或者是刷新
+          console.log('页面已刷新，不清除任务');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
