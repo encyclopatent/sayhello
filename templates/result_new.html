@@ -144,7 +144,7 @@
                         .then(function(data) {
                             console.log('清除响应:', data);
                             if (data.status === 'success') {
-                                window.location.href = '/st26';
+                                window.location.href = createRelativePath('/st26');
                             } else {
                                 alert('清除失败: ' + (data.message || '未知错误'));
                                 clearAllBtn.disabled = false;

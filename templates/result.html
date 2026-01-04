@@ -155,7 +155,7 @@
               console.log('清除响应:', data);
               if (data.status === 'success') {
                 // 清除成功，重定向到ST26首页
-                window.location.href = '/st26';
+                window.location.href = createRelativePath('/st26');
               } else {
                 alert('清除失败: ' + (data.message || '未知错误'));
                 clearAllBtn.disabled = false;
