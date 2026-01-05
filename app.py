@@ -210,8 +210,6 @@ def fragment_process():
         excel_file.save(excel_path)
 
         # 导入并使用化合物拆解功能
-        import sys
-        sys.path.append('/Users/zhaoyongjiang/Downloads')
         from peptide2fragment import process_compounds as process_fragments
 
         # 处理化合物
