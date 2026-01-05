@@ -21,6 +21,12 @@ def sanitize_smiles(smiles):
 
 def fix_smiles(smiles):
     """尝试修复SMILES字符串中的N四价问题"""
+    # 确保输入是字符串
+    if not isinstance(smiles, str):
+        smiles = str(smiles) if smiles else ''
+        if not smiles:
+            raise ValueError("SMILES为空")
+    
     mol = Chem.MolFromSmiles(smiles, sanitize=False)
     if not mol:
         raise ValueError(f"无法解析SMILES: {smiles}")
@@ -166,7 +172,12 @@ def process_compounds(excel_path, output_folder):
     
     # 提取核心结构
     core_row = df[df['化合物编号'] == 'core'].iloc[0]
-    core_smiles = core_row['SMILES']
+    core_smiles = str(core_row['SMILES']) if pd.notna(core_row['SMILES']) else ''
+    
+    # 确保核心SMILES是字符串类型
+    if not isinstance(core_smiles, str):
+        core_smiles = str(core_smiles) if core_smiles else ''
+    
     core = Chem.MolFromSmiles(core_smiles)
     if not core:
         raise ValueError(f"核心结构解析失败: {core_smiles}")
@@ -208,7 +219,11 @@ def process_compounds(excel_path, output_folder):
     # 处理化合物
     for idx, row in df.iloc[1:].iterrows():
         cpd_id = str(row['化合物编号'])
-        target_smiles = row['SMILES']
+        target_smiles = str(row['SMILES']) if pd.notna(row['SMILES']) else ''
+        
+        # 确保SMILES是字符串类型
+        if not isinstance(target_smiles, str):
+            target_smiles = str(target_smiles) if target_smiles else ''
         
         # 解析分子
         mol = Chem.MolFromSmiles(target_smiles)
