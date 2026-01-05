@@ -167,7 +167,14 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
             f"{clustalw_path} -infile={combined_file} -outfile=temp_combined.aln "
             f"-OUTPUT=FASTA -quiet -PROFILE=clustalw.cfg"
         )
-        subprocess.run(clustalw_cmd, shell=True, check=True, capture_output=True, text=True)
+        subprocess.run(
+            clustalw_cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding='utf-8'
+        )
         
         # 读取ClustalW比对结果
         align = AlignIO.read("temp_combined.aln", "fasta")
@@ -200,7 +207,15 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
             f"{needle_path} -nobrief -asequence=temp_target.fasta -bsequence=temp_query.fasta "
             f"-gapopen=10.0 -gapextend=0.5 -outfile=needle.txt"
         )
-        subprocess.run(needle_cmd, shell=True, check=True, capture_output=True, text=True, env=env)
+        subprocess.run(
+            needle_cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding='utf-8',
+            env=env
+        )
         
         # 读取needle比对结果
         with open("needle.txt", "r") as needle_file:
@@ -253,7 +268,14 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
             muscle_cmd = (
                 f"{muscle_path} -align {combined_file} -output muscle_output.fasta"
             )
-            subprocess.run(muscle_cmd, shell=True, check=True, capture_output=True, text=True)
+            subprocess.run(
+                muscle_cmd,
+                shell=True,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding='utf-8'
+            )
             
             # 读取MUSCLE比对结果
             align = AlignIO.read("muscle_output.fasta", "fasta")
@@ -281,7 +303,15 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
             f"{water_path} -nobrief -asequence=temp_target.fasta -bsequence=temp_query.fasta "
             f"-gapopen=10.0 -gapextend=0.5 -outfile=water.txt"
         )
-        subprocess.run(water_cmd, shell=True, check=True, capture_output=True, text=True, env=env)
+        subprocess.run(
+            water_cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding='utf-8',
+            env=env
+        )
         
         # 读取water比对结果
         with open("water.txt", "r") as water_file:
