@@ -209,9 +209,36 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        
+        .data-security-banner {
+            background: linear-gradient(90deg, #fff3cd, #ffeeba);
+            border-bottom: 1px solid #ffc107;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #856404;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .banner-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        .banner-text {
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
+    <!-- 数据安全提示横幅 -->
+    <div class="data-security-banner">
+        <span class="banner-icon">🔒</span>
+        <span class="banner-text">注意：数据仅在本次会话中保留，关闭页面后将自动删除，服务器不保存任何数据</span>
+    </div>
+    
     <div class="siRNA-container">
         <h1>🧬 siRNA序列匹配分析工具</h1>
         <div class="nav-buttons">
@@ -519,6 +546,18 @@
             // 下载按钮点击
             downloadBtn.addEventListener('click', function() {
                 window.location.href = createRelativePath('/sirna/download');
+            });
+            
+            // 页面关闭时提醒用户数据将被删除
+            window.addEventListener('beforeunload', function(e) {
+                const hasSelectedFiles = selectedFastaFiles.length > 0 || document.getElementById('excel-file').files.length > 0;
+                const hasResults = resultsSection.style.display === 'block';
+                
+                if (hasSelectedFiles || hasResults) {
+                    const confirmationMessage = '您即将离开此页面。所有上传的文件和处理结果将被删除，服务器不保存任何数据。\n\n请确保已下载您需要的结果文件。';
+                    e.returnValue = confirmationMessage;
+                    return confirmationMessage;
+                }
             });
         });
     </script>

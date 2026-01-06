@@ -163,10 +163,38 @@
     .back-link:hover {
       text-decoration: underline;
     }
+    
+    .data-security-banner {
+      background: linear-gradient(90deg, #fff3cd, #ffeeba);
+      border-bottom: 1px solid #ffc107;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #856404;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .banner-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+
+    .banner-text {
+      font-weight: 500;
+    }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
+  <div class="data-security-banner">
+    <span class="banner-icon">🔒</span>
+    <span class="banner-text">注意：数据仅在本次会话中保留，关闭页面后将自动删除，服务器不保存任何数据</span>
+  </div>
+  
   <div class="container">
     <a href="{{ url_for('main') }}" class="back-link">← 返回工具列表</a>
     
@@ -334,6 +362,19 @@
         
         $('#results-content').html(html);
       }
+      
+      // 页面关闭时提醒用户数据将被删除
+      $(window).on('beforeunload', function(e) {
+        const hasTargetSequence = $('#target-sequence').val().trim() !== '';
+        const hasQuerySequence = $('#query-sequence').val().trim() !== '';
+        const hasResults = $('#results-container').is(':visible');
+        
+        if ((hasTargetSequence || hasQuerySequence) || hasResults) {
+          const confirmationMessage = '您即将离开此页面。所有上传的文件和处理结果将被删除，服务器不保存任何数据。\n\n请确保已下载您需要的结果文件。';
+          e.returnValue = confirmationMessage;
+          return confirmationMessage;
+        }
+      });
     });
     </script>
 </body>
