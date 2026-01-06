@@ -1,10 +1,41 @@
 # main.py
 import os
+import pandas as pd
 import parser
 import xml_generator
 
+def check_required_sheets(file_path):
+    """检查Excel文件是否包含必需的基础sheet
+    
+    Returns:
+        tuple: (has_basicdata, has_seqdata)
+    """
+    try:
+        xl = pd.ExcelFile(file_path, engine='openpyxl')
+        sheet_names = xl.sheet_names
+        has_basicdata = 'basicdata' in sheet_names
+        has_seqdata = 'seqdata' in sheet_names
+        return has_basicdata, has_seqdata
+    except Exception as e:
+        print(f"读取Excel文件时出错: {e}")
+        return False, False
+
 def convert_excel_to_xml(file_path, output_folder):
     try:
+        # 检查必需的基础sheet是否存在
+        has_basicdata, has_seqdata = check_required_sheets(file_path)
+        
+        if not has_basicdata or not has_seqdata:
+            missing_sheets = []
+            if not has_basicdata:
+                missing_sheets.append('basicdata')
+            if not has_seqdata:
+                missing_sheets.append('seqdata')
+            
+            error_msg = f"Excel文件缺少必需的sheet：{', '.join(missing_sheets)}。请使用模版上传数据！"
+            print(f"数据验证错误: {error_msg}")
+            raise ValueError(error_msg)
+        
         # 解析Excel数据
         sequences = parser.read_sequences_from_excel(file_path)
         basic_data = parser.read_basic_data_from_excel(file_path)
