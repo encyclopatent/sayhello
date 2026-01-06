@@ -170,6 +170,9 @@ def process_compounds(excel_path, output_folder):
     # 读取数据
     df = pd.read_excel(excel_path, engine='openpyxl', header=0)
     
+    # 清理幽灵数据：删除全为空值的行
+    df = df.dropna(how='all')
+    
     # 提取核心结构
     core_row = df[df['化合物编号'] == 'core'].iloc[0]
     core_smiles = str(core_row['SMILES']) if pd.notna(core_row['SMILES']) else ''

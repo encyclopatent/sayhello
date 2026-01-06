@@ -23,3 +23,11 @@ Thumbs.db
 *.tmp
 temp/
 needle.txt
+
+# 测试文件
+test_*.txt
+
+# 上传和处理结果文件
+static/uploads/*.xlsx
+static/fragment_outputs/
+processed_results_*.xlsx
