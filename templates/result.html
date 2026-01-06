@@ -46,6 +46,64 @@
       </div>
     </div>
     
+    <!-- 服务器端渲染：已有结果时直接显示 -->
+    {% if xml_file %}
+    <div id="existing-result" class="status-box download-section">
+      <h3><b>✅ 处理完成</b></h3>
+      
+      {% if reminders %}
+      <div class="reminder-box">
+        <h3 class="reminder-title">⚠️ 处理提醒</h3>
+        {% for reminder in reminders %}
+        <p class="reminder-item">{{ reminder }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      
+      <div class="download-links">
+        <p><b>请下载以下文件：</b></p>
+        <a href="{{ url_for('download_xml') }}" class="download-btn xml-download">
+          下载 ST26 XML 文件
+        </a>
+      </div>
+      
+      {% if sequence_summary %}
+      <div class="status-box" style="margin-top: 15px;">
+        <p><b>序列信息摘要</b></p>
+        <div class="sequence-summary">
+          <p>总序列数: {{ sequence_summary.total_count }}</p>
+          <p>DNA序列: {{ sequence_summary.type_counts.DNA }} | RNA序列: {{ sequence_summary.type_counts.RNA }} | 氨基酸序列: {{ sequence_summary.type_counts.AA }}</p>
+        </div>
+        <table class="sequence-table">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>类型</th>
+              <th>来源</th>
+              <th>长度</th>
+              <th>修饰和特殊说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for seq in sequence_summary.details %}
+            <tr>
+              <td>{{ seq.id }}</td>
+              <td>{{ seq.type }}</td>
+              <td>{{ seq.organism }}</td>
+              <td>{{ seq.naked_length }}</td>
+              <td>{{ seq.modification_special_notes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- 动态结果显示区域（用于轮询结果） -->
+    <div id="dynamic-result" class="hidden"></div>
+    
     <!-- 转换错误显示区域 -->
     <div id="conversion-error" class="status-box hidden error-area">
       <p class="error-title"><b>⚠️ 转换失败：</b></p>
@@ -257,48 +315,6 @@
         statusText.textContent = '✅ 处理完成，点击下方下载链接获取结果';
       }
       
-      // 显示查看结果按钮的函数
-      function showViewResultButton() {
-        // 检查是否已经创建过按钮
-        const existingBtn = document.querySelector('.view-result-btn');
-        if (existingBtn) {
-          return;
-        }
-        
-        // 检查页面是否已经有结果（XML文件或序列摘要）
-        const xmlFileExists = document.querySelector('.xml-download') !== null;
-        const sequenceSummaryExists = document.querySelector('.sequence-table') !== null;
-        
-        // 如果已经有结果，则不显示查看结果按钮
-        if (xmlFileExists || sequenceSummaryExists) {
-          console.log('页面已有结果，不显示查看结果按钮');
-          return;
-        }
-        
-        const viewBtn = document.createElement('button');
-        viewBtn.textContent = '查看结果';
-        viewBtn.className = 'btn btn-primary view-result-btn';
-        viewBtn.style.marginLeft = '10px';
-        
-        const handleViewResult = () => {
-          // 临时移除beforeunload事件监听器
-          window.removeEventListener('beforeunload', handleViewResult);
-          // 隐藏查看结果按钮
-          viewBtn.style.display = 'none';
-          window.location.reload();
-        };
-        
-        viewBtn.onclick = handleViewResult;
-        
-        // 添加到状态条后面
-        const progressArea = document.getElementById('task-progress');
-        if (progressArea && progressArea.parentNode) {
-          progressArea.parentNode.appendChild(viewBtn);
-        } else {
-          statusText.parentNode.parentNode.appendChild(viewBtn);
-        }
-      }
-      
       // 监听下载链接点击事件
       document.addEventListener('click', function(e) {
         if (e.target && (e.target.classList.contains('xml-download') || e.target.closest('.xml-download'))) {
@@ -355,7 +371,7 @@
               }
             } else if (data.state === 'SUCCESS') {
               // 任务成功完成
-              console.log('任务完成，显示下载链接...');
+              console.log('任务完成，刷新页面显示结果...');
               
               // 停止轮询
               if (typeof statusInterval !== 'undefined') {
@@ -363,154 +379,24 @@
               }
               
               if (statusText) {
-                statusText.textContent = '✅ 处理完成，正在加载下载链接...';
-                
-                // 完全隐藏进度条
-                if (progressBar) {
-                  progressBar.style.width = '100%';
-                  progressBar.textContent = '100%';
-                }
-                
-                // 隐藏进度条容器
-                if (taskProgress) {
-                  taskProgress.style.display = 'none';
-                }
-                
-                // 隐藏上传成功状态
-                if (uploadSuccess) {
-                  uploadSuccess.style.display = 'none';
-                }
-                
-                // 检查是否已经显示过下载链接，避免重复创建
-                const existingDownloadSection = document.querySelector('.download-section');
-                if (existingDownloadSection) {
-                  console.log('下载链接已存在，跳过重复创建');
-                  return;
-                }
-                
-                // 获取XML文件信息并显示下载链接
-                fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
-                  method: 'GET',
-                  credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                  if (data.status === 'success' && data.xml_file) {
-                    // 显示下载链接
-                    createDownloadSection(data);
-                    
-                    // 一旦显示结果，停止检查任务状态
-                    if (typeof statusInterval !== 'undefined') {
-                      clearInterval(statusInterval);
-                    }
-                  } else {
-                    // 如果获取XML信息失败，自动重试3次
-                    statusText.textContent = '✅ 处理完成，正在加载下载链接...';
-                    let retryCount = 0;
-                    const maxRetries = 3;
-                    
-                    const retryFetchXmlInfo = () => {
-                      retryCount++;
-                      console.log(`第${retryCount}次重试获取XML信息...`);
-                      
-                      fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
-                        method: 'GET',
-                        credentials: 'include'
-                      })
-                      .then(response => response.json())
-                      .then(data => {
-                        if (data.status === 'success' && data.xml_file) {
-                          // 重试成功，显示下载链接
-                          createDownloadSection(data);
-                          return;
-                        }
-                        
-                        if (retryCount < maxRetries) {
-                          setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
-                        } else {
-                          // 重试3次后仍失败，显示查看结果按钮
-                          statusText.textContent = '✅ 处理完成';
-                          showViewResultButton();
-                          
-                          // 停止检查任务状态
-                          if (typeof statusInterval !== 'undefined') {
-                            clearInterval(statusInterval);
-                          }
-                        }
-                      })
-                      .catch(error => {
-                        console.error('重试获取XML信息失败:', error);
-                        if (retryCount < maxRetries) {
-                          setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
-                        } else {
-                          // 重试3次后仍失败，显示查看结果按钮
-                          statusText.textContent = '✅ 处理完成';
-                          showViewResultButton();
-                        }
-                      });
-                    };
-                    
-                    // 开始重试
-                    setTimeout(retryFetchXmlInfo, 1000);
-                  }
-                })
-                .catch(error => {
-                  console.error('获取XML信息失败:', error);
-                  // 出错时自动重试3次
-                  statusText.textContent = '✅ 处理完成，正在加载下载链接...';
-                  let retryCount = 0;
-                  const maxRetries = 3;
-                  
-                  const retryFetchXmlInfo = () => {
-                    retryCount++;
-                    console.log(`第${retryCount}次重试获取XML信息...`);
-                    
-                    fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
-                      method: 'GET',
-                      credentials: 'include'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                      if (data.status === 'success' && data.xml_file) {
-                        // 重试成功，显示下载链接
-                        createDownloadSection(data);
-                        
-                        // 一旦显示结果，停止检查任务状态
-                        if (typeof statusInterval !== 'undefined') {
-                          clearInterval(statusInterval);
-                        }
-                        return;
-                      }
-                      
-                      if (retryCount < maxRetries) {
-                        setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
-                      } else {
-                        // 重试3次后仍失败，显示查看结果按钮
-                        statusText.textContent = '✅ 处理完成';
-                        showViewResultButton();
-                        
-                        // 停止检查任务状态
-                        if (typeof statusInterval !== 'undefined') {
-                          clearInterval(statusInterval);
-                        }
-                      }
-                    })
-                    .catch(error => {
-                      console.error('重试获取XML信息失败:', error);
-                      if (retryCount < maxRetries) {
-                        setTimeout(retryFetchXmlInfo, 1000); // 1秒后重试
-                      } else {
-                        // 重试3次后仍失败，显示查看结果按钮
-                        statusText.textContent = '✅ 处理完成';
-                        showViewResultButton();
-                      }
-                    });
-                  };
-                  
-                  // 开始重试
-                  setTimeout(retryFetchXmlInfo, 1000);
-                });
+                statusText.textContent = '✅ 处理完成，正在加载结果...';
               }
+              
+              // 隐藏进度条
+              if (progressBar) {
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+              }
+              if (taskProgress) {
+                taskProgress.style.display = 'none';
+              }
+              if (uploadSuccess) {
+                uploadSuccess.style.display = 'none';
+              }
+              
+              // 刷新页面以显示服务器端渲染的结果
+              window.location.reload();
+              return;
             } else if (data.state === 'FAILURE') {
               // 任务失败
               console.log('任务失败:', data);
