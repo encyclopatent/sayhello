@@ -897,7 +897,11 @@ def task_status(task_id):
 
         elif task.state == 'FAILURE':
             response['status'] = '失败'
-            response['error'] = str(task.info)
+            task_info = task.info
+            if isinstance(task_info, dict):
+                response['error'] = task_info.get('error_message', str(task_info))
+            else:
+                response['error'] = str(task_info)
             
             # 删除上传的文件
             uploaded_file_path = session.pop('uploaded_file_path', None)
