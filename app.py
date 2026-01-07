@@ -715,7 +715,6 @@ def upload_file():
 def get_xml_info():
     """获取XML文件信息的接口，用于任务完成后动态显示下载链接"""
     try:
-        # 获取当前任务ID
         task_id = request.args.get('task_id')
         if not task_id:
             return jsonify({
@@ -723,26 +722,28 @@ def get_xml_info():
                 'message': '未提供任务ID'
             }), 400
         
-        # 获取session中的数据，但验证是否与当前任务ID匹配
         session_task_id = session.get('task_id')
         xml_file = session.get('xml_file', None)
+        error_message = session.get('error_message', None)
         
-        # 只有当session中的任务ID与当前任务ID匹配时，才返回结果
-        if session_task_id and task_id and session_task_id == task_id and xml_file:
+        if xml_file:
             return jsonify({
                 'status': 'success',
                 'xml_file': xml_file,
                 'sequence_summary': session.get('sequence_summary', None),
                 'reminders': session.get('reminders', None)
             })
+        elif error_message:
+            return jsonify({
+                'status': 'error',
+                'message': error_message
+            })
         elif not session_task_id or task_id != session_task_id:
-            # 如果任务ID不匹配或者session中没有任务ID，返回错误
             return jsonify({
                 'status': 'error',
                 'message': '未找到当前任务的结果信息'
             })
         else:
-            # 如果没有xml_file，返回错误
             return jsonify({
                 'status': 'error',
                 'message': '未找到XML文件信息'
@@ -836,6 +837,9 @@ def task_status(task_id):
                             # 清除任务信息
                             session.pop('task_id', None)
                             session.pop('original_filename', None)
+                            
+                            # 保存错误信息到session
+                            session['error_message'] = error_msg
                             
                             response = {
                                 'state': 'FAILURE',

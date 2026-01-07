@@ -402,7 +402,7 @@
                 conversionError.classList.remove('hidden');
               }
               if (errorMessage) {
-                errorMessage.textContent = data.traceback || '未知错误';
+                errorMessage.textContent = data.error || '未知错误';
               }
             }
           })
