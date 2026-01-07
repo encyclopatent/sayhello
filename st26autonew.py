@@ -22,7 +22,6 @@ def check_required_sheets(file_path):
 
 def convert_excel_to_xml(file_path, output_folder):
     try:
-        # 检查必需的基础sheet是否存在
         has_basicdata, has_seqdata = check_required_sheets(file_path)
         
         if not has_basicdata or not has_seqdata:
@@ -36,27 +35,28 @@ def convert_excel_to_xml(file_path, output_folder):
             print(f"数据验证错误: {error_msg}")
             raise ValueError(error_msg)
         
-        # 解析Excel数据
-        sequences = parser.read_sequences_from_excel(file_path)
-        basic_data = parser.read_basic_data_from_excel(file_path)
+        try:
+            sequences = parser.read_sequences_from_excel(file_path)
+            basic_data = parser.read_basic_data_from_excel(file_path)
+        except ValueError as ve:
+            if "not found" in str(ve):
+                error_msg = "请使用模版上传数据！Excel文件中缺少必需的sheet（basicdata或seqdata）。"
+                print(f"数据验证错误: {error_msg}")
+                raise ValueError(error_msg)
+            else:
+                raise
         
-        # 打印序列信息
         parser.print_sequence_info(sequences)
-        
-        # 获取序列摘要信息
         sequence_summary = parser.get_sequence_summary(sequences)
         
-        # 生成XML结构
         xml_root, reminders = xml_generator.generate_xml(sequences, basic_data, output_folder)
         
-        # 输出提醒信息
         if reminders:
             print("\n=== 提醒信息 ===")
             for reminder in reminders:
                 print(reminder)
             print("================")
         
-        # 保存XML文件
         output_file = f"{basic_data['ApplicantFileReference']}.xml"
         output_path = os.path.join(output_folder, output_file)
         
