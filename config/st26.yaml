@@ -1,0 +1,231 @@
+# ST26 Sequence Configuration
+# ST26序列清单配置文件
+
+sequence:
+  max_length: 10000
+  min_length: 1
+
+modifications:
+  valid_amino_acids:
+    - A
+    - R
+    - N
+    - D
+    - C
+    - Q
+    - E
+    - G
+    - H
+    - I
+    - L
+    - K
+    - M
+    - F
+    - P
+    - O
+    - S
+    - U
+    - T
+    - W
+    - Y
+    - V
+    - B
+    - Z
+    - J
+    - X
+
+  modifiers:
+    - m
+    - f
+    - e
+    - s
+    - pv
+
+  degenerate_bases:
+    - M
+    - R
+    - W
+    - S
+    - Y
+    - K
+    - V
+    - H
+    - D
+    - B
+
+base_names:
+  A:
+    en: adenosine
+    zh: 腺苷
+  U:
+    en: uridine
+    zh: 尿苷
+  C:
+    en: cytidine
+    zh: 胞苷
+  G:
+    en: guanosine
+    zh: 鸟苷
+  T:
+    en: thymidine
+    zh: 胸苷
+
+predefined_modifications:
+  - ac4c
+  - chm5u
+  - cm
+  - cmnm5s2u
+  - cmnm5u
+  - dhu
+  - fm
+  - galq
+  - gm
+  - i
+  - i6a
+  - m1a
+  - m1f
+  - m1g
+  - m1i
+  - m22g
+  - m2a
+  - m2g
+  - m3c
+  - m4c
+  - m5c
+  - m6a
+  - m7g
+  - mam5u
+  - mam5s2u
+  - manq
+  - mcm5s2u
+  - mcm5u
+  - mo5u
+  - ms2i6a
+  - ms2t6a
+  - mt6a
+  - mv
+  - o5u
+  - osyw
+  - p
+  - q
+  - s2c
+  - s2t
+  - s2u
+  - s4u
+  - m5u
+  - t6a
+  - tm
+  - um
+  - yw
+  - x
+
+dna_codon_table:
+  TTT: F
+  TTC: F
+  TTA: L
+  TTG: L
+  CTT: L
+  CTC: L
+  CTA: L
+  CTG: L
+  ATT: I
+  ATC: I
+  ATA: I
+  ATG: M
+  GTT: V
+  GTC: V
+  GTA: V
+  GTG: V
+  TCT: S
+  TCC: S
+  TCA: S
+  TCG: S
+  CCT: P
+  CCC: P
+  CCA: P
+  CCG: P
+  ACT: T
+  ACC: T
+  ACA: T
+  ACG: T
+  GCT: A
+  GCC: A
+  GCA: A
+  GCG: A
+  TAT: Y
+  TAC: Y
+  TAA: "*"
+  TAG: "*"
+  CAT: H
+  CAC: H
+  CAA: Q
+  CAG: Q
+  AAT: N
+  AAC: N
+  AAA: K
+  AAG: K
+  GAT: D
+  GAC: D
+  GAA: E
+  GAG: E
+  TGT: C
+  TGC: C
+  TGA: "*"
+  TGG: W
+  CGT: R
+  CGC: R
+  CGA: R
+  CGG: R
+  AGT: S
+  AGC: S
+  AGA: R
+  AGG: R
+  GGT: G
+  GGC: G
+  GGA: G
+  GGG: G
+
+required_sheets:
+  - basicdata
+  - seqdata
+
+ligands:
+  - L96
+  - -L96
+
+pv_prefixes:
+  - "pv-"
+  - "Pv-"
+  - "PV-"
+  - "pV-"
+  - "vp-"
+  - "Vp-"
+  - "VP-"
+  - "vP-"
+  - "pv"
+  - "Pv"
+  - "PV"
+  - "pV"
+  - "vp"
+  - "Vp"
+  - "VP"
+  - "vP"
+
+default_values:
+  organism: "synthetic construct"
+  moltype:
+    RNA: "RNA"
+    DNA: "DNA"
+    AA: "protein"
+  qualifier_moltype:
+    RNA: "other RNA"
+    DNA: "other DNA"
+    AA: "protein"
+
+xml:
+  dtd_version: "V1_3"
+  software_name: "WIPO Sequence"
+  software_version: "2.3.0"
+  language_code: "en"
+  non_english_language_code: "zh"
+  division: "PAT"
