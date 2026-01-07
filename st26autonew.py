@@ -66,11 +66,17 @@ def convert_excel_to_xml(file_path, output_folder):
         return output_file, sequence_summary, reminders
     
     except ValueError as ve:
-        print(f"数据验证错误: {str(ve)}")
-        raise
+        error_msg = str(ve)
+        if "请使用模版" in error_msg:
+            raise ValueError(error_msg)
+        else:
+            raise ValueError("请使用模版上传数据！Excel文件中缺少必需的sheet（basicdata或seqdata）。")
     except Exception as e:
-        print(f"运行时错误: {str(e)}")
-        raise
+        error_msg = str(e)
+        if "not found" in error_msg:
+            raise ValueError("请使用模版上传数据！Excel文件中缺少必需的sheet（basicdata或seqdata）。")
+        else:
+            raise ValueError(error_msg)
 
 if __name__ == "__main__":
     import sys

@@ -314,8 +314,10 @@ def parse_sequence(seq, moltype, line_number=None):
     return final_naked_sequence, modifications, special_positions, raw_moltype, has_degenerate_bases, ligand_removed
 
 def read_basic_data_from_excel(file_path):
-    df = pd.read_excel(file_path, sheet_name='basicdata', engine='openpyxl')
-    # 添加dropna操作，解决幽灵数据问题
+    try:
+        df = pd.read_excel(file_path, sheet_name='basicdata', engine='openpyxl')
+    except ValueError:
+        raise ValueError("Worksheet named 'basicdata' not found")
     df.dropna(how='all', inplace=True)
     basic_data = {}
     
@@ -346,8 +348,10 @@ def read_basic_data_from_excel(file_path):
     return basic_data
 
 def read_sequences_from_excel(file_path):
-    df = pd.read_excel(file_path, sheet_name='seqdata', engine='openpyxl')
-    # 添加dropna操作，解决幽灵数据问题
+    try:
+        df = pd.read_excel(file_path, sheet_name='seqdata', engine='openpyxl')
+    except ValueError:
+        raise ValueError("Worksheet named 'seqdata' not found")
     df.dropna(how='all', inplace=True)
     
     # 动态定位关键列 - 使用集合交集提高查找效率
