@@ -1226,14 +1226,16 @@ def blast_search_task(self, target_sequence):
 
 if __name__ == '__main__':
     import sys
-    # 从环境变量获取端口，或从命令行参数获取，或使用默认值
+    import socket
+    
     env_port = os.environ.get('PORT')
     if env_port:
         port = int(env_port)
     else:
         port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     
-    # 从环境变量获取主机地址
-    host = os.environ.get('HOST', '0.0.0.0')  # 改为0.0.0.0，允许外部访问
+    host = os.environ.get('HOST', '0.0.0.0')
     
-    app.run(debug=app.debug, host=host, port=port)
+    from werkzeug.serving import make_server
+    srv = make_server(host, port, app, threaded=True)
+    srv.serve_forever()
