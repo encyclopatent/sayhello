@@ -31,7 +31,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CONFIG: Dict[str, Any] = {}
+CONFIG = {}
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -115,7 +115,7 @@ def _init_constants_from_config() -> None:
     if config and 'dna_codon_table' in config:
         DNA_TO_AA = config['dna_codon_table']
 
-BASE_NAMES: Dict[str, Dict[str, str]] = {
+BASE_NAMES = {
     'A': {'en': 'adenosine', 'zh': '腺苷'},
     'U': {'en': 'uridine',   'zh': '尿苷'},
     'C': {'en': 'cytidine',  'zh': '胞苷'},
@@ -123,23 +123,23 @@ BASE_NAMES: Dict[str, Dict[str, str]] = {
     'T': {'en': 'thymidine', 'zh': '胸苷'}
 }
 
-VALID_AA: Set[str] = {
+VALID_AA = {
     'A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 
     'L', 'K', 'M', 'F', 'P', 'O', 'S', 'U', 'T', 'W', 
-    'Y', 'V', 'B', 'Z', 'J', 'X'
+    'Y', 'V', 'B', 'Z', 'J', 'X', 'x'
 }
 
-PREDEFINED_MODS: Set[str] = {
+PREDEFINED_MODS = {
     'ac4c', 'chm5u', 'cm', 'cmnm5s2u', 'cmnm5u', 'dhu', 'fm', 'galq', 'gm', 'i', 'i6a', 'm1a', 'm1f', 'm1g', 'm1i',
     'm22g', 'm2a', 'm2g', 'm3c', 'm4c', 'm5c', 'm6a', 'm7g', 'mam5u', 'mam5s2u', 'manq', 'mcm5s2u', 'mcm5u', 'mo5u',
     'ms2i6a', 'ms2t6a', 'mt6a', 'mv', 'o5u', 'osyw', 'p', 'q', 's2c', 's2t', 's2u', 's4u', 'm5u', 't6a', 'tm', 'um', 'yw', 'x'
 }
 
-DEGENERATE_BASES: Set[str] = {'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B'}
+DEGENERATE_BASES = {'M', 'R', 'W', 'S', 'Y', 'K', 'V', 'H', 'D', 'B'}
 
-MODIFIER_CHARS: Set[str] = {'m', 'f', 'e', 's', 'pv'}
+MODIFIER_CHARS = {'m', 'f', 'e', 's', 'pv'}
 
-DNA_TO_AA: Dict[str, str] = {
+DNA_TO_AA = {
     'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L',
     'CTT': 'L', 'CTC': 'L', 'CTA': 'L', 'CTG': 'L',
     'ATT': 'I', 'ATC': 'I', 'ATA': 'I', 'ATG': 'M',
@@ -158,7 +158,7 @@ DNA_TO_AA: Dict[str, str] = {
     'GGT': 'G', 'GGC': 'G', 'GGA': 'G', 'GGG': 'G'
 }
 
-PV_PREFIX_PATTERNS: List[Tuple[str, int]] = [
+PV_PREFIX_PATTERNS = [
     (r'^[Pp][Vv]-', 3),
     (r'^[Vv][Pp]-', 3),
     (r'^[Pp][Vv]', 2),
