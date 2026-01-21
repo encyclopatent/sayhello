@@ -1,33 +1,65 @@
-# 依赖目录
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-env/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
 venv/
+env/
+ENV/
 
-# 日志文件
-logs/
-*.log
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# 配置文件
-.env
-.env.local
-
-# 操作系统文件
+# OS
 .DS_Store
 Thumbs.db
 
-# 临时文件
-*.tmp
-temp/
-needle.txt
+# Logs
+logs/
+*.log
 
-# 测试文件
-test_*.txt
+# Database
+*.db
+celerybeat-schedule
 
-# 上传和处理结果文件
-static/uploads/*.xlsx
-static/fragment_outputs/
-processed_results_*.xlsx
+# Temporary files
+static/uploads/*
+static/outputs/*
+!static/uploads/.gitkeep
+!static/outputs/.gitkeep
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+test_output/
+
+# Environment
+.env
+.env.local
+
+# Backup
+backup*/
+*.bak

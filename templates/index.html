@@ -24,9 +24,14 @@
       <b>下载模板</b>
     </h2>
     <p>请先下载模板文件，按照模板格式填写数据：</p>
-    <a href="{{ url_for('download_template') }}" class="download-btn">
-      下载Excel模板
-    </a>
+    <div class="button-group">
+      <a href="{{ url_for('download_template') }}" class="download-btn">
+        下载Excel模板
+      </a>
+      <a href="{{ url_for('template_guide') }}" class="guide-btn">
+        模板使用指南
+      </a>
+    </div>
   </div>
   
   <div class="section">
@@ -233,44 +238,42 @@
       });
 
       // 页面加载时检查是否从主页导航进入，如果是则清除数据
-      document.addEventListener('DOMContentLoaded', function() {
-        const referrer = document.referrer;
-        const currentUrl = window.location.href;
-        
-        // 检查是否从主页导航进入ST26页面
-        if (referrer && referrer !== currentUrl && referrer.includes('/')) {
-          // 排除刷新页面的情况（referrer包含/st26）
-          if (!referrer.includes('/st26')) {
-            console.log('检测到从主页导航进入，清除之前的数据');
-            isPageRefresh = false; // 确保这是新导航
-            
-            // 如果session中有XML数据，清除所有数据
-            const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
-            if (hasXmlFile === 'true') {
-              console.log('发现之前的XML数据，开始清除');
-              fetch('/clear_all', {
-                method: 'POST',
-                credentials: 'include'
-              })
-              .then(function(response) {
-                return response.json();
-              })
-              .then(function(data) {
-                if (data.status === 'success') {
-                  console.log('从主页导航进入的数据清除成功');
-                  // 刷新页面以反映清除后的状态
-                  window.location.reload();
-                } else {
-                  console.error('清除失败:', data.message);
-                }
-              })
-              .catch(function(error) {
-                console.error('清除请求出错:', error);
-              });
-            }
+      const referrer = document.referrer;
+      const currentUrl = window.location.href;
+      
+      // 检查是否从主页导航进入ST26页面
+      if (referrer && referrer !== currentUrl && referrer.includes('/')) {
+        // 排除刷新页面的情况（referrer包含/st26）
+        if (!referrer.includes('/st26')) {
+          console.log('检测到从主页导航进入，清除之前的数据');
+          isPageRefresh = false; // 确保这是新导航
+          
+          // 如果session中有XML数据，清除所有数据
+          const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
+          if (hasXmlFile === 'true') {
+            console.log('发现之前的XML数据，开始清除');
+            fetch('/clear_all', {
+              method: 'POST',
+              credentials: 'include'
+            })
+            .then(function(response) {
+              return response.json();
+            })
+            .then(function(data) {
+              if (data.status === 'success') {
+                console.log('从主页导航进入的数据清除成功');
+                // 刷新页面以反映清除后的状态
+                window.location.reload();
+              } else {
+                console.error('清除失败:', data.message);
+              }
+            })
+            .catch(function(error) {
+              console.error('清除请求出错:', error);
+            });
           }
         }
-      });
+      }
 
       // 页面卸载事件监听器 - 清除未完成的任务
       window.addEventListener('beforeunload', function(e) {

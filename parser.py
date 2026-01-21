@@ -1,4 +1,5 @@
 # parser.py
+from typing import Tuple, List, Dict, Optional, Any, Union
 import pandas as pd
 import re
 
@@ -36,15 +37,18 @@ DNA_TO_AA = {
     'GGT': 'G', 'GGC': 'G', 'GGA': 'G', 'GGG': 'G'
 }
 
-def convert_new_format_to_old(seq):
+def convert_new_format_to_old(seq: str) -> Tuple[str, bool]:
     """将新格式的修饰标注转换为旧格式
-    新格式：(VP)(mG)*(mG)*(mU)(mU)(fG)(mG)(fA)(mU)(fU)(fU)(fU)(mU)(fC)(mU)(mU)(mG)(mC)(mU)(mA)(mU)(mG)(L96)
-    旧格式：VPmG*s*mG*s*mUmUfGmGfAmUfUfUfUmUfCmUmUmGmCmUmAmUmGL96
-    * 代表 s 修饰
-    括号里m和f在被修饰的碱基左侧
-    旧格式要求：碱基 + 修饰符 + 连接修饰
-    
-    返回：(转换后的序列, ligand_removed)
+
+    Args:
+        seq: 新格式序列字符串
+
+    Returns:
+        Tuple[str, bool]: (转换后的序列, ligand_removed)
+
+    Examples:
+        >>> convert_new_format_to_old("(VP)(mG)*(mU)")
+        ('VPmG*s*mU', False)
     """
     # 严格检测是否为新格式：
     # 1. 以(开头
@@ -133,7 +137,30 @@ def convert_new_format_to_old(seq):
     
     return ''.join(converted), ligand_removed
 
-def parse_sequence(seq, moltype, line_number=None):
+def parse_sequence(
+    seq: str,
+    moltype: Optional[str],
+    line_number: Optional[int] = None
+) -> Tuple[str, List[Tuple[Union[int, str], str, str]], List[int], Optional[str], bool, bool]:
+    """解析序列字符串
+
+    Args:
+        seq: 序列字符串
+        moltype: 分子类型 (DNA/RNA/AA)
+        line_number: 行号（用于错误报告）
+
+    Returns:
+        Tuple[str, List[Tuple], List[int], Optional[str], bool, bool]:
+            - 裸序列（去掉修饰）
+            - 修饰列表: [(位置, 类型, 碱基), ...]
+            - 特殊位置列表: [位置1, 位置2, ...]
+            - 原始分子类型
+            - 是否包含简并碱基
+            - 是否移除了配体
+
+    Raises:
+        ValueError: 序列包含非法字符时
+    """
     if not isinstance(seq, str):
         raise ValueError("输入序列必须是字符串类型")
     seq = seq.strip().replace(" ", "")
@@ -313,7 +340,18 @@ def parse_sequence(seq, moltype, line_number=None):
 
     return final_naked_sequence, modifications, special_positions, raw_moltype, has_degenerate_bases, ligand_removed
 
-def read_basic_data_from_excel(file_path):
+def read_basic_data_from_excel(file_path: str) -> Dict[str, str]:
+    """从Excel文件读取基础数据
+
+    Args:
+        file_path: Excel文件路径
+
+    Returns:
+        Dict[str, str]: 基础数据字典
+
+    Raises:
+        ValueError: 文件格式错误或缺少必需字段
+    """
     try:
         df = pd.read_excel(file_path, sheet_name='basicdata', engine='openpyxl')
     except ValueError:
@@ -347,7 +385,28 @@ def read_basic_data_from_excel(file_path):
     print("====================\n")
     return basic_data
 
-def read_sequences_from_excel(file_path):
+def read_sequences_from_excel(file_path: str) -> List[Tuple]:
+    """从Excel文件读取序列数据
+
+    Args:
+        file_path: Excel文件路径
+
+    Returns:
+        List[Tuple]: 序列数据列表，每个元组包含:
+            - 序列
+            - 原始分子类型
+            - 生物体
+            - 限定符分子类型
+            - freetext列表
+            - 环信息列表
+            - 杂合区段列表
+            - 翻译校验
+            - 解析后的序列数据（缓存）
+            - 行号
+
+    Raises:
+        ValueError: 文件格式错误或数据验证失败
+    """
     try:
         df = pd.read_excel(file_path, sheet_name='seqdata', engine='openpyxl')
     except ValueError:
@@ -543,8 +602,20 @@ def read_sequences_from_excel(file_path):
     
     return sequences
 
-def get_sequence_summary(sequences):
-    """返回序列数据统计信息"""
+def get_sequence_summary(sequences: List[Tuple]) -> Dict[str, Any]:
+    """返回序列数据统计信息
+
+    Args:
+        sequences: 序列数据列表
+
+    Returns:
+        Dict[str, Any]: 包含以下键的字典:
+            - total_count: 总序列数
+            - type_counts: 各类型序列计数 {'DNA': x, 'RNA': y, 'AA': z}
+            - details: 每个序列的详细信息列表
+            - has_degenerate_bases: 是否包含简并碱基
+            - has_ligand_ignored: 是否忽略了配体
+    """
     type_counts = {'DNA': 0, 'RNA': 0, 'AA': 0}
     for seq in sequences:
         moltype = str(seq[1]).upper() if pd.notnull(seq[1]) else "RNA"

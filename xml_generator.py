@@ -1,11 +1,9 @@
 # xml_generator.py
 import xml.etree.ElementTree as ET
 import pandas as pd
-import os
 import re
-from parser import parse_sequence
+from parser import parse_sequence, BASE_NAMES, PREDEFINED_MODS
 from datetime import datetime
-from parser import BASE_NAMES, PREDEFINED_MODS
 
 # 从模板文件提取的标准字符表映射（硬编码以避免用户修改模板文件导致失效）
 ABBREV_TO_FULLNAME = {
@@ -73,7 +71,7 @@ def get_base_type(fullname):
     else:
         return None
 
-def generate_xml(sequences, basic_data, output_folder):
+def generate_xml(sequences, basic_data):
     # 创建提醒列表
     reminders = []
     
@@ -136,7 +134,7 @@ def generate_xml(sequences, basic_data, output_folder):
     qualifier_counter = 2
 
     for seq_data in sequences:
-        sequence, raw_moltype, organism, qual_moltype, freetexts, ring_infos, hybrid_segments, check_ref, parsed_seq_data, line_number = seq_data
+        sequence, raw_moltype, organism, qual_moltype, freetexts, ring_infos, hybrid_segments, _check_ref, parsed_seq_data, line_number = seq_data
         hybrid_segments = hybrid_segments or []
         
         # 检查是否使用了默认分子类型
@@ -437,11 +435,6 @@ def generate_xml(sequences, basic_data, output_folder):
     
     # 返回XML根元素和提醒列表
     return root, reminders
-
-def add_qualifier(quals, name, value):
-    qual = ET.SubElement(quals, "INSDQualifier")
-    ET.SubElement(qual, "INSDQualifier_name").text = name
-    ET.SubElement(qual, "INSDQualifier_value").text = value
 
 def has_chinese(text):
     """检测文本中是否包含中文"""

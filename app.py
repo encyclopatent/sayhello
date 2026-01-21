@@ -23,6 +23,7 @@ import xml_generator
 
 # 加载环境变量
 from dotenv import load_dotenv
+import secrets
 load_dotenv()  # 加载.env文件中的环境变量
 
 # 导入siRNA分析模块
@@ -33,7 +34,8 @@ import sirna_analysis
 app = Flask(__name__)
 # 应用ProxyFix中间件，让Flask知道它在HTTPS代理后面运行
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # 从环境变量获取SECRET_KEY
+# 安全的 SECRET_KEY 配置：优先使用环境变量，否则生成随机密钥
+app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 app.debug = os.environ.get('DEBUG', 'False').lower() == 'true'  # 从环境变量获取DEBUG模式
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16777216))  # 16MB
 
@@ -47,9 +49,13 @@ log_format = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# 配置文件日志
-file_handler = logging.FileHandler(
-    f'{log_dir}/app_{datetime.now().strftime("%Y%m%d")}.log'
+# 配置文件日志 - 使用轮转日志，每个文件最大10MB，保留5个备份
+from logging.handlers import RotatingFileHandler
+file_handler = RotatingFileHandler(
+    f'{log_dir}/app_{datetime.now().strftime("%Y%m%d")}.log',
+    maxBytes=10485760,  # 10MB
+    backupCount=5,
+    encoding='utf-8'
 )
 file_handler.setLevel(getattr(logging, log_level))
 file_handler.setFormatter(log_format)
@@ -72,6 +78,53 @@ os.makedirs(OUTPUTS_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUTS_FOLDER'] = OUTPUTS_FOLDER
+
+# 文件上传安全配置
+ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
+ALLOWED_MIMETYPES = {
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel'
+}
+
+def allowed_file(filename):
+    """检查文件扩展名是否允许"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def secure_file_check(file):
+    """综合安全检查文件"""
+    # 1. 检查文件名
+    if not file or file.filename == '':
+        return False, '未选择文件'
+
+    if not allowed_file(file.filename):
+        return False, '文件格式不正确，只允许 .xlsx 和 .xls 文件'
+
+    # 2. 检查文件大小（在 MAX_CONTENT_LENGTH 限制内）
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+
+    if file_size == 0:
+        return False, '文件大小为0'
+
+    if file_size > app.config['MAX_CONTENT_LENGTH']:
+        return False, f'文件过大，最大允许 {app.config["MAX_CONTENT_LENGTH"] // (1024*1024)}MB'
+
+    # 3. 检查文件内容前几个字节
+    header = file.read(8)
+    file.seek(0)
+
+    # Excel 文件的魔数
+    excel_magic_numbers = [
+        b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1',  # XLS
+        b'\x50\x4b\x03\x04',  # XLSX (ZIP)
+    ]
+
+    if not any(header.startswith(magic) for magic in excel_magic_numbers):
+        return False, '文件内容与扩展名不匹配，可能不是有效的 Excel 文件'
+
+    return True, None
 
 # Celery配置
 # 从环境变量获取Redis配置，便于部署到不同环境
@@ -131,26 +184,25 @@ def st26_index():
     
     # 检查是否是新的导航进入
     is_new_navigation = request.args.get('new', 'false').lower() == 'true'
-    
-    # 获取当前session数据
-    xml_file = session.get('xml_file', None)
-    sequence_summary = session.get('sequence_summary', None)
-    reminders = session.get('reminders', None)
-    task_id = session.get('task_id', None)
-    original_filename = session.get('original_filename', None)
-    error_message = session.get('error_message', None)
-    error_sequence = session.get('error_sequence', None)
-    error_position = session.get('error_position', None)
+    referrer = request.referrer or ''
     
     # 智能数据管理策略
-    if is_new_navigation:
-        # 新导航进入：清除所有之前的数据，让用户重新开始
-        if xml_file or task_id or error_message:
-            app.logger.info(f"用户从主页重新进入ST26，清除之前的数据: xml_file={xml_file}, task_id={task_id}")
-            session.clear()
-            # 重新设置为None
-            xml_file = sequence_summary = reminders = task_id = original_filename = error_message = error_sequence = error_position = None
+    # 1. 从主页导航进入或直接访问时，总是清除之前的数据
+    if is_new_navigation or referrer == '' or '/st26' not in referrer:
+        app.logger.info(f"用户重新进入ST26，清除之前的数据，来源: {referrer}")
+        session.clear()
+        xml_file = sequence_summary = reminders = task_id = original_filename = error_message = error_sequence = error_position = None
     else:
+        # 获取当前session数据
+        xml_file = session.get('xml_file', None)
+        sequence_summary = session.get('sequence_summary', None)
+        reminders = session.get('reminders', None)
+        task_id = session.get('task_id', None)
+        original_filename = session.get('original_filename', None)
+        error_message = session.get('error_message', None)
+        error_sequence = session.get('error_sequence', None)
+        error_position = session.get('error_position', None)
+        
         # 页面刷新：保留数据，适度清理
         if xml_file and task_id:
             app.logger.info(f"任务已完成，隐藏task_id，保留XML结果: {xml_file}")
@@ -172,6 +224,9 @@ def st26_index():
         error_position=error_position
     ))
     return response
+
+
+
 
 
 @app.route('/sirna')
@@ -255,8 +310,8 @@ def alignment_analyze():
         from alignment_utils import process_alignment
         
         # 获取表单数据
-        target_sequence = request.form.get('target_sequence', '').strip().upper().replace('\s+', '')
-        query_sequence = request.form.get('query_sequence', '').strip().upper().replace('\s+', '')
+        target_sequence = request.form.get('target_sequence', '').strip().upper().replace(r'\s+', '')
+        query_sequence = request.form.get('query_sequence', '').strip().upper().replace(r'\s+', '')
         target_sites_str = request.form.get('target_sites', '').strip()
         key_positions_str = request.form.get('key_positions', '').strip()
         algorithm = 'global'  # 默认使用全局比对算法
@@ -638,77 +693,101 @@ def sirna_download():
 
 @app.route('/download_template')
 def download_template():
-    template_path = 'static/templates/template.xlsx'
-    if not os.path.exists(template_path):
-        flash('⚠️ 模板文件未找到', 'error')
-        return redirect(url_for('st26_index'))
-    return send_file(
-        template_path,
-        as_attachment=True,
-        download_name='template.xlsx'
-    )
+    """下载模板文件"""
+    try:
+        # 添加详细日志
+        app.logger.info(f"开始处理模板下载请求，当前工作目录: {os.getcwd()}")
+        
+        # 直接使用绝对路径
+        template_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static/templates/template.xlsx'))
+        app.logger.info(f"模板文件路径: {template_path}")
+        
+        # 检查文件是否存在
+        if os.path.exists(template_path):
+            app.logger.info(f"模板文件存在，文件大小: {os.path.getsize(template_path)} 字节")
+            app.logger.info(f"文件权限: {oct(os.stat(template_path).st_mode)[-3:]}")
+            
+            # 直接使用send_file发送文件，避免send_from_directory可能的问题
+            return send_file(
+                template_path,
+                as_attachment=True,
+                attachment_filename='template.xlsx',
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:
+            app.logger.error(f"模板文件不存在: {template_path}")
+            # 不使用flash，直接返回错误信息
+            return f"模板文件不存在: {template_path}", 404
+    except Exception as e:
+        app.logger.error(f"模板下载出错: {str(e)}", exc_info=True)
+        # 不使用flash和重定向，直接返回错误信息
+        return f"模板下载失败: {str(e)}", 500
 
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     app.logger.info('Received file upload request')
+
     if 'file' not in request.files:
         app.logger.warning('No file found in upload request')
-        flash(
-            '⚠️ 未选择文件',
-            'error'
-        )
-        return redirect(url_for('result_page', task_id=task.id))
+        return jsonify({'status': 'error', 'message': '⚠️ 未选择文件'}), 400
 
     file = request.files['file']
-    if file.filename == '':
-        app.logger.warning('Empty filename in upload request')
-        flash('⚠️ 未选择文件', 'error')
-        return redirect(url_for('st26_index'))
 
-    if file and file.filename.endswith('.xlsx'):
+    # 安全检查
+    is_valid, error_msg = secure_file_check(file)
+    if not is_valid:
+        app.logger.warning(f'File validation failed: {error_msg}')
+        return jsonify({'status': 'error', 'message': f'⚠️ {error_msg}'}), 400
+
+    # 生成安全的文件名
+    original_filename = secure_filename(file.filename)
+    if not original_filename:
+        app.logger.warning('Secure filename is empty')
+        return jsonify({'status': 'error', 'message': '⚠️ 文件名无效'}), 400
+
+    try:
         # 使用UUID生成唯一文件名
         unique_filename = (
-            f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+            f"{uuid.uuid4().hex}_{original_filename}"
         )
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(file_path)
         app.logger.info(f'File saved successfully: {file_path}')
 
-        try:
-            # 提交异步转换任务
-            task = convert_excel_task.apply_async(
-                args=[file_path, app.config['OUTPUTS_FOLDER']]
-            )
-            app.logger.info(f'Async task submitted with ID: {task.id}')
+        # 提交异步转换任务
+        task = convert_excel_task.apply_async(
+            args=[file_path, app.config['OUTPUTS_FOLDER']]
+        )
+        app.logger.info(f'Async task submitted with ID: {task.id}')
 
-            # 保存任务信息到session
-            session['task_id'] = task.id
-            session['uploaded_file_path'] = file_path  # 存储上传的文件路径
-            session['original_filename'] = file.filename  # 存储原始文件名
+        # 保存任务信息到session
+        session['task_id'] = task.id
+        session['uploaded_file_path'] = file_path  # 存储上传的文件路径
+        session['original_filename'] = file.filename  # 存储原始文件名
 
-            # 清除之前的结果和错误信息
-            session.pop('xml_file', None)
-            session.pop('sequence_summary', None)
-            session.pop('reminders', None)
-            session.pop('error_message', None)
-            session.pop('error_sequence', None)
-            session.pop('error_position', None)
-
-            # 不再使用flash显示"文件正在转换中"消息，改为在前端JavaScript中处理
-        except Exception as e:
-            # 删除上传的文件
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            app.logger.error(f'Error submitting task: {str(e)}')
-            flash(f'⚠️ 提交转换任务出错: {str(e)}。数据文件已经删除，请稍后重试。', 'error')
-            return redirect(url_for('st26_index'))
+        # 清除之前的结果和错误信息
+        session.pop('xml_file', None)
+        session.pop('sequence_summary', None)
+        session.pop('reminders', None)
+        session.pop('error_message', None)
+        session.pop('error_sequence', None)
+        session.pop('error_position', None)
 
         return redirect(url_for('result_page', task_id=task.id))
-    else:
-        app.logger.warning(f'Invalid file format: {file.filename}')
-        flash('⚠️ 文件格式不正确，请上传 .xlsx 文件', 'error')
-        return redirect(url_for('st26_index'))
+
+    except Exception as e:
+        # 删除上传的文件
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        app.logger.error(f'Error submitting task: {str(e)}', exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'⚠️ 提交转换任务出错: {str(e)}。数据文件已经删除，请稍后重试。'
+        }), 500
+
+
+
 
 
 @app.route('/get_xml_info')
@@ -758,7 +837,9 @@ def get_xml_info():
 @app.route('/task_status/<task_id>')
 def task_status(task_id):
     try:
-        task = convert_excel_task.AsyncResult(task_id)
+        # 不再硬编码任务类型，而是使用通用的方式获取任务状态
+        # 这样可以支持多种任务类型（convert_excel_task和convert_excel_task_v2）
+        task = celery.AsyncResult(task_id)
         
         response = {
             'state': task.state,
@@ -970,6 +1051,35 @@ def download_xml(filename):
         )
 
 
+@app.route('/template_guide')
+def template_guide():
+    """显示模板使用指南"""
+    try:
+        # 读取markdown文件内容
+        guide_path = os.path.join(os.path.dirname(__file__), 'ST26数据流程及模板使用指南.md')
+        with open(guide_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # 转换markdown为HTML，添加更多扩展
+        import markdown
+        html_content = markdown.markdown(
+            content,
+            extensions=[
+                'markdown.extensions.tables',
+                'markdown.extensions.fenced_code',
+                'markdown.extensions.nl2br',  # 换行转<br>
+                'markdown.extensions.sane_lists',  # 改进列表处理
+                'markdown.extensions.toc',  # 目录支持
+                'markdown.extensions.attr_list',  # 属性列表
+            ]
+        )
+
+        return render_template('guide.html', content=html_content)
+    except Exception as e:
+        app.logger.error(f'Failed to load template guide: {str(e)}')
+        return f'加载模板使用指南失败: {str(e)}', 500
+
+
 @app.route('/result')
 def result_page():
     """显示处理结果页面的路由"""
@@ -1113,16 +1223,12 @@ def clear_all():
         
         app.logger.info('已清除所有任务数据和session信息')
         
-        # 如果是POST请求（可能是通过sendBeacon调用），返回空响应
-        if request.method == 'POST':
-            return '', 204
-        else:
-            # GET请求返回JSON响应
-            return jsonify({'status': 'success', 'message': '所有数据已清除'})
+        # 无论请求方法是什么，都返回JSON响应
+        return jsonify({'status': 'success', 'message': '所有数据已清除'})
     except Exception as e:
         app.logger.error(f'清除所有数据时出错: {str(e)}', exc_info=True)
-        # 即使出错也返回空响应，因为页面即将关闭
-        return '', 500
+        # 返回错误的JSON响应
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @celery.task(bind=True)
@@ -1155,6 +1261,9 @@ def convert_excel_task(self, file_path, output_folder):
             'status': 'error',
             'error_message': str(e)
         }
+
+
+
 
 
 @celery.task(bind=True)

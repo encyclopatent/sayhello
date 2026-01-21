@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Style-Type" content="text/css">
+    <title>ST26模板使用指南</title>
+    <meta name="Generator" content="Cocoa HTML Writer">
+    <meta name="CocoaVersion" content="2685.3">
+    <!-- 引入CSS文件 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        /* 基础容器样式 */
+        .guide-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .guide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .guide-nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .back-button,
+        .top-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .back-button:hover,
+        .top-button:hover {
+            background-color: #0056b3;
+        }
+
+        .guide-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            line-height: 1.8;
+        }
+
+        /* 标题样式 */
+        .guide-content h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        .guide-content h2 {
+            color: #444;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .guide-content h3 {
+            color: #555;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .guide-content h4 {
+            color: #666;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        /* 段落样式 */
+        .guide-content p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+            color: #333;
+        }
+
+        /* 列表样式 */
+        .guide-content ul,
+        .guide-content ol {
+            margin-bottom: 20px;
+            padding-left: 30px;
+        }
+
+        .guide-content li {
+            margin-bottom: 10px;
+            line-height: 1.8;
+        }
+
+        /* 代码块样式 */
+        .guide-content pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 1px solid #ddd;
+        }
+
+        .guide-content code {
+            background-color: #f4f4f4;
+            color: #c7254e;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .guide-content pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        /* 表格样式 - 修复选择器错误 */
+        .guide-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            font-size: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .guide-content table th,
+        .guide-content table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .guide-content table th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        .guide-content table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .guide-content table tr:hover {
+            background-color: #f0f7ff;
+        }
+
+        /* 响应式表格 */
+        .guide-content .table-responsive {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        /* 引用块样式 */
+        .guide-content blockquote {
+            border-left: 4px solid #007bff;
+            padding-left: 20px;
+            margin: 20px 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* 强调样式 */
+        .guide-content strong {
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        /* 警告框样式 */
+        .guide-content .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .guide-content .error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .guide-content .info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        /* 打印样式 */
+        @media print {
+            .guide-nav-buttons {
+                display: none;
+            }
+
+            .guide-content {
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .guide-content h2 {
+                page-break-before: auto;
+            }
+
+            .guide-content pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .guide-container {
+                padding: 10px;
+            }
+
+            .guide-content {
+                padding: 15px;
+            }
+
+            .guide-content h1 {
+                font-size: 1.5em;
+            }
+
+            .guide-content h2 {
+                font-size: 1.3em;
+            }
+
+            .guide-content h3 {
+                font-size: 1.1em;
+            }
+
+            .guide-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .guide-nav-buttons {
+                flex-direction: column;
+            }
+
+            .guide-content table {
+                font-size: 12px;
+            }
+
+            .guide-content table th,
+            .guide-content table td {
+                padding: 8px;
+            }
+        }
+
+        /* 平板适配 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .guide-container {
+                max-width: 100%;
+                padding: 15px;
+            }
+        }
+
+        /* 滚动条美化 */
+        .guide-content pre::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .guide-content pre::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .guide-content pre::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .guide-content pre::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+    <script>
+        // 平滑滚动到顶部
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="guide-container">
+        <div class="guide-header">
+            <div class="guide-nav-buttons">
+                <a href="/st26" class="back-button">← 返回ST26工具</a>
+                <button onclick="scrollToTop()" class="top-button">↑ 返回顶部</button>
+            </div>
+        </div>
+        <div class="guide-content">
+            {{ content|safe }}
+        </div>
+    </div>
+
+    <script>
+        // 自动显示/隐藏返回顶部按钮
+        const topButton = document.querySelector('.top-button');
+        if (topButton) {
+            topButton.style.display = 'none';
+
+            window.addEventListener('scroll', () => {
+                if (window.pageYOffset > 300) {
+                    topButton.style.display = 'inline-block';
+                } else {
+                    topButton.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
