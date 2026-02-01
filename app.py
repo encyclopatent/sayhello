@@ -34,6 +34,51 @@ app = Flask(__name__)
 # 应用ProxyFix中间件，让Flask知道它在HTTPS代理后面运行
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # 从环境变量获取SECRET_KEY
+
+
+# ============ 输入验证中间件 ============
+
+class InputValidationMiddleware:
+    """
+    输入验证中间件
+    用于验证和清理用户输入，防止安全漏洞
+    """
+
+    def __init__(self, app):
+        self.app = app
+        self.init_app(app)
+
+    def init_app(self, app):
+        """初始化中间件"""
+        app.before_request(self.validate_request)
+
+    def validate_request(self):
+        """验证每个请求"""
+        from flask import request
+
+        # 跳过静态文件
+        if request.path.startswith('/static'):
+            return
+
+        # 验证 Content-Type
+        if request.method in ['POST', 'PUT', 'PATCH']:
+            content_type = request.content_type or ''
+            if request.path.startswith('/upload') and 'multipart/form-data' not in content_type:
+                app.logger.warning(f'Invalid content type for upload: {content_type}')
+
+        # 验证请求头
+        user_agent = request.headers.get('User-Agent', '')
+        if len(user_agent) > 500:
+            app.logger.warning(f'Suspiciously long User-Agent: {len(user_agent)} chars')
+
+        # 检查路径遍历尝试
+        if '../' in request.path or '%2e%2e' in request.path.lower():
+            app.logger.error(f'Path traversal attempt detected: {request.path}')
+            return 'Invalid request', 400
+
+
+# 应用输入验证中间件
+InputValidationMiddleware(app)
 app.debug = os.environ.get('DEBUG', 'False').lower() == 'true'  # 从环境变量获取DEBUG模式
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16777216))  # 16MB
 
@@ -42,9 +87,9 @@ log_dir = os.environ.get('LOG_DIR', 'logs')
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
 os.makedirs(log_dir, exist_ok=True)
 
-# 创建日志格式
+# 创建增强的日志格式（包含请求ID和客户端信息）
 log_format = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    '%(asctime)s - [%(levelname)s] - %(name)s - %(funcName)s:%(lineno)d - %(message)s'
 )
 
 # 配置文件日志
@@ -54,6 +99,13 @@ file_handler = logging.FileHandler(
 file_handler.setLevel(getattr(logging, log_level))
 file_handler.setFormatter(log_format)
 
+# 配置安全日志（单独记录安全相关事件）
+security_log_handler = logging.FileHandler(
+    f'{log_dir}/security_{datetime.now().strftime("%Y%m%d")}.log'
+)
+security_log_handler.setLevel(logging.WARNING)
+security_log_handler.setFormatter(log_format)
+
 # 配置控制台日志
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG if app.debug else getattr(logging, log_level))
@@ -62,6 +114,7 @@ console_handler.setFormatter(log_format)
 # 将日志处理器添加到应用
 app.logger.addHandler(file_handler)
 app.logger.addHandler(console_handler)
+app.logger.addHandler(security_log_handler)  # 添加安全日志处理器
 app.logger.setLevel(getattr(logging, log_level))
 
 # 确保上传文件夹和生成XML文件夹存在
@@ -109,6 +162,29 @@ celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
 
 
+# ============ 安全辅助函数 ============
+
+def _get_uploaded_file_path(filename: str) -> str:
+    """
+    安全地获取上传文件的完整路径
+    仅用于内部文件操作，不暴露给用户
+    """
+    # 规范化文件名，防止路径遍历
+    safe_filename = os.path.basename(filename)
+    if not safe_filename or safe_filename.startswith('.'):
+        raise ValueError('Invalid filename')
+
+    # 构建完整路径并验证
+    upload_folder = os.path.normpath(app.config['UPLOAD_FOLDER'])
+    full_path = os.path.normpath(os.path.join(upload_folder, safe_filename))
+
+    # 验证路径在上传目录内
+    if not full_path.startswith(upload_folder):
+        raise ValueError('Path traversal attempt detected')
+
+    return full_path
+
+
 # siRNA工具核心功能已移至sirna_analysis.py模块
 
 
@@ -116,6 +192,12 @@ celery.conf.update(app.config)
 def main():
     """主页面路由"""
     return render_template('main.html')
+
+
+@app.route('/st26/guide')
+def st26_guide():
+    """ST.26 使用指南页面"""
+    return render_template('st26_guide.html')
 
 
 @app.route('/st26')
@@ -255,8 +337,8 @@ def alignment_analyze():
         from alignment_utils import process_alignment
         
         # 获取表单数据
-        target_sequence = request.form.get('target_sequence', '').strip().upper().replace('\s+', '')
-        query_sequence = request.form.get('query_sequence', '').strip().upper().replace('\s+', '')
+        target_sequence = re.sub(r'\s+', '', request.form.get('target_sequence', '').strip()).upper()
+        query_sequence = re.sub(r'\s+', '', request.form.get('query_sequence', '').strip()).upper()
         target_sites_str = request.form.get('target_sites', '').strip()
         key_positions_str = request.form.get('key_positions', '').strip()
         algorithm = 'global'  # 默认使用全局比对算法
@@ -668,23 +750,75 @@ def upload_file():
 
     if file and file.filename.endswith('.xlsx'):
         # 使用UUID生成唯一文件名
+        secure_name = secure_filename(file.filename)
         unique_filename = (
-            f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+            f"{uuid.uuid4().hex}_{secure_name}"
         )
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+
+        # 安全路径验证：防止路径遍历攻击
+        upload_folder = os.path.normpath(app.config['UPLOAD_FOLDER'])
+        unique_filename = os.path.basename(unique_filename)  # 确保不包含路径
+
+        # 验证文件名合法性
+        if not unique_filename or unique_filename.startswith('.'):
+            flash('⚠️ 文件名不合法', 'error')
+            return redirect(url_for('st26_index'))
+
+        file_path = os.path.join(upload_folder, unique_filename)
+
+        # 再次规范化并验证路径在上传目录内
+        file_path = os.path.normpath(file_path)
+        if not file_path.startswith(upload_folder):
+            app.logger.error(f'Path traversal attempt detected: {file_path}')
+            flash('⚠️ 文件路径不合法', 'error')
+            return redirect(url_for('st26_index'))
+
+        # 验证文件内容：检查是否为有效的 Excel 文件
+        try:
+            file.seek(0)  # 重置文件指针
+            # 尝试读取文件，验证是否为有效的 Excel
+            import openpyxl
+            try:
+                # 尝试用 openpyxl 打开，检查是否为有效的 xlsx 文件
+                test_wb = openpyxl.load_workbook(file, read_only=True)
+                test_wb.close()
+            except Exception as excel_error:
+                app.logger.error(f'Invalid Excel file: {excel_error}')
+                flash('⚠️ 文件格式不正确或文件已损坏，请上传有效的 .xlsx 文件', 'error')
+                return redirect(url_for('st26_index'))
+        except Exception as e:
+            app.logger.error(f'File validation error: {e}')
+            flash('⚠️ 文件验证失败，请重试', 'error')
+            return redirect(url_for('st26_index'))
+
+        # 重置文件指针并保存文件
+        file.seek(0)
         file.save(file_path)
         app.logger.info(f'File saved successfully: {file_path}')
 
+        # 接收专家模式设置
+        expert_settings = None
         try:
-            # 提交异步转换任务
+            expert_settings_json = request.form.get('expert_settings')
+            if expert_settings_json:
+                import json
+                expert_settings = json.loads(expert_settings_json)
+                app.logger.info(f'Expert settings received: {expert_settings}')
+                # 保存到session以便后续使用
+                session['expert_settings'] = expert_settings
+        except Exception as e:
+            app.logger.warning(f'Failed to parse expert settings: {e}')
+
+        try:
+            # 提交异步转换任务（传递专家设置）
             task = convert_excel_task.apply_async(
-                args=[file_path, app.config['OUTPUTS_FOLDER']]
+                args=[file_path, app.config['OUTPUTS_FOLDER'], expert_settings]
             )
             app.logger.info(f'Async task submitted with ID: {task.id}')
 
-            # 保存任务信息到session
+            # 保存任务信息到session（仅存储文件名，不存储完整路径）
             session['task_id'] = task.id
-            session['uploaded_file_path'] = file_path  # 存储上传的文件路径
+            session['uploaded_filename'] = unique_filename  # 仅存储文件名
             session['original_filename'] = file.filename  # 存储原始文件名
 
             # 清除之前的结果和错误信息
@@ -764,15 +898,21 @@ def task_status(task_id):
             'state': task.state,
             'current': 0,
             'total': 100,
-            'status': '处理中...'
+            'status': '处理中...',
+            'stage': '',
+            'processed_sequences': 0,
+            'total_sequences': 0
         }
 
         if task.state == 'PENDING':
             response['status'] = '正在排队...'
-            
+
         elif task.state == 'PROGRESS':
             # 获取进度信息
             response.update(task.info)
+            # 确保有默认的阶段信息
+            if 'stage' not in response:
+                response['stage'] = task.info.get('stage', '处理中...')
             
         elif task.state == 'SUCCESS':
             response['status'] = '处理完成'
@@ -826,13 +966,14 @@ def task_status(task_id):
                             error_msg = result.get('error_message', '未知错误')
                             
                             # 删除上传的文件
-                            uploaded_file_path = (
-                                session.pop('uploaded_file_path', None)
-                            )
-                            if uploaded_file_path and (
-                                os.path.exists(uploaded_file_path)
-                            ):
-                                os.remove(uploaded_file_path)
+                            uploaded_filename = session.pop('uploaded_filename', None)
+                            if uploaded_filename:
+                                try:
+                                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                                    if os.path.exists(uploaded_file_path):
+                                        os.remove(uploaded_file_path)
+                                except (ValueError, OSError) as e:
+                                    app.logger.error(f'Failed to delete uploaded file: {e}')
 
                             # 清除任务信息
                             session.pop('task_id', None)
@@ -879,9 +1020,14 @@ def task_status(task_id):
                     app.logger.error(error_msg)
 
                     # 删除上传的文件
-                    uploaded_file_path = session.pop('uploaded_file_path', None)
-                    if uploaded_file_path and os.path.exists(uploaded_file_path):
-                        os.remove(uploaded_file_path)
+                    uploaded_filename = session.pop('uploaded_filename', None)
+                    if uploaded_filename:
+                        try:
+                            uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                            if os.path.exists(uploaded_file_path):
+                                os.remove(uploaded_file_path)
+                        except (ValueError, OSError) as e:
+                            app.logger.error(f'Failed to delete uploaded file: {e}')
 
                     # 清除任务信息
                     session.pop('task_id', None)
@@ -904,11 +1050,16 @@ def task_status(task_id):
                 response['error'] = str(task_info)
             
             # 删除上传的文件
-            uploaded_file_path = session.pop('uploaded_file_path', None)
-            if uploaded_file_path and os.path.exists(uploaded_file_path):
-                os.remove(uploaded_file_path)
-                app.logger.info(f'Deleted uploaded file: {uploaded_file_path}')
-            
+            uploaded_filename = session.pop('uploaded_filename', None)
+            if uploaded_filename:
+                try:
+                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                    if os.path.exists(uploaded_file_path):
+                        os.remove(uploaded_file_path)
+                        app.logger.info(f'Deleted uploaded file: {uploaded_file_path}')
+                except (ValueError, OSError) as e:
+                    app.logger.error(f'Failed to delete uploaded file: {e}')
+
             # 清除任务信息
             session.pop('task_id', None)
             session.pop('original_filename', None)
@@ -944,12 +1095,15 @@ def download_xml(filename):
             app.logger.info(f'Deleted XML file: {xml_path}')
 
         # 删除上传的Excel文件
-        uploaded_file_path = session.pop('uploaded_file_path', None)
-        if uploaded_file_path and os.path.exists(uploaded_file_path):
-            os.remove(uploaded_file_path)
-            app.logger.info(
-                        f'Deleted uploaded Excel file: {uploaded_file_path}'
-                    )
+        uploaded_filename = session.pop('uploaded_filename', None)
+        if uploaded_filename:
+            try:
+                uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                if os.path.exists(uploaded_file_path):
+                    os.remove(uploaded_file_path)
+                    app.logger.info(f'Deleted uploaded Excel file: {uploaded_file_path}')
+            except (ValueError, OSError) as e:
+                app.logger.error(f'Failed to delete uploaded file: {e}')
 
         # 清除session中的缓存数据
         session.pop('xml_file', None)
@@ -1023,25 +1177,30 @@ def clear_task(task_id):
             if task_state == 'SUCCESS':
                 # 只清除进行中的数据，保留已完成的结果
                 session.pop('task_id', None)
-                session.pop('uploaded_file_path', None)
+                session.pop('uploaded_filename', None)
                 session.pop('original_filename', None)
                 session.pop('error_message', None)
                 session.pop('error_sequence', None)
                 session.pop('error_position', None)
                 # 保留: xml_file, sequence_summary, reminders (这些都是结果数据)
-                
+
                 app.logger.info(f'清除已完成任务 {task_id} 的进行中数据，保留结果数据')
-                
+
             elif task_state in ['PENDING', 'STARTED', 'RETRY']:
                 # 任务未完成，清除所有数据
-                uploaded_file_path = session.pop('uploaded_file_path', None)
-                if uploaded_file_path and os.path.exists(uploaded_file_path):
-                    os.remove(uploaded_file_path)
-                
+                uploaded_filename = session.pop('uploaded_filename', None)
+                if uploaded_filename:
+                    try:
+                        uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                        if os.path.exists(uploaded_file_path):
+                            os.remove(uploaded_file_path)
+                    except (ValueError, OSError) as e:
+                        app.logger.error(f'Failed to delete uploaded file: {e}')
+
                 # 尝试撤销任务（如果任务仍在运行）
                 celery.control.revoke(task_id, terminate=True)
                 app.logger.info(f'已撤销运行中的任务: {task_id}')
-                
+
                 session.pop('task_id', None)
                 session.pop('original_filename', None)
                 session.pop('xml_file', None)
@@ -1050,15 +1209,20 @@ def clear_task(task_id):
                 session.pop('error_message', None)
                 session.pop('error_sequence', None)
                 session.pop('error_position', None)
-                
+
                 app.logger.info(f'清除未完成任务 {task_id} 的所有数据')
-                
+
             elif task_state in ['FAILURE', 'REVOKED']:
                 # 任务已失败或被撤销，清除所有数据
-                uploaded_file_path = session.pop('uploaded_file_path', None)
-                if uploaded_file_path and os.path.exists(uploaded_file_path):
-                    os.remove(uploaded_file_path)
-                
+                uploaded_filename = session.pop('uploaded_filename', None)
+                if uploaded_filename:
+                    try:
+                        uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                        if os.path.exists(uploaded_file_path):
+                            os.remove(uploaded_file_path)
+                    except (ValueError, OSError) as e:
+                        app.logger.error(f'Failed to delete uploaded file: {e}')
+
                 session.pop('task_id', None)
                 session.pop('original_filename', None)
                 session.pop('xml_file', None)
@@ -1067,7 +1231,7 @@ def clear_task(task_id):
                 session.pop('error_message', None)
                 session.pop('error_sequence', None)
                 session.pop('error_position', None)
-                
+
                 app.logger.info(f'清除失败/撤销任务 {task_id} 的所有数据')
                 
             else:
@@ -1079,9 +1243,9 @@ def clear_task(task_id):
             app.logger.warning(f'无法检查任务状态 {task_id}: {task_check_error}')
             # 任务检查失败时，只清除基本数据
             session.pop('task_id', None)
-            session.pop('uploaded_file_path', None)
+            session.pop('uploaded_filename', None)
             session.pop('original_filename', None)
-            
+
             return jsonify({'status': 'warning', 'message': f'任务状态检查失败，仅清除了基本数据'})
             
         # 返回简单的响应，不使用jsonify，因为sendBeacon无法处理JSON响应
@@ -1103,10 +1267,15 @@ def clear_all():
         
         # 如果有任务ID，删除上传的文件
         if task_id:
-            uploaded_file_path = session.get('uploaded_file_path')
-            if uploaded_file_path and os.path.exists(uploaded_file_path):
-                os.remove(uploaded_file_path)
-                app.logger.info(f'已删除上传的文件: {uploaded_file_path}')
+            uploaded_filename = session.get('uploaded_filename')
+            if uploaded_filename:
+                try:
+                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                    if os.path.exists(uploaded_file_path):
+                        os.remove(uploaded_file_path)
+                        app.logger.info(f'已删除上传的文件: {uploaded_file_path}')
+                except (ValueError, OSError) as e:
+                    app.logger.error(f'Failed to delete uploaded file: {e}')
         
         # 清除所有session数据
         session.clear()
@@ -1126,18 +1295,27 @@ def clear_all():
 
 
 @celery.task(bind=True)
-def convert_excel_task(self, file_path, output_folder):
+def convert_excel_task(self, file_path, output_folder, expert_settings=None):
     """异步转换Excel为XML的Celery任务"""
     try:
         app.logger.info(f'Starting conversion task for file: {file_path}')
-        
-        # 设置任务状态
-        self.update_state(state='PROGRESS', meta={'current': 0, 'total': 100})
+        if expert_settings:
+            app.logger.info(f'Using expert settings: {expert_settings}')
 
-        # 执行转换
+        # 阶段1：开始读取文件
+        self.update_state(state='PROGRESS', meta={
+            'current': 10,
+            'total': 100,
+            'stage': '正在读取Excel文件',
+            'processed_sequences': 0,
+            'total_sequences': 0
+        })
+
+        # 执行转换（传递专家设置）
         xml_file_name, sequence_summary, reminders = (
-            convert_excel_to_xml(file_path, output_folder)
+            convert_excel_to_xml(file_path, output_folder, expert_settings)
         )
+
         app.logger.info(
             f'Conversion completed successfully, generated XML: '
             f'{xml_file_name}'
@@ -1150,7 +1328,7 @@ def convert_excel_task(self, file_path, output_folder):
             f'Conversion task failed: {str(e)}',
             exc_info=True
         )
-        
+
         return {
             'status': 'error',
             'error_message': str(e)

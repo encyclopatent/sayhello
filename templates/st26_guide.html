@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ST.26 序列表模板使用指南</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    .guide-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+      line-height: 1.6;
+    }
+    .guide-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 20px;
+      text-align: center;
+      margin: -20px -20px 30px -20px;
+    }
+    .guide-header h1 {
+      margin: 0;
+      font-size: 2.5em;
+    }
+    .guide-header p {
+      margin: 10px 0 0 0;
+      opacity: 0.9;
+    }
+    .nav-buttons {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .nav-buttons .btn {
+      display: inline-block;
+      margin: 0 10px;
+    }
+    .guide-content {
+      font-size: 16px;
+    }
+    .guide-content h2 {
+      color: #667eea;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+      margin-top: 40px;
+    }
+    .guide-content h3 {
+      color: #764ba2;
+      margin-top: 30px;
+    }
+    .guide-content h4 {
+      color: #555;
+      margin-top: 20px;
+    }
+    .guide-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .guide-content table th {
+      background: #667eea;
+      color: white;
+      padding: 12px;
+      text-align: left;
+    }
+    .guide-content table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #ddd;
+    }
+    .guide-content table tr:hover {
+      background: #f5f5f5;
+    }
+    .guide-content code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+    .guide-content pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      border-left: 4px solid #667eea;
+    }
+    .guide-content pre code {
+      background: none;
+      padding: 0;
+    }
+    .guide-content ul, .guide-content ol {
+      margin: 15px 0;
+      padding-left: 30px;
+    }
+    .guide-content li {
+      margin: 8px 0;
+    }
+    .guide-content .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .guide-content .error {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .guide-content .success {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .guide-content .info {
+      background: #d1ecf1;
+      border-left: 4px solid #17a2b8;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .toc {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 30px 0;
+    }
+    .toc h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+    .toc ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    .toc li {
+      margin: 8px 0;
+    }
+    .toc a {
+      color: #333;
+      text-decoration: none;
+    }
+    .toc a:hover {
+      color: #667eea;
+      text-decoration: underline;
+    }
+    .back-to-top {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #667eea;
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+    }
+    .back-to-top:hover {
+      background: #764ba2;
+      transform: translateY(-2px);
+    }
+    @media print {
+      .nav-buttons, .back-to-top {
+        display: none;
+      }
+      .guide-container {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="guide-container">
+    <div class="guide-header">
+      <h1>📘 ST.26 序列表模板使用指南</h1>
+      <p>正确填写 ST.26 序列表 Excel 模板，生成符合 WIPO ST.26 标准的 XML 序列表文件</p>
+    </div>
+
+    <div class="nav-buttons">
+      <a href="/st26" class="btn btn-secondary">← 返回 ST.26 工具</a>
+      <button onclick="window.print()" class="btn btn-secondary">🖨️ 打印指南</button>
+    </div>
+
+    <div class="guide-content">
+      <!-- 目录 -->
+      <div class="toc">
+        <h3>📋 目录</h3>
+        <ul>
+          <li><a href="#section1">1. 模板概述</a></li>
+          <li><a href="#section2">2. 准备工作</a></li>
+          <li><a href="#section3">3. 基础数据填写 (basicdata)</a></li>
+          <li><a href="#section4">4. 序列数据填写 (seqdata)</a></li>
+          <li><a href="#section5">5. 序列修饰符说明</a></li>
+          <li><a href="#section6">6. 常见问题</a></li>
+          <li><a href="#section7">7. 填写示例</a></li>
+          <li><a href="#section8">8. 注意事项</a></li>
+        </ul>
+      </div>
+
+      <!-- 1. 模板概述 -->
+      <h2 id="section1">1. 模板概述</h2>
+      <p>ST.26 Excel 模板包含 <strong>2 个必需的工作表</strong>：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>工作表</th>
+            <th>用途</th>
+            <th>必需性</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>basicdata</strong></td>
+            <td>填写申请基本信息</td>
+            <td>✅ 必需</td>
+          </tr>
+          <tr>
+            <td><strong>seqdata</strong></td>
+            <td>填写序列数据</td>
+            <td>✅ 必需</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="warning">
+        <strong>⚠️ 重要提示：</strong>
+        <ul>
+          <li>不要修改工作表名称（basicdata 和 seqdata）</li>
+          <li>不要删除或重排列</li>
+          <li>所有数据必须使用模板提供的列填写</li>
+        </ul>
+      </div>
+
+      <!-- 2. 准备工作 -->
+      <h2 id="section2">2. 准备工作</h2>
+      <h3>2.1 下载模板</h3>
+      <p>从系统下载最新的 ST.26 模板文件（template.xlsx）</p>
+
+      <h3>2.2 启用宏</h3>
+      <ul>
+        <li>某些 Excel 功能可能需要启用宏</li>
+        <li>建议使用 Microsoft Excel 2016 或更高版本</li>
+        <li>也可以使用 WPS 表格、Google Sheets 等兼容软件</li>
+      </ul>
+
+      <h3>2.3 保存格式</h3>
+      <ul>
+        <li>保存为 <code>.xlsx</code> 格式（Excel 2007+）</li>
+        <li><strong>不要</strong>保存为 <code>.xls</code> 格式（旧版 Excel）</li>
+      </ul>
+
+      <!-- 3. 基础数据填写 -->
+      <h2 id="section3">3. 基础数据填写 (basicdata)</h2>
+      <p>在 <code>basicdata</code> 工作表中填写申请的基本信息：</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>字段名（Field Name）</th>
+            <th>说明</th>
+            <th>示例</th>
+            <th>必需</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ApplicantFileReference</code></td>
+            <td>案号</td>
+            <td>TEST123</td>
+            <td>✅ 必需</td>
+          </tr>
+          <tr>
+            <td><code>ApplicantName</code></td>
+            <td>专利申请人全称</td>
+            <td>XX Biotechnology Co., Ltd.</td>
+            <td>✅ 必需</td>
+          </tr>
+          <tr>
+            <td><code>InventorName</code></td>
+            <td>发明人姓名</td>
+            <td>John Smith</td>
+            <td>可选</td>
+          </tr>
+          <tr>
+            <td><code>InventionTitle</code></td>
+            <td>专利发明名称</td>
+            <td>Gene therapy drug</td>
+            <td>✅ 必需</td>
+          </tr>
+          <tr>
+            <td><code>earliestpriorityIPOfficeCode</code></td>
+            <td>最早优先权局代码</td>
+            <td>CN</td>
+            <td>可选</td>
+          </tr>
+          <tr>
+            <td><code>ApplicationNumberText</code></td>
+            <td>最早优先权申请号</td>
+            <td>CN202410000000.0</td>
+            <td>可选</td>
+          </tr>
+          <tr>
+            <td><code>earliestpriorityFilingDate</code></td>
+            <td>最早优先权申请日期</td>
+            <td>2024-01-15</td>
+            <td>可选</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info">
+        <strong>💡 提示：</strong>
+        <ul>
+          <li>字段名必须使用上述英文名称，区分大小写</li>
+          <li>日期格式请使用 YYYY-MM-DD 格式，如 2024-01-15</li>
+          <li>案号（ApplicantFileReference）将用作 XML 文件名</li>
+        </ul>
+      </div>
+
+      <!-- 4. 序列数据填写 -->
+      <h2 id="section4">4. 序列数据填写 (seqdata)</h2>
+      <p>在 <code>seqdata</code> 工作表中填写每一条序列的详细信息：</p>
+
+      <h3>4.1 必填列</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>列名</th>
+            <th>说明</th>
+            <th>示例</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>序列名称</td>
+            <td>序列的描述性名称（可选）</td>
+            <td>siRNA-01</td>
+          </tr>
+          <tr>
+            <td>分子类型</td>
+            <td>必须使用英文：DNA, RNA, AA 等</td>
+            <td>RNA</td>
+          </tr>
+          <tr>
+            <td>序列</td>
+            <td>实际的序列数据</td>
+            <td>AUGCUAGCUAGC</td>
+          </tr>
+          <tr>
+            <td>生物体</td>
+            <td>来源生物体</td>
+            <td>synthetic construct</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info">
+        <strong>💡 提示：</strong> 序列ID由系统自动生成，无需手动填写
+      </div>
+
+      <h3>4.2 分子类型（必须使用英文）</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>代码</th>
+            <th>说明</th>
+            <th>适用场景</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>DNA</td>
+            <td>脱氧核糖核酸序列</td>
+            <td>DNA 序列</td>
+          </tr>
+          <tr>
+            <td>RNA</td>
+            <td>核糖核酸序列</td>
+            <td>RNA 序列（包括 mRNA, siRNA, miRNA 等）</td>
+          </tr>
+          <tr>
+            <td>AA</td>
+            <td>氨基酸序列</td>
+            <td>蛋白质序列</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 5. 序列修饰符说明 -->
+      <h2 id="section5">5. 序列修饰符说明</h2>
+
+      <h3>5.1 两种支持的修饰符格式</h3>
+      <p>系统支持以下 <strong>两种严格格式</strong>，请选择其中一种填写：</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>对比项</th>
+            <th>格式 1（旧格式）</th>
+            <th>格式 2（新格式）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>命名</strong></td>
+            <td>旧格式</td>
+            <td>新格式</td>
+          </tr>
+          <tr>
+            <td><strong>特点</strong></td>
+            <td>修饰符直接写在碱基前</td>
+            <td>使用括号结构</td>
+          </tr>
+          <tr>
+            <td><strong>硫代表示</strong></td>
+            <td><code>s</code> 在碱基间</td>
+            <td><code>*</code> 在组间</td>
+          </tr>
+          <tr>
+            <td><strong>示例</strong></td>
+            <td><code>mGmGmUmUfGmGfA</code></td>
+            <td><code>(VP)(mG)*(mG)*(mU)(mU)(fG)(mG)(fA)...(L96)</code></td>
+          </tr>
+          <tr>
+            <td><strong>推荐</strong></td>
+            <td>⭐ <strong>推荐使用</strong></td>
+            <td>可用（会被自动转换）</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>格式 1：修饰符在碱基前面（推荐）</h4>
+      <pre><code>mGmGmUmUfGmGfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
+      <ul>
+        <li><code>mG</code> = G 碱基的 2'-O-甲基化</li>
+        <li><code>mU</code> = U 碱基的 2'-O-甲基化</li>
+        <li><code>fG</code> = G 碱基的 2'-氟代</li>
+        <li><code>AsG</code> = A 和 G 之间是硫代磷酸酯键</li>
+      </ul>
+
+      <h4>格式 2：使用括号结构（新格式）</h4>
+      <pre><code>(VP)(mG)*(mG)*(mU)(mU)(fG)(mG)(fA)(mU)(fU)(fU)(fU)(mU)(fC)(mU)(mU)(mG)(mC)(mU)(mA)(mU)(mG)(L96)</code></pre>
+      <ul>
+        <li><code>(VP)</code> = 5'端乙烯基膦酸酯</li>
+        <li><code>(mG)</code> = G 碱基有甲基化修饰</li>
+        <li><code>*(mG)</code> = G 碱基后跟硫代磷酸酯（<code>*</code> = 硫代键）</li>
+        <li><code>(L96)</code> = L96 配体（会被自动移除）</li>
+      </ul>
+
+      <div class="error">
+        <strong>⚠️ 重要提示：</strong>
+        <ul>
+          <li>❌ <strong>两种格式不能混合使用</strong></li>
+          <li>❌ <strong>不支持修饰符在碱基后面的格式</strong>（如 <code>Cm</code>、<code>Um</code>、<code>Af</code>）</li>
+          <li>✅ 系统会将格式 2 自动转换为格式 1</li>
+          <li>✅ 推荐使用格式 1</li>
+        </ul>
+      </div>
+
+      <h4>不支持的格式示例</h4>
+      <pre><code>❌ CmsUfsAmCmUmCf  ← 修饰符在碱基后面（格式不支持）
+❌ GmUmAfGfCmGmGfA  ← 混合格式
+❌ mGAmCfsGmUfAfb   ← 修饰符在后</code></pre>
+
+      <h3>5.2 当前支持的修饰符</h3>
+      <div class="warning">
+        <strong>⚠️ 注意：</strong> 系统当前仅支持以下修饰符，其他修饰符暂不支持
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>修饰符</th>
+            <th>名称</th>
+            <th>含义</th>
+            <th>适用碱基</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>m</strong></td>
+            <td>2'-O-甲基化</td>
+            <td>核糖 2' 位甲基化</td>
+            <td>A/C/G/U</td>
+          </tr>
+          <tr>
+            <td><strong>f</strong></td>
+            <td>2'-氟代</td>
+            <td>核糖 2' 位氟取代</td>
+            <td>A/C/G/U</td>
+          </tr>
+          <tr>
+            <td><strong>e</strong></td>
+            <td>2'-甲氧基乙基</td>
+            <td>2'-MOE 修饰</td>
+            <td>A/C/G/U</td>
+          </tr>
+          <tr>
+            <td><strong>s</strong></td>
+            <td>硫代磷酸酯键</td>
+            <td>磷酸硫代修饰</td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <td><strong>(VP)</strong></td>
+            <td>5'端乙烯基膦酸酯</td>
+            <td>5' 端乙烯基膦酸酯修饰</td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <td><strong>(L96)</strong></td>
+            <td>L96 配体</td>
+            <td>3' 端配体（会被自动移除）</td>
+            <td>-</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info">
+        <strong>💡 未来计划：</strong> 系统计划开发"专家模式"，支持用户对特定序列和特定位点进行自定义注释。敬请期待！
+      </div>
+
+      <h3>5.3 修饰符使用示例</h3>
+      <h4>siRNA 序列示例（格式 1）</h4>
+      <pre><code>mGmGmUmUfGmGfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
+      <p>包含：2'-O-甲基修饰（m）和 2'-氟修饰（f）</p>
+
+      <h4>寡核苷酸链示例（格式 1）</h4>
+      <pre><code>AGsCsGsTsAsGsCsTsG</code></pre>
+      <p>包含：全硫代骨架修饰（s）</p>
+
+      <h3>5.4 特殊标记</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>标记</th>
+            <th>含义</th>
+            <th>用途</th>
+            <th>示例</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>(VP)</code></td>
+            <td>5'乙烯基膦酸酯</td>
+            <td>5'端修饰</td>
+            <td><code>(VP)(mG)*(mG)*(mU)</code></td>
+          </tr>
+          <tr>
+            <td><code>*</code></td>
+            <td>硫代磷酸酯键</td>
+            <td>格式 2 中的硫代键</td>
+            <td><code>(mG)*(mU)</code></td>
+          </tr>
+          <tr>
+            <td><code>(L96)</code></td>
+            <td>L96配体</td>
+            <td>3'端配体标记</td>
+            <td><code>...(L96)</code></td>
+          </tr>
+          <tr>
+            <td><code>-L96</code></td>
+            <td>L96配体</td>
+            <td>另一种配体写法</td>
+            <td><code>...-L96</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 6. 常见问题 -->
+      <h2 id="section6">6. 常见问题</h2>
+
+      <h3>❓ Q1: 如何确认我的模板是最新版本？</h3>
+      <p><strong>答:</strong> 每次使用前从系统重新下载模板，确保使用最新版本。</p>
+
+      <h3>❓ Q2: 可以修改模板的列名吗？</h3>
+      <p><strong>答:</strong> 不可以。系统通过列名识别数据，修改列名会导致数据无法正确读取。</p>
+
+      <h3>❓ Q3: 分子类型如何选择？</h3>
+      <p><strong>答:</strong> 根据您的序列类型选择：</p>
+      <ul>
+        <li>DNA → 脱氧核糖核酸序列</li>
+        <li>RNA → 核糖核酸序列（包括 mRNA, siRNA, miRNA 等）</li>
+        <li>AA → 氨基酸/蛋白质序列</li>
+      </ul>
+
+      <h3>❓ Q4: 序列中可以使用简并碱基吗？</h3>
+      <p><strong>答:</strong> 可以。系统支持以下简并碱基：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>符号</th>
+            <th>含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>R</td>
+            <td>A 或 G</td>
+          </tr>
+          <tr>
+            <td>Y</td>
+            <td>C 或 U/T</td>
+          </tr>
+          <tr>
+            <td>M</td>
+            <td>A 或 C</td>
+          </tr>
+          <tr>
+            <td>K</td>
+            <td>G 或 U/T</td>
+          </tr>
+          <tr>
+            <td>S</td>
+            <td>G 或 C</td>
+          </tr>
+          <tr>
+            <td>W</td>
+            <td>A 或 U/T</td>
+          </tr>
+          <tr>
+            <td>H</td>
+            <td>A、C 或 U/T</td>
+          </tr>
+          <tr>
+            <td>B</td>
+            <td>G、C 或 U/T</td>
+          </tr>
+          <tr>
+            <td>V</td>
+            <td>A、G 或 C</td>
+          </tr>
+          <tr>
+            <td>D</td>
+            <td>A、G 或 U/T</td>
+          </tr>
+          <tr>
+            <td>N</td>
+            <td>任意碱基</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>❓ Q5: 如何填写生物体名称？</h3>
+      <p><strong>答:</strong> 根据序列来源填写：</p>
+      <ul>
+        <li>人工合成 → <code>synthetic construct</code></li>
+        <li>人类 → <code>Homo sapiens</code></li>
+        <li>小鼠 → <code>Mus musculus</code></li>
+        <li>大肠杆菌 → <code>Escherichia coli</code></li>
+      </ul>
+      <p>其他生物请使用学名，可在 <a href="https://www.ncbi.nlm.nih.gov/taxonomy" target="_blank">NCBI Taxonomy</a> 查询。</p>
+
+      <h3>❓ Q6: 可以同时上传多个文件吗？</h3>
+      <p><strong>答:</strong> 不可以。每次只能上传一个 Excel 文件，如果有多条序列请放在同一个文件的 <code>seqdata</code> 工作表中。</p>
+
+      <h3>❓ Q7: 序列长度有限制吗？</h3>
+      <p><strong>答:</strong> 理论上没有严格限制，但建议：</p>
+      <ul>
+        <li>单条序列不超过 10,000 个碱基/氨基酸</li>
+        <li>每个文件不超过 1,000 条序列</li>
+      </ul>
+
+      <h3>❓ Q8: 上传后能修改数据吗？</h3>
+      <p><strong>答:</strong> 可以。修改 Excel 文件后重新上传即可，系统会覆盖之前的结果。</p>
+
+      <h3>❓ Q9: 可以添加自定义列吗？</h3>
+      <p><strong>答:</strong> 可以，但需要注意：</p>
+      <ul>
+        <li>✅ 可以添加自定义列</li>
+        <li>✅ 可以调整列的顺序</li>
+        <li>❌ 不能修改工作表名称</li>
+        <li>❌ 不能删除必需列</li>
+        <li>❌ 不能修改列名（系统会自动识别）</li>
+      </ul>
+
+      <h3>❓ Q10: 两种修饰符格式有什么区别？</h3>
+      <p><strong>答:</strong> 两种格式在功能上完全相同，但<strong>不能混用</strong>：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>对比项</th>
+            <th>格式 1（旧格式）</th>
+            <th>格式 2（新格式）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>写法</strong></td>
+            <td><code>mGmGmUmU</code></td>
+            <td><code>(mG)*(mG)*(mU)</code></td>
+          </tr>
+          <tr>
+            <td><strong>硫代</strong></td>
+            <td><code>s</code> 在碱基间</td>
+            <td><code>*</code> 在组间</td>
+          </tr>
+          <tr>
+            <td><strong>识别</strong></td>
+            <td>✅ 直接识别</td>
+            <td>✅ 自动转换</td>
+          </tr>
+          <tr>
+            <td><strong>混用</strong></td>
+            <td>❌ 不能混用</td>
+            <td>❌ 不能混用</td>
+          </tr>
+          <tr>
+            <td><strong>推荐</strong></td>
+            <td>⭐ <strong>强烈推荐</strong></td>
+            <td>需要转换</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="warning">
+        <strong>重要区别：</strong>
+        <ul>
+          <li>格式 2 会被系统自动转换为格式 1</li>
+          <li>两种格式不能在同一条序列中混用</li>
+          <li>推荐始终使用格式 1</li>
+        </ul>
+      </div>
+
+      <h3>❓ Q11: 为什么不能混合使用两种格式？</h3>
+      <p><strong>答:</strong> 因为系统会自动检测并转换格式：</p>
+      <p><strong>场景 1：纯格式 1</strong></p>
+      <pre><code>mGmGmUmUfGmGfA  ✅ 直接使用</code></pre>
+
+      <p><strong>场景 2：纯格式 2</strong></p>
+      <pre><code>(VP)(mG)*(mU)(fG)(L96)  ✅ 自动转换为格式 1</code></pre>
+
+      <p><strong>场景 3：混合格式（不支持）</strong></p>
+      <pre><code>CmsUfsAmUmCf  ❌ 格式错误
+(VP)(mG)*mUfA  ❌ 格式错误</code></pre>
+
+      <div class="success">
+        <strong>建议：</strong>
+        <ul>
+          <li>✅ 新数据统一使用格式 1</li>
+          <li>✅ 旧数据（格式 2）无需修改，系统会处理</li>
+          <li>❌ 不要创建混合格式</li>
+        </ul>
+      </div>
+
+      <h3>❓ Q12: 特殊标记如 (VP)、*、(L96) 是什么意思？</h3>
+      <p><strong>答:</strong> 这些是序列中的特殊标记：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>标记</th>
+            <th>含义</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>(VP)</code></td>
+            <td>5'乙烯基膦酸酯</td>
+            <td>5'端修饰</td>
+          </tr>
+          <tr>
+            <td><code>*</code></td>
+            <td>硫代磷酸酯键</td>
+            <td>格式 2 中的硫代键表示</td>
+          </tr>
+          <tr>
+            <td><code>(L96)</code></td>
+            <td>L96配体</td>
+            <td>3'端配体标记</td>
+          </tr>
+          <tr>
+            <td><code>-L96</code></td>
+            <td>L96配体</td>
+            <td>另一种配体写法</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p><strong>示例：</strong></p>
+      <pre><code>(VP)(mG)*(mG)*(mU)(mU)(fG)(mG)(L96)</code></pre>
+      <ul>
+        <li><code>(VP)</code> = 5'端有乙烯基膦酸酯</li>
+        <li><code>(mG)</code> = 甲基化修饰</li>
+        <li><code>*</code> = 硫代磷酸酯键</li>
+        <li><code>(L96)</code> = 3'端配体</li>
+      </ul>
+
+      <div class="info">
+        <strong>提示：</strong> 这些标记会被系统自动识别并正确处理。
+      </div>
+
+      <h3>❓ Q13: 如何保证数据质量？</h3>
+      <p><strong>答:</strong> 建议：</p>
+      <ol>
+        <li>✅ 使用系统提供的最新模板</li>
+        <li>✅ 填写前仔细阅读本指南</li>
+        <li>✅ 使用真实的实验数据</li>
+        <li>✅ 仔细检查序列拼写</li>
+        <li>✅ 确认修饰符位置正确</li>
+        <li>✅ 先用少量数据测试</li>
+      </ol>
+
+      <!-- 7. 填写示例 -->
+      <h2 id="section7">7. 填写示例</h2>
+
+      <h3>示例 1：填写基础数据 (basicdata)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>字段名</th>
+            <th>填写内容</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ApplicantFileReference</td>
+            <td>TEST123</td>
+          </tr>
+          <tr>
+            <td>ApplicantName</td>
+            <td>XX Biopharmaceutical Co., Ltd.</td>
+          </tr>
+          <tr>
+            <td>InventorName</td>
+            <td>Zhang San</td>
+          </tr>
+          <tr>
+            <td>InventionTitle</td>
+            <td>siRNA drug for treating liver cancer</td>
+          </tr>
+          <tr>
+            <td>earliestpriorityIPOfficeCode</td>
+            <td>CN</td>
+          </tr>
+          <tr>
+            <td>ApplicationNumberText</td>
+            <td>CN202410123456.7</td>
+          </tr>
+          <tr>
+            <td>earliestpriorityFilingDate</td>
+            <td>2024-03-15</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>示例 2：填写序列数据 (seqdata) - siRNA</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>序列名称</th>
+            <th>分子类型</th>
+            <th>序列</th>
+            <th>生物体</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>siRNA-正义链</td>
+            <td>RNA</td>
+            <td>mGmGmUmUfGmGfAmUfUfUfUmUfC</td>
+            <td>synthetic construct</td>
+          </tr>
+          <tr>
+            <td>siRNA-反义链</td>
+            <td>RNA</td>
+            <td>AUGCUGCAUGCUGCAUGC</td>
+            <td>synthetic construct</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>示例 3：填写序列数据 (seqdata) - 蛋白质</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>序列名称</th>
+            <th>分子类型</th>
+            <th>序列</th>
+            <th>生物体</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cas9蛋白</td>
+            <td>AA</td>
+            <td>MDKKYSIGLDIGTNSVGWAVLDD...</td>
+            <td>synthetic construct</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 8. 注意事项 -->
+      <h2 id="section8">8. 注意事项</h2>
+
+      <div class="error">
+        <h3>❌ 禁止事项</h3>
+        <ul>
+          <li>❌ 不要修改工作表名称（basicdata 和 seqdata）</li>
+          <li>❌ 不要删除或重命名必需列</li>
+          <li>❌ 不要在序列中添加空格或特殊字符（除修饰符外）</li>
+          <li>❌ 不要使用过期的模板版本</li>
+          <li>❌ 不要混合使用两种修饰符格式</li>
+          <li>❌ 不要在修饰符后使用碱基后置格式（如 <code>Cm</code>、<code>Um</code>）</li>
+        </ul>
+      </div>
+
+      <div class="success">
+        <h3>✅ 推荐做法</h3>
+        <ul>
+          <li>✅ 每次使用前下载最新模板</li>
+          <li>✅ 使用格式 1（修饰符在碱基前）</li>
+          <li>✅ 仔细检查序列拼写和修饰符位置</li>
+          <li>✅ 先用少量数据测试</li>
+          <li>✅ 生成 XML 后导入 WIPO 工具检查</li>
+          <li>✅ 保留原始 Excel 文件备份</li>
+        </ul>
+      </div>
+
+      <div class="info">
+        <h3>💡 温馨提示</h3>
+        <ul>
+          <li>💡 序列长度无严格限制，但建议单条不超过 10,000 个字符</li>
+          <li>💡 文件生成后会自动从服务器删除，下载后请妥善保存</li>
+          <li>💡 如遇到问题，请检查模板格式和填写内容是否符合要求</li>
+          <li>💡 生成的 XML 文件建议导入回 WIPO 工具进行二次验证</li>
+        </ul>
+      </div>
+
+      <hr style="margin: 50px 0; border: none; border-top: 2px solid #eee;">
+
+      <div class="nav-buttons" style="margin-bottom: 0;">
+        <a href="/st26" class="btn btn-secondary">← 返回 ST.26 工具</a>
+        <button onclick="window.print()" class="btn btn-secondary">🖨️ 打印指南</button>
+        <a href="/static/修饰符格式说明.md" class="btn btn-secondary" download>📥 下载修饰符快速参考</a>
+      </div>
+
+      <p style="text-align: center; color: #999; margin-top: 50px;">
+        © 2024 ST.26 序列表生成工具 | 使用指南 v2.0
+      </p>
+    </div>
+  </div>
+
+  <div class="back-to-top" onclick="scrollToTop()">↑</div>
+
+  <script>
+    // 返回顶部功能
+    function scrollToTop() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+
+    // 显示/隐藏返回顶部按钮
+    window.onscroll = function() {
+      const backToTop = document.querySelector('.back-to-top');
+      if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+        backToTop.style.display = 'flex';
+      } else {
+        backToTop.style.display = 'none';
+      }
+    };
+
+    // 平滑滚动到锚点
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href !== '#' && href.startsWith('#')) {
+          e.preventDefault();
+          const target = document.querySelector(href);
+          if (target) {
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

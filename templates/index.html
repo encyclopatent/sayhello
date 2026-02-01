@@ -3,19 +3,124 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta http-equiv="Content-Style-Type" content="text/css">
-  <title>ST26 XML生成工具</title>
+  <title>ST26 XML生成工具 v2.0</title>
   <meta name="Generator" content="Cocoa HTML Writer">
   <meta name="CocoaVersion" content="2685.3">
   <!-- 引入CSS文件 -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* 专家模式样式 */
+    .expert-mode-section {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .expert-mode-toggle {
+      width: 100%;
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .expert-mode-toggle:hover {
+      background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+    }
+
+    .expert-mode-content {
+      background: #f8f9fa;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .expert-mode-content.hidden {
+      display: none;
+    }
+
+    .expert-mode-form {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .expert-input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+
+    .expert-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: 5px;
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+    }
+
+    .expert-mode-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 25px;
+    }
+
+    .expert-settings-status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .expert-settings-status.show {
+      display: block;
+    }
+
+    .expert-settings-status.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .expert-settings-status.info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+  </style>
 </head>
 <body>
   <h1>
-    <b>ST26格式序列表XML生成工具</b>
+    <b>ST26格式序列表XML生成工具 v2.0</b>
   </h1>
   <div class="nav-buttons">
     <a href="/" class="btn btn-secondary">返回主页</a>
-    <button id="clear-all-btn" class="btn btn-danger">清除所有数据</button>
   </div>
   
   <div class="section">
@@ -24,14 +129,81 @@
       <b>下载模板</b>
     </h2>
     <p>请先下载模板文件，按照模板格式填写数据：</p>
-    <a href="{{ url_for('download_template') }}" class="download-btn">
-      下载Excel模板
-    </a>
+    <div class="button-group">
+      <a href="{{ url_for('download_template') }}" class="download-btn">
+        下载Excel模板
+      </a>
+      <a href="{{ url_for('st26_guide') }}" class="download-btn" style="background-color: #4CAF50;">
+        📖 查看使用指南
+      </a>
+    </div>
   </div>
   
   <div class="section">
     <h2>
       <span class="step-number">2</span>
+      <b>专家模式设置（可选）</b>
+    </h2>
+    <p>自定义修饰符的显示名称，如不需要可跳过此步骤：</p>
+
+    <div class="expert-mode-section">
+      <button class="expert-mode-toggle" id="expertModeToggle" onclick="toggleExpertMode()">
+        <span>🔧 展开专家模式设置</span>
+        <span id="expertModeIcon">▼</span>
+      </button>
+
+      <div id="expertModeContent" class="expert-mode-content hidden">
+        <div class="expert-mode-form">
+          <h3 style="margin-bottom: 15px; color: #667eea;">修饰符英文名称（用于XML注释）</h3>
+          <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
+            ⚠️ <strong>重要提示：</strong>自定义XML中的修饰符英文名称。
+             对于m和f修饰符，使用 {base} 作为碱基占位符，系统会自动替换为实际碱基名称（adenosine/cytidine/guanosine/uridine）。
+          </p>
+
+          <div class="form-group">
+            <label for="m-modifier-name-en">m (2'-O-methyl) 英文名称:</label>
+            <input type="text" id="m-modifier-name-en" class="expert-input" placeholder="默认: 2prime-O-methyl {base}">
+            <span class="form-hint">默认: "2prime-O-methyl {base}"，{base}会被替换为实际碱基。例如输入 "2'-O-methyl {base}" 生成 "2'-O-methyl adenosine"</span>
+          </div>
+
+          <div class="form-group">
+            <label for="f-modifier-name-en">f (2'-fluoro) 英文名称:</label>
+            <input type="text" id="f-modifier-name-en" class="expert-input" placeholder="默认: 2prime-fluoro {base}">
+            <span class="form-hint">默认: "2prime-fluoro {base}"，{base}会被替换为实际碱基</span>
+          </div>
+
+          <div class="form-group">
+            <label for="e-modifier-name-en">e (2'-MOE) 英文名称:</label>
+            <input type="text" id="e-modifier-name-en" class="expert-input" placeholder="默认: 2prime-methoxyethyl {base}">
+            <span class="form-hint">默认: "2prime-methoxyethyl {base}"</span>
+          </div>
+
+          <div class="form-group">
+            <label for="s-modifier-name-en">s (phosphorothioate) 英文名称:</label>
+            <input type="text" id="s-modifier-name-en" class="expert-input" placeholder="默认: phosphorothioate linkage">
+            <span class="form-hint">默认: "phosphorothioate linkage"</span>
+          </div>
+
+          <div class="form-group">
+            <label for="pv-modifier-name-en">pv (5'-vinylphosphonate) 英文名称:</label>
+            <input type="text" id="pv-modifier-name-en" class="expert-input" placeholder="默认: 5prime-vinylphosphonate">
+            <span class="form-hint">默认: "5prime-vinylphosphonate"</span>
+          </div>
+
+          <div class="expert-mode-buttons">
+            <button type="button" class="btn btn-primary" onclick="saveExpertSettings()">💾 保存设置</button>
+            <button type="button" class="btn btn-secondary" onclick="resetExpertSettings()">↺ 重置为默认</button>
+          </div>
+
+          <div id="expert-settings-status" class="expert-settings-status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>
+      <span class="step-number">3</span>
       <b>上传填写的数据文件</b>
     </h2>
     
@@ -143,39 +315,14 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // 加载专家模式设置
+      loadExpertSettings();
+
       // 文件上传交互脚本
       const fileInput = document.getElementById('fileInput');
       const uploadArea = document.querySelector('.upload-area');
       const submitBtn = document.getElementById('submitBtn');
-      const clearAllBtn = document.getElementById('clear-all-btn');
-      
-      // 添加清除按钮点击事件
-      if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', function() {
-          if (confirm('确定要清除所有数据吗？这将删除当前上传的文件和转换结果。')) {
-            fetch('/clear_all', {
-              method: 'POST',
-              credentials: 'include'
-            })
-            .then(function(response) {
-              return response.json();
-            })
-            .then(function(data) {
-              if (data.status === 'success') {
-                // 清除成功，刷新页面
-                window.location.reload();
-              } else {
-                alert('清除失败: ' + data.message);
-              }
-            })
-            .catch(function(error) {
-              console.error('清除请求出错:', error);
-              alert('清除请求失败，请稍后重试。');
-            });
-          }
-        });
-      }
-      
+
       // 下载状态标记
       let isDownloading = false;
       
@@ -309,7 +456,39 @@
       
       fileInput.addEventListener('change', function() {
         if (fileInput.files.length > 0) {
-          submitBtn.click(); // 自动提交表单
+          // 获取专家模式设置
+          const expertSettings = getExpertSettings();
+
+          // 创建FormData对象
+          const formData = new FormData();
+          formData.append('file', fileInput.files[0]);
+          formData.append('expert_settings', JSON.stringify(expertSettings));
+
+          // 使用fetch上传文件
+          fetch('/upload', {
+            method: 'POST',
+            body: formData
+          })
+          .then(function(response) {
+            if (response.redirected) {
+              window.location.href = response.url;
+            } else {
+              return response.text().then(function(text) {
+                // 如果返回HTML,可能是错误页面,直接显示
+                if (response.ok) {
+                  document.open();
+                  document.write(text);
+                  document.close();
+                } else {
+                  throw new Error('上传失败');
+                }
+              });
+            }
+          })
+          .catch(function(error) {
+            console.error('上传失败:', error);
+            alert('文件上传失败，请重试');
+          });
         }
       });
       
@@ -532,6 +711,97 @@
 
   <!-- 折叠菜单JavaScript -->
   <script>
+    // 专家模式相关功能
+    function toggleExpertMode() {
+      const content = document.getElementById('expertModeContent');
+      const icon = document.getElementById('expertModeIcon');
+      const toggle = document.getElementById('expertModeToggle');
+
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.textContent = '▲';
+        toggle.querySelector('span:first-child').textContent = '🔧 收起专家模式设置';
+      } else {
+        content.classList.add('hidden');
+        icon.textContent = '▼';
+        toggle.querySelector('span:first-child').textContent = '🔧 展开专家模式设置';
+      }
+    }
+
+    function saveExpertSettings() {
+      const mNameEn = document.getElementById('m-modifier-name-en').value.trim();
+      const fNameEn = document.getElementById('f-modifier-name-en').value.trim();
+      const eNameEn = document.getElementById('e-modifier-name-en').value.trim();
+      const sNameEn = document.getElementById('s-modifier-name-en').value.trim();
+      const pvNameEn = document.getElementById('pv-modifier-name-en').value.trim();
+
+      const settings = {
+        mEn: mNameEn,
+        fEn: fNameEn,
+        eEn: eNameEn,
+        sEn: sNameEn,
+        pvEn: pvNameEn
+      };
+
+      localStorage.setItem('expertModifierSettings', JSON.stringify(settings));
+
+      showExpertSettingsStatus('✅ 设置已保存！上传文件时将自动应用自定义名称', 'success');
+    }
+
+    function resetExpertSettings() {
+      document.getElementById('m-modifier-name-en').value = '';
+      document.getElementById('f-modifier-name-en').value = '';
+      document.getElementById('e-modifier-name-en').value = '';
+      document.getElementById('s-modifier-name-en').value = '';
+      document.getElementById('pv-modifier-name-en').value = '';
+
+      localStorage.removeItem('expertModifierSettings');
+
+      showExpertSettingsStatus('↺ 已重置为默认设置', 'info');
+    }
+
+    function showExpertSettingsStatus(message, type) {
+      const statusDiv = document.getElementById('expert-settings-status');
+      statusDiv.textContent = message;
+      statusDiv.className = `expert-settings-status show ${type}`;
+
+      setTimeout(() => {
+        statusDiv.classList.remove('show');
+      }, 3000);
+    }
+
+    function loadExpertSettings() {
+      const savedSettings = localStorage.getItem('expertModifierSettings');
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          if (settings.mEn) document.getElementById('m-modifier-name-en').value = settings.mEn;
+          if (settings.fEn) document.getElementById('f-modifier-name-en').value = settings.fEn;
+          if (settings.eEn) document.getElementById('e-modifier-name-en').value = settings.eEn;
+          if (settings.sEn) document.getElementById('s-modifier-name-en').value = settings.sEn;
+          if (settings.pvEn) document.getElementById('pv-modifier-name-en').value = settings.pvEn;
+        } catch (e) {
+          console.error('加载专家模式设置失败:', e);
+        }
+      }
+    }
+
+    function getExpertSettings() {
+      const mNameEn = document.getElementById('m-modifier-name-en').value.trim();
+      const fNameEn = document.getElementById('f-modifier-name-en').value.trim();
+      const eNameEn = document.getElementById('e-modifier-name-en').value.trim();
+      const sNameEn = document.getElementById('s-modifier-name-en').value.trim();
+      const pvNameEn = document.getElementById('pv-modifier-name-en').value.trim();
+
+      return {
+        mEn: mNameEn,
+        fEn: fNameEn,
+        eEn: eNameEn,
+        sEn: sNameEn,
+        pvEn: pvNameEn
+      };
+    }
+
     function toggleMenu(menuId) {
       const menu = document.getElementById(menuId);
       const icon = document.getElementById(menuId.replace('-menu', '-icon'));

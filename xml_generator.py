@@ -3,9 +3,11 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import os
 import re
+from functools import lru_cache
 from parser import parse_sequence
 from datetime import datetime
 from parser import BASE_NAMES, PREDEFINED_MODS
+from modifier_config import get_modifier_name_en
 
 # 从模板文件提取的标准字符表映射（硬编码以避免用户修改模板文件导致失效）
 ABBREV_TO_FULLNAME = {
@@ -73,7 +75,36 @@ def get_base_type(fullname):
     else:
         return None
 
-def generate_xml(sequences, basic_data, output_folder):
+
+@lru_cache(maxsize=1000)
+def is_predefined_modifier(mod_text: str) -> bool:
+    """
+    检查修饰符是否在预定义列表中（带缓存）
+
+    Args:
+        mod_text: 修饰符文本
+
+    Returns:
+        是否为预定义修饰符
+    """
+    return mod_text.lower() in PREDEFINED_MODS
+
+
+@lru_cache(maxsize=500)
+def get_modifier_fullname(abbrev: str) -> str:
+    """
+    获取修饰符的完整名称（带缓存）
+
+    Args:
+        abbrev: 修饰符缩写
+
+    Returns:
+        修饰符完整名称，如果不存在则返回原缩写
+    """
+    return ABBREV_TO_FULLNAME.get(abbrev.lower(), abbrev)
+
+
+def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
     # 创建提醒列表
     reminders = []
     
@@ -136,9 +167,24 @@ def generate_xml(sequences, basic_data, output_folder):
     qualifier_counter = 2
 
     for seq_data in sequences:
-        sequence, raw_moltype, organism, qual_moltype, freetexts, ring_infos, hybrid_segments, check_ref, parsed_seq_data, line_number = seq_data
+        # 从字典中提取数据（兼容字典和元组格式）
+        if isinstance(seq_data, dict):
+            sequence = seq_data['sequence']
+            raw_moltype = seq_data['moltype']
+            organism = seq_data['organism']
+            qual_moltype = seq_data['qual_moltype']
+            freetexts = seq_data['freetexts']
+            ring_infos = seq_data['ring_infos']
+            hybrid_segments = seq_data['hybrid_segments']
+            check_ref = seq_data['check_ref']
+            parsed_seq_data = seq_data.get('parsed_seq_data')
+            line_number = seq_data['line_number']
+        else:
+            # 兼容旧的元组格式
+            sequence, raw_moltype, organism, qual_moltype, freetexts, ring_infos, hybrid_segments, check_ref, parsed_seq_data, line_number = seq_data
+
         hybrid_segments = hybrid_segments or []
-        
+
         # 检查是否使用了默认分子类型
         if pd.isnull(raw_moltype):
             moltype = "RNA"
@@ -282,7 +328,7 @@ def generate_xml(sequences, basic_data, output_folder):
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", note_id)
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = "5prime-vinylphosphonate"
+                ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('pv', None, expert_settings)
                 qualifier_counter += 1
             elif mod_type == 'm':
                 base_name = BASE_NAMES.get(base.upper(), {}).get('en', 'base')
@@ -292,7 +338,7 @@ def generate_xml(sequences, basic_data, output_folder):
                     qual = ET.SubElement(quals, "INSDQualifier")
                     qual.set("id", note_id)
                     ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                    ET.SubElement(qual, "INSDQualifier_value").text = "2prime-O-methyl " + base_name
+                    ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('m', base, expert_settings)
                     qualifier_counter += 1
                 else:
                     add_qualifier(quals, "mod_base", f"{base}m")
@@ -304,7 +350,7 @@ def generate_xml(sequences, basic_data, output_folder):
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", note_id)
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = "2prime-fluoro " + base_name
+                ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('f', base, expert_settings)
                 qualifier_counter += 1
             elif mod_type == 'e':
                 base_name = BASE_NAMES.get(base.upper(), {}).get('en', 'base')
@@ -313,14 +359,14 @@ def generate_xml(sequences, basic_data, output_folder):
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", note_id)
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = "2prime-methoxyethyl " + base_name
+                ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('e', base, expert_settings)
                 qualifier_counter += 1
             elif mod_type == 's':
                 note_id = f"q{qualifier_counter}"
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", note_id)
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = "phosphorothioate linkage"
+                ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('s', None, expert_settings)
                 qualifier_counter += 1
 
         # 处理特殊位置
@@ -383,8 +429,8 @@ def generate_xml(sequences, basic_data, output_folder):
                 
                 base_quals = ET.SubElement(base_feature, "INSDFeature_quals")
                 
-                # 检查freetext是否在预定义修饰中（使用原始freetext的小写）
-                if freetext.lower() in PREDEFINED_MODS:
+                # 检查freetext是否在预定义修饰中（使用缓存）
+                if is_predefined_modifier(freetext):
                     add_qualifier(base_quals, "mod_base", freetext.lower())
                     # 如果包含"or"，同时添加note限定符
                     if 'or' in full_freetext:
@@ -437,11 +483,6 @@ def generate_xml(sequences, basic_data, output_folder):
     
     # 返回XML根元素和提醒列表
     return root, reminders
-
-def add_qualifier(quals, name, value):
-    qual = ET.SubElement(quals, "INSDQualifier")
-    ET.SubElement(qual, "INSDQualifier_name").text = name
-    ET.SubElement(qual, "INSDQualifier_value").text = value
 
 def has_chinese(text):
     """检测文本中是否包含中文"""

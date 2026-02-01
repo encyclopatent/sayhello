@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple
+import xml.etree.ElementTree as ET
 
 logger = logging.getLogger(__name__)
 
@@ -68,15 +69,28 @@ def check_required_sheets(file_path: str) -> Tuple[bool, bool, Optional[str]]:
         logger.info("All required sheets found")
         return has_basicdata, has_seqdata, None
 
+    except FileNotFoundError:
+        error_msg = "文件不存在或无法访问"
+        logger.error(f"File not found: {file_path}")
+        return False, False, error_msg
+    except PermissionError:
+        error_msg = "没有权限读取文件，请检查文件权限"
+        logger.error(f"Permission denied: {file_path}")
+        return False, False, error_msg
+    except ValueError as e:
+        error_msg = f"Excel文件格式错误: {str(e)}"
+        logger.error(f"Invalid Excel format: {e}")
+        return False, False, error_msg
     except Exception as e:
-        error_msg = f"读取Excel文件时出错: {str(e)}"
-        logger.error(f"{error_msg}: {e}")
+        error_msg = f"读取Excel文件时发生未知错误: {str(e)}"
+        logger.error(f"Unexpected error reading Excel: {e}", exc_info=True)
         return False, False, error_msg
 
 
 def convert_excel_to_xml(
     file_path: str,
-    output_folder: str
+    output_folder: str,
+    expert_settings: Optional[Dict[str, str]] = None
 ) -> Tuple[str, Dict[str, Any], List[str]]:
     """
     将Excel文件转换为ST26 XML格式。
@@ -84,6 +98,12 @@ def convert_excel_to_xml(
     Args:
         file_path: Excel文件路径
         output_folder: 输出目录路径
+        expert_settings: 专家模式设置，包含：
+            - 'mEn': m修饰符的英文名称（用于XML注释，可包含{base}占位符）
+            - 'fEn': f修饰符的英文名称（用于XML注释，可包含{base}占位符）
+            - 'eEn': e修饰符的英文名称（用于XML注释，可包含{base}占位符）
+            - 'sEn': s修饰符的英文名称（用于XML注释）
+            - 'pvEn': pv修饰符的英文名称（用于XML注释）
 
     Returns:
         Tuple包含:
@@ -122,15 +142,25 @@ def convert_excel_to_xml(
         elif "sheet" in error_message.lower() or "not found" in error_message:
             raise ValueError("请使用模版上传数据！Excel文件中缺少必需的sheet。")
         else:
-            raise ValueError(error_message)
+            raise ValueError(f"数据解析失败: {error_message}")
+
+    except KeyError as ke:
+        error_message = f"缺少必需的数据字段: {str(ke)}"
+        logger.error(f"Missing required field: {ke}")
+        raise ValueError(error_message)
+
+    except IOError as ioe:
+        error_message = f"文件读取错误: {str(ioe)}"
+        logger.error(f"IO error during parsing: {ioe}")
+        raise RuntimeError(error_message)
 
     except Exception as e:
-        logger.error(f"Unexpected error during parsing: {e}")
-        raise RuntimeError(f"解析数据时发生错误: {str(e)}")
+        logger.error(f"Unexpected error during parsing: {e}", exc_info=True)
+        raise RuntimeError(f"解析数据时发生未知错误: {str(e)}")
 
     try:
         parser.print_sequence_info(sequences)
-        sequence_summary = parser.get_sequence_summary(sequences)
+        sequence_summary = parser.get_sequence_summary(sequences, expert_settings)
 
     except Exception as e:
         logger.error(f"Error getting sequence summary: {e}")
@@ -138,15 +168,27 @@ def convert_excel_to_xml(
 
     try:
         logger.info("Generating XML")
-        xml_root, reminders = xml_generator.generate_xml(sequences, basic_data, output_folder)
+        xml_root, reminders = xml_generator.generate_xml(
+            sequences, basic_data, output_folder, expert_settings
+        )
 
         if reminders:
             logger.info(f"Generated {len(reminders)} reminders")
             for reminder in reminders:
                 logger.debug(f"Reminder: {reminder}")
 
+    except ValueError as ve:
+        error_message = f"XML数据验证失败: {str(ve)}"
+        logger.error(f"XML validation error: {ve}")
+        raise ValueError(error_message)
+
+    except ET.ParseError as pe:
+        error_message = f"XML解析错误: {str(pe)}"
+        logger.error(f"XML parse error: {pe}")
+        raise RuntimeError(error_message)
+
     except Exception as e:
-        logger.error(f"XML generation failed: {e}")
+        logger.error(f"XML generation failed: {e}", exc_info=True)
         raise RuntimeError(f"生成XML时发生错误: {str(e)}")
 
     try:
@@ -163,9 +205,24 @@ def convert_excel_to_xml(
         logger.info(f"Successfully generated: {output_file}")
         return output_file, sequence_summary, reminders
 
+    except ValueError as ve:
+        error_message = f"输出文件路径验证失败: {str(ve)}"
+        logger.error(f"Output path validation error: {ve}")
+        raise ValueError(error_message)
+
+    except PermissionError:
+        error_message = "没有权限写入输出目录，请检查目录权限"
+        logger.error(f"Permission denied for output directory: {output_folder}")
+        raise RuntimeError(error_message)
+
+    except IOError as ioe:
+        error_message = f"写入XML文件时发生I/O错误: {str(ioe)}"
+        logger.error(f"IO error writing XML: {ioe}")
+        raise RuntimeError(error_message)
+
     except Exception as e:
-        logger.error(f"Failed to write XML file: {e}")
-        raise RuntimeError(f"写入XML文件时发生错误: {str(e)}")
+        logger.error(f"Failed to write XML file: {e}", exc_info=True)
+        raise RuntimeError(f"写入XML文件时发生未知错误: {str(e)}")
 
 
 def main() -> int:
