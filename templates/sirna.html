@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>siRNA序列匹配分析工具</title>
+    <title>siRNA序列匹配分析工具 v2.0</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <style>
         /* siRNA工具特定样式 */
@@ -240,7 +240,7 @@
     </div>
     
     <div class="siRNA-container">
-        <h1>🧬 siRNA序列匹配分析工具</h1>
+        <h1>🧬 siRNA序列匹配分析工具 v2.0</h1>
         <div class="nav-buttons">
             <a href="/" class="btn btn-secondary">返回主页</a>
         </div>
@@ -545,7 +545,7 @@
             
             // 下载按钮点击
             downloadBtn.addEventListener('click', function() {
-                window.location.href = createRelativePath('/sirna/download');
+                window.location.href = '/sirna/download';
             });
             
             // 页面关闭时提醒用户数据将被删除
