@@ -178,38 +178,138 @@ def blastn_search_ncbi(target_sequence, blast_type="blastn", database="nt", eval
             pass
 
 
-def find_best_match(query_pos, literature_results):
-    """找到最佳匹配的文献序列"""
+def generate_alignment_details(query_seq, target_seq, strand_type, max_mismatch=1):
+    """
+    生成序列比对的详细信息
+
+    参数:
+        query_seq: 查询序列
+        target_seq: 靶序列
+        strand_type: 链类型（"正义链" 或 "反义链"）
+        max_mismatch: 最大允许错配数
+
+    返回:
+        alignment_details: 包含比对详情的字典
+    """
+    try:
+        # 根据链类型确定要比对的序列
+        if strand_type == "反义链":
+            query_aligned = str(Seq(query_seq).reverse_complement())
+        else:
+            query_aligned = query_seq
+
+        # 在靶序列中查找最佳匹配位置
+        start, end = find_max_continuous(query_aligned, target_seq, max_mismatch)
+
+        # 提取靶序列中的匹配片段
+        if end > start:
+            target_matched = target_seq[start:end]
+        else:
+            return None
+
+        # 确保长度一致
+        min_len = min(len(query_aligned), len(target_matched))
+        query_aligned = query_aligned[:min_len]
+        target_matched = target_matched[:min_len]
+
+        # 生成比对字符串
+        alignment_symbols = []
+        match_count = 0
+        mismatch_positions = []
+
+        for i, (q, t) in enumerate(zip(query_aligned, target_matched)):
+            if q == t:
+                alignment_symbols.append('|')  # 匹配
+                match_count += 1
+            else:
+                alignment_symbols.append('×')  # 错配
+                mismatch_positions.append(i + 1)  # 1-based position
+
+        # 计算匹配百分比
+        match_percent = (match_count / min_len * 100) if min_len > 0 else 0
+
+        return {
+            'query_aligned': query_aligned,
+            'target_aligned': target_matched,
+            'alignment_symbols': ''.join(alignment_symbols),
+            'match_count': match_count,
+            'mismatch_count': min_len - match_count,
+            'mismatch_positions': mismatch_positions,
+            'match_percent': round(match_percent, 2),
+            'alignment_length': min_len,
+            'target_start': start,
+            'target_end': end
+        }
+
+    except Exception:
+        return None
+
+
+def find_best_match(query_pos, literature_results, query_strand_type=None):
+    """
+    找到最佳匹配的文献序列
+
+    参数:
+        query_pos: 查询序列的匹配位置
+        literature_results: 文献序列匹配结果列表
+        query_strand_type: 查询序列的链类型（"正义链" 或 "反义链"）
+
+    返回:
+        best_match: 最佳匹配的文献序列结果，优先匹配相同链类型
+    """
     if not query_pos or query_pos == "N/A" or not literature_results:
         return None
-        
+
     try:
         # 解析位置字符串 (格式: "start-end (length bp)")
         q_pos = query_pos.split('(')[0].strip()
         q_start, q_end = map(int, q_pos.split('-'))
         q_len = q_end - q_start
-        
+
         best_score = -1
         best_match = None
-        
+
+        # 分为两组：相同链类型和不同链类型
+        same_strand_matches = []
+        different_strand_matches = []
+
         for result in literature_results:
             lit_pos = result['匹配位置'].split('(')[0].strip()
             l_start, l_end = map(int, lit_pos.split('-'))
-            
+
             # 计算重叠分数
             overlap_start = max(q_start, l_start)
             overlap_end = min(q_end, l_end)
             overlap_len = max(0, overlap_end - overlap_start)
-            
+
             # 计算匹配质量分数
             score = overlap_len - abs(q_start - l_start) * 0.1
-            
+
+            # 根据链类型分组
+            if query_strand_type and result.get('链类型'):
+                if query_strand_type == result.get('链类型'):
+                    same_strand_matches.append((score, result))
+                else:
+                    different_strand_matches.append((score, result))
+            else:
+                # 如果没有链类型信息，都放入相同链类型组
+                same_strand_matches.append((score, result))
+
+        # 优先从相同链类型中找最佳匹配
+        for score, result in same_strand_matches:
             if score > best_score:
                 best_score = score
                 best_match = result
-        
+
+        # 如果相同链类型没有找到好的匹配，才考虑不同链类型
+        if best_score < 0.8 * q_len:
+            for score, result in different_strand_matches:
+                if score > best_score:
+                    best_score = score
+                    best_match = result
+
         return best_match if best_score >= 0.8 * q_len else None
-        
+
     except Exception:
         return None
 
@@ -346,10 +446,11 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
                             # 提取括号内的部分并转换为整数
                             length_str = pos[left_paren + 1:right_paren].replace('bp', '')
                             match_length = int(length_str) if length_str.isdigit() else 0
-                    
+
                     file_results.append({
                         '文献序列ID': name,
                         '序列内容': seq,
+                        '链类型': strand,  # 添加链类型信息
                         '匹配位置': pos,
                         '匹配长度': match_length
                     })
@@ -361,9 +462,11 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
             for excel_row in excel_results:
                 # 同时处理正义链和反义链的匹配
                 if excel_row['链类型'] == "正义链" or excel_row['链类型'] == "反义链":
+                    # 传递查询序列的链类型，优先匹配相同链类型的文献序列
                     best_match = find_best_match(
                         excel_row['匹配位置'],
-                        file_results
+                        file_results,
+                        excel_row['链类型']  # 传递链类型信息
                     )
                     if best_match:
                         excel_row[f'{file_name}_匹配ID'] = best_match['文献序列ID']
@@ -419,9 +522,22 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
             'match_position': result['匹配位置'],
             'match_length': result['匹配长度'],
             'fasta_ids': [],
-            'fasta_match_positions': []
+            'fasta_match_positions': [],
+            'fasta_sequences': [],  # 添加文献序列内容
+            'alignment_details': {}  # 添加比对详情
         }
-        
+
+        # 为查询序列生成比对详情
+        if result['链类型'] in ['正义链', '反义链'] and result['匹配位置'] != 'N/A':
+            alignment = generate_alignment_details(
+                result['序列内容'],
+                target_seq,
+                result['链类型'],
+                max_mismatch
+            )
+            if alignment:
+                front_end_result['query_alignment'] = alignment
+
         # 提取FASTA匹配信息
         for col in result.keys():
             if '_匹配ID' in col:
@@ -431,12 +547,31 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
                 if fasta_id != '无':
                     front_end_result['fasta_ids'].append(fasta_id)
                     front_end_result['fasta_match_positions'].append(position)
-        
+
+                    # 从文献报告中查找对应的序列
+                    if file_name in literature_reports and isinstance(literature_reports[file_name], list):
+                        for lit_result in literature_reports[file_name]:
+                            if lit_result['文献序列ID'] == fasta_id:
+                                front_end_result['fasta_sequences'].append(lit_result['序列内容'])
+
+                                # 为文献序列生成比对详情
+                                if lit_result.get('链类型') and lit_result['匹配位置'] != 'N/A':
+                                    alignment = generate_alignment_details(
+                                        lit_result['序列内容'],
+                                        target_seq,
+                                        lit_result['链类型'],
+                                        max_mismatch
+                                    )
+                                    if alignment:
+                                        front_end_result['alignment_details'][fasta_id] = alignment
+                                break
+
         # 如果没有FASTA匹配，设置默认值
         if not front_end_result['fasta_ids']:
             front_end_result['fasta_ids'] = ['无']
             front_end_result['fasta_match_positions'] = ['无']
-            
+            front_end_result['fasta_sequences'] = ['无']
+
         front_end_results.append(front_end_result)
 
     return front_end_results, output_path, target_seq
@@ -445,18 +580,18 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
 
 def generate_results_table(results, max_rows=10):
     """
-    生成结果表格的HTML
-    
+    生成结果表格的HTML（包含序列比对可视化）
+
     参数:
         results: 分析结果列表
         max_rows: 最多显示的行数
-    
+
     返回:
         table_html: HTML表格字符串
     """
     # 过滤只显示有FASTA匹配的结果（排除'无'的情况）
     filtered_results = [r for r in results if r.get('fasta_ids') and r['fasta_ids'][0] != '无']
-    
+
     table_html = '<table class="results-table">'
     table_html += '<thead><tr>'
     table_html += '<th>查询序列ID</th>'
@@ -465,22 +600,46 @@ def generate_results_table(results, max_rows=10):
     table_html += '<th>匹配长度</th>'
     table_html += '<th>文献序列名称</th>'
     table_html += '<th>文献位置</th>'
+    table_html += '<th>操作</th>'
     table_html += '</tr></thead><tbody>'
 
-    for result in filtered_results[:max_rows]:
-        table_html += '<tr>'
+    for idx, result in enumerate(filtered_results[:max_rows]):
+        result_id = f"result_{idx}"
+        table_html += f'<tr id="{result_id}_row">'
         table_html += f'<td>{result["query_id"]}</td>'
         table_html += f'<td>{result["strand_type"]}</td>'
         table_html += f'<td>{result["match_position"]}</td>'
         table_html += f'<td>{result["match_length"]}</td>'
-        
+
         # 显示FASTA匹配信息（逗号分隔）
         fasta_ids = ', '.join(result['fasta_ids'])
         fasta_positions = ', '.join(result['fasta_match_positions'])
-        
+
         table_html += f'<td>{fasta_ids}</td>'
         table_html += f'<td>{fasta_positions}</td>'
+        table_html += f'<td><button class="btn btn-secondary" onclick="toggleAlignmentDetails(\'{result_id}\')" style="padding: 5px 10px; font-size: 12px;">查看比对</button></td>'
         table_html += '</tr>'
+
+        # 添加比对详情行（默认隐藏）
+        table_html += f'<tr id="{result_id}_details" style="display: none;">'
+        table_html += f'<td colspan="7" style="padding: 20px; background-color: #f8f9fa;">'
+
+        # 查询序列比对
+        if result.get('query_alignment'):
+            aln = result['query_alignment']
+            table_html += generate_alignment_html('查询序列', aln, result['strand_type'])
+
+        # 文献序列比对
+        if result.get('alignment_details'):
+            for fasta_id, fasta_seq in zip(result['fasta_ids'], result['fasta_sequences']):
+                if fasta_id in result['alignment_details']:
+                    lit_aln = result['alignment_details'][fasta_id]
+                    # 获取文献序列的链类型
+                    lit_strand = '正义链'  # 默认值
+                    table_html += '<hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">'
+                    table_html += generate_alignment_html(f'文献序列: {fasta_id}', lit_aln, lit_strand)
+
+        table_html += '</td></tr>'
 
     if len(filtered_results) > max_rows:
         table_html += '<tr><td colspan="7" style="text-align:center;">' \
@@ -493,5 +652,82 @@ def generate_results_table(results, max_rows=10):
                    + '未找到与FASTA序列匹配的结果</td></tr>'
 
     table_html += '</tbody></table>'
-    
+
+    # 添加JavaScript函数
+    table_html += '''
+    <script>
+    function toggleAlignmentDetails(resultId) {
+        const detailsRow = document.getElementById(resultId + '_details');
+        const button = event.target;
+
+        if (detailsRow.style.display === 'none') {
+            detailsRow.style.display = 'table-row';
+            button.textContent = '隐藏比对';
+        } else {
+            detailsRow.style.display = 'none';
+            button.textContent = '查看比对';
+        }
+    }
+    </script>
+    '''
+
     return table_html
+
+
+def generate_alignment_html(title, alignment, strand_type):
+    """生成单个序列比对的HTML"""
+    html = f'''
+    <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6;">
+        <h4 style="margin: 0 0 10px 0; color: #333;">{title}</h4>
+        <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0;">
+            <div style="margin-bottom: 8px;">
+                <span style="color: #666;">链类型:</span>
+                <strong>{strand_type}</strong>
+                <span style="margin-left: 20px; color: #666;">位置:</span>
+                <strong>{alignment['target_start']}-{alignment['target_end']}</strong>
+                <span style="margin-left: 20px; color: #666;">长度:</span>
+                <strong>{alignment['alignment_length']}bp</strong>
+                <span style="margin-left: 20px; color: #666;">匹配度:</span>
+                <strong style="color: {'#28a745' if alignment['match_percent'] >= 90 else '#ffc107' if alignment['match_percent'] >= 80 else '#dc3545'};">{alignment['match_percent']}%</strong>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <div style="word-break: break-all; color: #333;">
+                    <span style="color: #999; margin-right: 10px;">查询:</span>
+                    {highlight_mismatches(alignment['query_aligned'], alignment['alignment_symbols'])}
+                </div>
+                <div style="word-break: break-all; color: #666;">
+                    <span style="color: #999; margin-right: 10px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    {colorize_alignment(alignment['alignment_symbols'])}
+                </div>
+                <div style="word-break: break-all; color: #333;">
+                    <span style="color: #999; margin-right: 10px;">靶序列:</span>
+                    {highlight_mismatches(alignment['target_aligned'], alignment['alignment_symbols'])}
+                </div>
+            </div>
+            {f'<div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 12px;"><strong>错配位置:</strong> {", ".join(map(str, alignment["mismatch_positions"]))}</div>' if alignment['mismatch_positions'] else ''}
+        </div>
+    </div>
+    '''
+    return html
+
+
+def highlight_mismatches(sequence, alignment_symbols):
+    """高亮显示错配的碱基"""
+    result = []
+    for i, (base, symbol) in enumerate(zip(sequence, alignment_symbols)):
+        if symbol == '×':
+            result.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
+        else:
+            result.append(f'<span style="color: #28a745;">{base}</span>')
+    return ''.join(result)
+
+
+def colorize_alignment(alignment_symbols):
+    """给比对符号着色"""
+    result = []
+    for symbol in alignment_symbols:
+        if symbol == '|':
+            result.append('<span style="color: #28a745;">|</span>')
+        else:
+            result.append('<span style="color: #dc3545; font-weight: bold;">×</span>')
+    return ''.join(result)
