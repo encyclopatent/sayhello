@@ -463,9 +463,22 @@ def sirna_upload():
         if excel_file.filename == '':
             return jsonify({'status': 'error', 'message': '未选择Excel文件'})
 
-        # 保存Excel文件
-        excel_filename = secure_filename(excel_file.filename)
-        excel_path = os.path.join(sirna_upload_folder, excel_filename)
+        # 安全化文件名：移除中文字符和特殊字符，只保留ASCII字符
+        import re
+        original_filename = excel_file.filename
+        # 使用secure_filename基础处理，然后进一步清理
+        base_name = secure_filename(original_filename)
+        # 移除中文字符和特殊字符，只保留字母、数字、下划线、点和连字符
+        # 限制文件名长度为100字符
+        safe_filename = re.sub(r'[^\w\-.]', '_', base_name)[:100]
+        # 确保文件名不为空
+        if not safe_filename or safe_filename.startswith('.'):
+            safe_filename = 'sirna_upload.xlsx'
+        # 确保扩展名存在
+        if not safe_filename.endswith('.xlsx') and not safe_filename.endswith('.xls'):
+            safe_filename = safe_filename.rsplit('.', 1)[0] + '.xlsx'
+
+        excel_path = os.path.join(sirna_upload_folder, safe_filename)
         excel_file.save(excel_path)
 
         # 处理FASTA文件
@@ -474,9 +487,21 @@ def sirna_upload():
             fasta_files = request.files.getlist('fasta_files')
             for fasta_file in fasta_files:
                 if fasta_file.filename != '':
-                    fasta_filename = secure_filename(fasta_file.filename)
+                    # 安全化FASTA文件名
+                    fasta_base = secure_filename(fasta_file.filename)
+                    fasta_safe = re.sub(r'[^\w\-.]', '_', fasta_base)[:100]
+                    if not fasta_safe or fasta_safe.startswith('.'):
+                        fasta_safe = f'fasta_{len(fasta_paths)+1}.fasta'
+                    # 确保扩展名存在
+                    if not fasta_safe.endswith('.fasta') and not fasta_safe.endswith('.fa'):
+                        ext = os.path.splitext(fasta_base)[1]
+                        if ext and ext in ['.fasta', '.fa']:
+                            fasta_safe = fasta_safe.rsplit('.', 1)[0] + ext
+                        else:
+                            fasta_safe = fasta_safe.rsplit('.', 1)[0] + '.fasta'
+
                     fasta_path = os.path.join(
-                        sirna_upload_folder, fasta_filename
+                        sirna_upload_folder, fasta_safe
                     )
                     fasta_file.save(fasta_path)
                     fasta_paths.append(fasta_path)
@@ -498,7 +523,7 @@ def sirna_upload():
         fasta_sequences, fasta_names = sirna_analysis.parse_sequences_from_fasta(fasta_paths)
 
         # 生成预览信息
-        preview_text = f"Excel文件：{excel_filename}\n"
+        preview_text = f"Excel文件：{safe_filename}\n"
         preview_text += f"查询序列数量：{len(query_seqs)}\n"
         
         # 显示Excel靶序列信息

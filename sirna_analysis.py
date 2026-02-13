@@ -4,9 +4,35 @@ from Bio.SeqIO import parse
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
 import os
+import re
 from datetime import datetime
 from collections import OrderedDict
 import time
+
+
+def sanitize_string_content(text: str) -> str:
+    """
+    净化字符串内容，移除特殊字符和中文字符，防止服务器错误
+
+    参考ST26模块的sanitize_filename和split_chinese_english处理方式
+
+    参数:
+        text: 待净化的字符串
+
+    返回:
+        净化后的字符串，只保留字母、数字和基本标点
+    """
+    if not isinstance(text, str):
+        text = str(text) if text is not None else ""
+
+    # 移除中文字符（Unicode范围：\u4e00-\u9fff）
+    # 移除特殊字符，只保留字母、数字、空格和基本标点
+    cleaned = re.sub(r'[^\w\s\-\.\,\(\)]', '', text)
+
+    # 移除多余空白
+    cleaned = ' '.join(cleaned.split())
+
+    return cleaned.strip()
 
 
 def find_max_continuous(query, target, max_mismatch=1):
@@ -326,23 +352,33 @@ def parse_sequences_from_excel(excel_path, preview_mode=False):
         if len(df.columns) < 2:
             raise ValueError("Excel必须包含至少两列数据")
         
-        # 获取序列
+        # 获取序列 - 对列名也进行净化，防止特殊字符导致错误
         query_col = df.columns[0]
         target_col = df.columns[1]
-        
-        # 标准化处理
+
+        # 标准化处理 - 增强版，处理特殊字符和中文字符
         def sanitize_seq(seq):
+            # 首先使用通用字符串净化，移除中文和特殊字符
+            cleaned = sanitize_string_content(str(seq))
+
+            # 然后只保留有效的核酸字符（ATCGU）
             valid_chars = {'A', 'T', 'C', 'G', 'U'}
-            filtered = [c for c in seq if c in valid_chars]
+            filtered = [c.upper() for c in cleaned if c.upper() in valid_chars]
             return ''.join(filtered).replace('U', 'T')
-        
-        # 解析查询序列
-        query_sequences = df[query_col].dropna().apply(str).apply(lambda x: x.upper()).tolist()
-        
-        # 解析靶序列（取第一个非空值）
+
+        # 解析查询序列 - 先转换为字符串再净化，防止特殊字符错误
+        query_sequences = (
+            df[query_col]
+            .dropna()
+            .apply(lambda x: sanitize_string_content(str(x)))  # 先净化特殊字符
+            .apply(lambda x: x.upper())  # 再转大写
+            .tolist()
+        )
+
+        # 解析靶序列（取第一个非空值） - 同样净化处理
         target_sequence = None
         if len(df[target_col].dropna()) > 0:
-            target_sequence = str(df[target_col].dropna().iloc[0]).upper()
+            target_sequence = sanitize_string_content(str(df[target_col].dropna().iloc[0])).upper()
         
         # 预览模式直接返回
         if preview_mode:
@@ -378,17 +414,27 @@ def parse_sequences_from_fasta(fasta_files):
 def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹配结果", max_mismatch=1):
     """
     执行完整的siRNA分析流程（仅序列匹配部分，BLAST搜索将由异步任务处理）
-    
+
     参数:
         excel_path: Excel文件路径
         fasta_paths: FASTA文件路径列表
-        output_filename: 输出文件名前缀
-    
+        output_filename: 输出文件名前缀（会自动净化特殊字符）
+
     返回:
         results: 分析结果列表
         output_path: 生成的Excel文件路径
         target_seq: 靶序列（用于后续BLAST搜索）
     """
+    # 净化输出文件名，移除中文字符和特殊字符，防止服务器错误
+    safe_output_filename = sanitize_string_content(output_filename)
+    if not safe_output_filename or safe_output_filename.isspace():
+        safe_output_filename = "siRNA_匹配结果"
+    # 限制长度为50字符
+    safe_output_filename = safe_output_filename[:50].strip()
+    # 替换为安全的文件名
+    safe_output_filename = re.sub(r'[^\w\-.]', '_', safe_output_filename)
+    if not safe_output_filename:
+        safe_output_filename = "sirna_results"
     # 1. 解析输入数据
     query_seqs, target_seq = parse_sequences_from_excel(excel_path)
     if not target_seq:
@@ -490,23 +536,29 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
     other_columns = [col for col in columns if col not in key_columns]
     df_results = df_results[key_columns + other_columns]
 
-    # 生成带时间戳的文件名
+    # 生成带时间戳的文件名 - 使用净化后的文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = os.path.join(output_folder, f'{output_filename}_主报告_{timestamp}.xlsx')
+    output_path = os.path.join(output_folder, f'{safe_output_filename}_主报告_{timestamp}.xlsx')
     df_results.to_excel(output_path, index=False)
 
-    # 生成文献报告
+    # 生成文献报告 - 净化文件名以防止特殊字符错误
     for file_name, results in literature_reports.items():
         if isinstance(results, list) and results:
             # 按匹配长度排序
             lit_df = pd.DataFrame(results)
-            lit_df.sort_values(by=['匹配长度', '文献序列ID'], 
-                             ascending=[False, True], 
+            lit_df.sort_values(by=['匹配长度', '文献序列ID'],
+                             ascending=[False, True],
                              inplace=True)
-            
+
+            # 净化文件名
+            safe_file_name = sanitize_string_content(file_name)
+            safe_file_name = re.sub(r'[^\w\-.]', '_', safe_file_name)[:30]
+            if not safe_file_name:
+                safe_file_name = "literature"
+
             lit_report_path = os.path.join(
                 output_folder,
-                f"文献_{file_name}_报告_{timestamp}.xlsx"
+                f"文献_{safe_file_name}_报告_{timestamp}.xlsx"
             )
             lit_df.to_excel(lit_report_path, index=False)
 
