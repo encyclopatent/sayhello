@@ -698,7 +698,7 @@ def generate_results_table(results, max_rows=10):
 
         table_html += f'<td>{fasta_ids}</td>'
         table_html += f'<td>{fasta_positions}</td>'
-        table_html += f'<td><button class="btn btn-secondary" onclick="toggleAlignmentDetails(\'{result_id}\')" style="padding: 5px 10px; font-size: 12px;">查看比对</button></td>'
+        table_html += f'<td><button id="btn_{result_id}" class="btn btn-secondary" onclick="toggleAlignmentDetails(\'{result_id}\')" style="padding: 5px 10px; font-size: 12px;">查看比对</button></td>'
         table_html += '</tr>'
 
         # 添加比对详情行（默认隐藏）
@@ -739,7 +739,7 @@ def generate_results_table(results, max_rows=10):
     <script>
     function toggleAlignmentDetails(resultId) {
         const detailsRow = document.getElementById(resultId + '_details');
-        const button = event.target;
+        const button = document.getElementById('btn_' + resultId);
 
         if (detailsRow.style.display === 'none') {
             detailsRow.style.display = 'table-row';
