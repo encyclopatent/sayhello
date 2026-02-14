@@ -741,10 +741,49 @@ def generate_alignment_html(title, alignment, strand_type):
     """生成单个序列比对的HTML"""
     # 为每个比对元素生成唯一ID
     title_id = title.replace(':', '_').replace(',', '_')
-    
+
+    # 获取序列并确保长度一致（取最短长度）
+    query_seq = alignment['query_aligned']
+    target_seq = alignment['target_aligned']
+    align_symbols = alignment['alignment_symbols']
+
+    # 确保三个序列长度一致
+    min_len = min(len(query_seq), len(target_seq), len(align_symbols))
+    query_seq = query_seq[:min_len]
+    target_seq = target_seq[:min_len]
+    align_symbols = align_symbols[:min_len]
+
     # 生成查询序列HTML（带错配高亮）
     query_html = []
-    for i, (base, symbol) in enumerate(zip(alignment['query_aligned'], alignment['alignment_symbols'])):
+    for i, (base, symbol) in enumerate(zip(query_seq, align_symbols)):
+        if symbol == '×':
+            query_html.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
+        else:
+            query_html.append(f'<span style="color: #28a745;">{base}</span>')
+    query_aligned_str = ''.join(query_html)
+
+    # 生成比对符号HTML（带颜色）
+    align_html = []
+    for symbol in align_symbols:
+        if symbol == '|':
+            align_html.append('<span style="color: #28a745;">|</span>')
+        else:
+            align_html.append('<span style="color: #dc3545; font-weight: bold;">×</span>')
+    alignment_symbols_str = ''.join(align_html)
+
+    # 生成靶序列HTML（带错配高亮）
+    target_html = []
+    for i, (base, symbol) in enumerate(zip(target_seq, align_symbols)):
+        if symbol == '×':
+            target_html.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
+        else:
+            target_html.append(f'<span style="color: #28a745;">{base}</span>')
+        else:
+            target_html.append(f'<span style="color: #28a745;">{base}</span>')
+    target_aligned_str = ''.join(target_html)
+
+    # 确定匹配度颜色
+    match_color = '#28a745' if alignment['match_percent'] >= 90 else '#ffc107' if alignment['match_percent'] >= 80 else '#dc3545'
         if symbol == '×':
             query_html.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
         else:
