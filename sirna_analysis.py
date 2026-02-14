@@ -411,8 +411,11 @@ def parse_sequences_from_fasta(fasta_files):
 
         for fasta_file in fasta_files:
             for record in parse(fasta_file, "fasta"):
-                sequences.append(str(record.seq).upper())
+                # 🔍 [DEBUG] FASTA解析：将U替换为T便于比对
+                seq_str = str(record.seq).upper().replace('U', 'T')
+                sequences.append(seq_str)
                 names.append(record.id)
+                # 🔍 [DEBUG] FASTA序列: {seq_str[:30]}... (ID: {record.id})", file=sys.stderr)
 
         return sequences, names
     except Exception as e:
