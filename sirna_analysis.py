@@ -380,6 +380,15 @@ def parse_sequences_from_excel(excel_path, preview_mode=False):
         if len(df[target_col].dropna()) > 0:
             target_sequence = str(df[target_col].dropna().iloc[0]).upper()
         
+        # 🔍 [DEBUG] 打印序列解析信息
+        import sys
+        print(f"[DEBUG sirna] 解析Excel文件: {excel_path}", file=sys.stderr)
+        print(f"[DEBUG sirna] 查询序列数量: {len(query_sequences)}", file=sys.stderr)
+        print(f"[DEBUG sirna] 查询序列前5个: {query_sequences[:5]}", file=sys.stderr)
+        if target_sequence:
+            print(f"[DEBUG sirna] 靶序列长度: {len(target_sequence)}", file=sys.stderr)
+            print(f"[DEBUG sirna] 靶序列内容: {target_sequence[:50]}...", file=sys.stderr)
+
         # 预览模式直接返回
         if preview_mode:
             return query_sequences, target_sequence
@@ -425,6 +434,12 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
         output_path: 生成的Excel文件路径
         target_seq: 靶序列（用于后续BLAST搜索）
     """
+    # 🔍 [DEBUG] 打印分析开始信息
+    import sys
+    print(f"[DEBUG sirna] 开始分析", file=sys.stderr)
+    print(f"[DEBUG sirna] Excel路径: {excel_path}", file=sys.stderr)
+    print(f"[DEBUG sirna] FASTA文件数量: {len(fasta_paths)}", file=sys.stderr)
+    print(f"[DEBUG sirna] 最大错配数: {max_mismatch}", file=sys.stderr)
     # 净化输出文件名，移除中文字符和特殊字符，防止服务器错误
     safe_output_filename = sanitize_string_content(output_filename)
     if not safe_output_filename or safe_output_filename.isspace():
@@ -439,6 +454,12 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
     query_seqs, target_seq = parse_sequences_from_excel(excel_path)
     if not target_seq:
         raise ValueError("Excel中未找到有效靶序列")
+
+    # 🔍 [DEBUG] 打印序列解析后信息
+    import sys
+    print(f"[DEBUG sirna] 解析完成，查询序列数: {len(query_seqs)}", file=sys.stderr)
+    print(f"[DEBUG sirna] 靶序列长度: {len(target_seq)}", file=sys.stderr)
+    print(f"[DEBUG sirna] 靶序列前50碱基: {target_seq[:50]}...", file=sys.stderr)
 
     # 2. 准备结果数据结构
     excel_results = []
@@ -468,6 +489,11 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
             '匹配长度': match_length
         }
         excel_results.append(result)
+
+        # 🔍 [DEBUG] 打印每条序列的匹配结果
+        import sys
+        if i < 3:  # 只打印前3条，避免日志过多
+            print(f"[DEBUG sirna] 序列{i+1}: 长度={len(query)}, 链类型={strand}, 位置={pos}", file=sys.stderr)
 
     # 4. 分析每个FASTA文件
     for file_idx, fasta_path in enumerate(fasta_paths):

@@ -515,6 +515,12 @@ def sirna_upload():
         # 保存错配数量参数到session
         session['sirna_mismatch_count'] = int(request.form.get('mismatch_count', 1))
 
+        # 🔍 [DEBUG] 打印上传完成信息
+        import sys
+        print(f"[DEBUG app] siRNA上传完成", file=sys.stderr)
+        print(f"[DEBUG app] Excel路径: {excel_path}", file=sys.stderr)
+        print(f"[DEBUG app] FASTA文件数: {len(fasta_paths)}", file=sys.stderr)
+
         # 解析文件进行预览
         query_seqs, target_sequence = sirna_analysis.parse_sequences_from_excel(
             excel_path, 
@@ -1319,7 +1325,7 @@ def clear_all():
         return '', 500
 
 
-@celery.task(bind=True, name='app.convert_excel_task')
+@celery.task(bind=True, name='convert_excel_task')
 def convert_excel_task(self, file_path, output_folder, expert_settings=None):
     """异步转换Excel为XML的Celery任务（使用固定名称避免uWSGI命名空间问题）"""
     try:
@@ -1360,7 +1366,7 @@ def convert_excel_task(self, file_path, output_folder, expert_settings=None):
         }
 
 
-@celery.task(bind=True, name='app.blast_search_task')
+@celery.task(bind=True, name='blast_search_task')
 def blast_search_task(self, target_sequence):
     """异步执行BLAST搜索的Celery任务（使用固定名称避免uWSGI命名空间问题）"""
     app.logger.info(f'Starting BLAST search for target sequence')
