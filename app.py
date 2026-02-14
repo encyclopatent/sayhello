@@ -1319,9 +1319,9 @@ def clear_all():
         return '', 500
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, name='app.convert_excel_task')
 def convert_excel_task(self, file_path, output_folder, expert_settings=None):
-    """异步转换Excel为XML的Celery任务"""
+    """异步转换Excel为XML的Celery任务（使用固定名称避免uWSGI命名空间问题）"""
     try:
         app.logger.info(f'Starting conversion task for file: {file_path}')
         if expert_settings:
@@ -1360,9 +1360,9 @@ def convert_excel_task(self, file_path, output_folder, expert_settings=None):
         }
 
 
-@celery.task(bind=True)
+@celery.task(bind=True, name='app.blast_search_task')
 def blast_search_task(self, target_sequence):
-    """异步执行BLAST搜索的Celery任务"""
+    """异步执行BLAST搜索的Celery任务（使用固定名称避免uWSGI命名空间问题）"""
     app.logger.info(f'Starting BLAST search for target sequence')
     try:
         # 设置任务状态
