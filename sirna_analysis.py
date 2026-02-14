@@ -357,28 +357,28 @@ def parse_sequences_from_excel(excel_path, preview_mode=False):
         target_col = df.columns[1]
 
         # 标准化处理 - 增强版，处理特殊字符和中文字符
+        # 标准化处理 - 只保留有效的核酸字符（ATCGU），不破坏序列
         def sanitize_seq(seq):
-            # 首先使用通用字符串净化，移除中文和特殊字符
-            cleaned = sanitize_string_content(str(seq))
+            if not isinstance(seq, str):
+                seq = str(seq) if seq is not None else ""
 
-            # 然后只保留有效的核酸字符（ATCGU）
+            # 只保留有效的核酸字符（ATCGU），不破坏连续性
             valid_chars = {'A', 'T', 'C', 'G', 'U'}
-            filtered = [c.upper() for c in cleaned if c.upper() in valid_chars]
+            filtered = [c.upper() for c in seq if c.upper() in valid_chars]
             return ''.join(filtered).replace('U', 'T')
 
-        # 解析查询序列 - 先转换为字符串再净化，防止特殊字符错误
+        # 解析查询序列 - 只转大写和过滤有效字符，不过度净化
         query_sequences = (
             df[query_col]
             .dropna()
-            .apply(lambda x: sanitize_string_content(str(x)))  # 先净化特殊字符
-            .apply(lambda x: x.upper())  # 再转大写
+            .apply(lambda x: str(x).upper() if pd.notna(x) else '')  # 直接转大写
             .tolist()
         )
 
-        # 解析靶序列（取第一个非空值） - 同样净化处理
+        # 解析靶序列（取第一个非空值） - 只转大写
         target_sequence = None
         if len(df[target_col].dropna()) > 0:
-            target_sequence = sanitize_string_content(str(df[target_col].dropna().iloc[0])).upper()
+            target_sequence = str(df[target_col].dropna().iloc[0]).upper()
         
         # 预览模式直接返回
         if preview_mode:
