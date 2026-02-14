@@ -734,29 +734,44 @@ def generate_results_table(results, max_rows=10):
 
     table_html += '</tbody></table>'
 
-    # 添加JavaScript函数
-    table_html += '''
-    <script>
-    function toggleAlignmentDetails(resultId) {
-        const detailsRow = document.getElementById(resultId + '_details');
-        const button = document.getElementById('btn_' + resultId);
-
-        if (detailsRow.style.display === 'none') {
-            detailsRow.style.display = 'table-row';
-            button.textContent = '隐藏比对';
-        } else {
-            detailsRow.style.display = 'none';
-            button.textContent = '查看比对';
-        }
-    }
-    </script>
-    '''
-
     return table_html
 
 
 def generate_alignment_html(title, alignment, strand_type):
     """生成单个序列比对的HTML"""
+    # 为每个比对元素生成唯一ID
+    title_id = title.replace(':', '_').replace(',', '_')
+    
+    # 生成查询序列HTML（带错配高亮）
+    query_html = []
+    for i, (base, symbol) in enumerate(zip(alignment['query_aligned'], alignment['alignment_symbols'])):
+        if symbol == '×':
+            query_html.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
+        else:
+            query_html.append(f'<span style="color: #28a745;">{base}</span>')
+    query_aligned_str = ''.join(query_html)
+    
+    # 生成比对符号HTML（带颜色）
+    align_html = []
+    for symbol in alignment['alignment_symbols']:
+        if symbol == '|':
+            align_html.append('<span style="color: #28a745;">|</span>')
+        else:
+            align_html.append('<span style="color: #dc3545; font-weight: bold;">×</span>')
+    alignment_symbols_str = ''.join(align_html)
+    
+    # 生成靶序列HTML（带错配高亮）
+    target_html = []
+    for i, (base, symbol) in enumerate(zip(alignment['target_aligned'], alignment['alignment_symbols'])):
+        if symbol == '×':
+            target_html.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
+        else:
+            target_html.append(f'<span style="color: #28a745;">{base}</span>')
+    target_aligned_str = ''.join(target_html)
+    
+    # 确定匹配度颜色
+    match_color = '#28a745' if alignment['match_percent'] >= 90 else '#ffc107' if alignment['match_percent'] >= 80 else '#dc3545'
+    
     html = f'''
     <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6;">
         <h4 style="margin: 0 0 10px 0; color: #333;">{title}</h4>
@@ -769,40 +784,27 @@ def generate_alignment_html(title, alignment, strand_type):
                 <span style="margin-left: 20px; color: #666;">长度:</span>
                 <strong>{alignment['alignment_length']}bp</strong>
                 <span style="margin-left: 20px; color: #666;">匹配度:</span>
-                <strong style="color: {'#28a745' if alignment['match_percent'] >= 90 else '#ffc107' if alignment['match_percent'] >= 80 else '#dc3545'};">{alignment['match_percent']}%</strong>
+                <strong style="color: {match_color};">{alignment['match_percent']}%</strong>
             </div>
             <div style="display: flex; flex-direction: column; gap: 5px;">
                 <div style="word-break: break-all; color: #333;">
                     <span style="color: #999; margin-right: 10px;">查询:</span>
-                    {highlight_mismatches(alignment['query_aligned'], alignment['alignment_symbols'])}
+                    <span id="query_{title_id}">{query_aligned_str}</span>
                 </div>
                 <div style="word-break: break-all; color: #666;">
-                    <span style="color: #999; margin-right: 10px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    {colorize_alignment(alignment['alignment_symbols'])}
+                    <span style="color: #999; margin-right: 10px;">&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <span id="alignment_{title_id}">{alignment_symbols_str}</span>
                 </div>
                 <div style="word-break: break-all; color: #333;">
                     <span style="color: #999; margin-right: 10px;">靶序列:</span>
-                    {highlight_mismatches(alignment['target_aligned'], alignment['alignment_symbols'])}
+                    <span id="target_{title_id}">{target_aligned_str}</span>
                 </div>
             </div>
-            {f'<div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 12px;"><strong>错配位置:</strong> {", ".join(map(str, alignment["mismatch_positions"]))}</div>' if alignment['mismatch_positions'] else ''}
+            {f'<div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 12px;"><strong>错配位置:</strong> {", ".join(map(str, alignment["mismatch_positions"]))}</div>' if alignment["mismatch_positions"] else ''}
         </div>
     </div>
     '''
     return html
-
-
-def highlight_mismatches(sequence, alignment_symbols):
-    """高亮显示错配的碱基"""
-    result = []
-    for i, (base, symbol) in enumerate(zip(sequence, alignment_symbols)):
-        if symbol == '×':
-            result.append(f'<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">{base}</span>')
-        else:
-            result.append(f'<span style="color: #28a745;">{base}</span>')
-    return ''.join(result)
-
-
 def colorize_alignment(alignment_symbols):
     """给比对符号着色"""
     result = []

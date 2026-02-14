@@ -316,6 +316,48 @@
     </div>
     
     <script>
+        // 比对详情切换函数
+        function toggleAlignmentDetails(resultId) {
+            const detailsRow = document.getElementById(resultId + '_details');
+            const button = document.getElementById('btn_' + resultId);
+
+            if (detailsRow.style.display === 'none') {
+                detailsRow.style.display = 'table-row';
+                button.textContent = '隐藏比对';
+            } else {
+                detailsRow.style.display = 'none';
+                button.textContent = '查看比对';
+            }
+        }
+
+        // 高亮显示错配的碱基
+        function highlightMismatches(sequence, alignmentSymbols) {
+            const result = [];
+            for (let i = 0; i < sequence.length; i++) {
+                const base = sequence[i];
+                const symbol = alignmentSymbols[i];
+                if (symbol === '×') {
+                    result.push('<span style="background-color: #ffcccc; color: #cc0000; font-weight: bold;">' + base + '</span>');
+                } else {
+                    result.push('<span style="color: #28a745;">' + base + '</span>');
+                }
+            }
+            return result.join('');
+        }
+
+        // 给比对符号着色
+        function colorizeAlignment(alignmentSymbols) {
+            const result = [];
+            for (const symbol of alignmentSymbols) {
+                if (symbol === '|') {
+                    result.push('<span style="color: #28a745;">|</span>');
+                } else {
+                    result.push('<span style="color: #dc3545; font-weight: bold;">×</span>');
+                }
+            }
+            return result.join('');
+        }
+
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
             const fastaFilesInput = document.getElementById('fasta-files');
