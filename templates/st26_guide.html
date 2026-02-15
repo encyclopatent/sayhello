@@ -415,7 +415,7 @@
           </tr>
           <tr>
             <td><strong>特点</strong></td>
-            <td>修饰符直接写在碱基前</td>
+            <td>修饰符直接写在碱基后</td>
             <td>使用括号结构</td>
           </tr>
           <tr>
@@ -425,7 +425,7 @@
           </tr>
           <tr>
             <td><strong>示例</strong></td>
-            <td><code>mGmGmUmUfGmGfA</code></td>
+            <td><code>GmGmUmUfGmCfA</code></td>
             <td><code>(VP)(mG)*(mG)*(mU)(mU)(fG)(mG)(fA)...(L96)</code></td>
           </tr>
           <tr>
@@ -436,8 +436,8 @@
         </tbody>
       </table>
 
-      <h4>格式 1：修饰符在碱基前面（推荐）</h4>
-      <pre><code>mGmGmUmUfGmGfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
+      <h4>格式 1：修饰符在碱基后面（推荐）</h4>
+      <pre><code>GmGmUmUfGmCfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
       <ul>
         <li><code>mG</code> = G 碱基的 2'-O-甲基化</li>
         <li><code>mU</code> = U 碱基的 2'-O-甲基化</li>
@@ -458,7 +458,7 @@
         <strong>⚠️ 重要提示：</strong>
         <ul>
           <li>❌ <strong>两种格式不能混合使用</strong></li>
-          <li>❌ <strong>不支持修饰符在碱基后面的格式</strong>（如 <code>Cm</code>、<code>Um</code>、<code>Af</code>）</li>
+          <li>❌ <strong>不支持修饰符在碱基前面的格式</strong>（如 <code>Cm</code>、<code>Um</code>、<code>Af</code>）</li>
           <li>✅ 系统会将格式 2 自动转换为格式 1</li>
           <li>✅ 推荐使用格式 1</li>
         </ul>
@@ -528,7 +528,7 @@
 
       <h3>5.3 修饰符使用示例</h3>
       <h4>siRNA 序列示例（格式 1）</h4>
-      <pre><code>mGmGmUmUfGmGfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
+      <pre><code>GmGmUmUfGmCfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
       <p>包含：2'-O-甲基修饰（m）和 2'-氟修饰（f）</p>
 
       <h4>寡核苷酸链示例（格式 1）</h4>
@@ -731,7 +731,7 @@
       <h3>❓ Q11: 为什么不能混合使用两种格式？</h3>
       <p><strong>答:</strong> 因为系统会自动检测并转换格式：</p>
       <p><strong>场景 1：纯格式 1</strong></p>
-      <pre><code>mGmGmUmUfGmGfA  ✅ 直接使用</code></pre>
+      <pre><code>GmGmUmUfGmCfA  ✅ 直接使用</code></pre>
 
       <p><strong>场景 2：纯格式 2</strong></p>
       <pre><code>(VP)(mG)*(mU)(fG)(L96)  ✅ 自动转换为格式 1</code></pre>
@@ -864,7 +864,7 @@
           <tr>
             <td>siRNA-正义链</td>
             <td>RNA</td>
-            <td>mGmGmUmUfGmGfAmUfUfUfUmUfC</td>
+            <td>GmGmUmUfGmCfAmUfUfUfUmUfC</td>
             <td>synthetic construct</td>
           </tr>
           <tr>
@@ -907,7 +907,7 @@
           <li>❌ 不要在序列中添加空格或特殊字符（除修饰符外）</li>
           <li>❌ 不要使用过期的模板版本</li>
           <li>❌ 不要混合使用两种修饰符格式</li>
-          <li>❌ 不要在修饰符后使用碱基后置格式（如 <code>Cm</code>、<code>Um</code>）</li>
+          <li>❌ 不要在修饰符前使用碱基前置格式（如 <code>Cm</code>、<code>Um</code>）</li>
         </ul>
       </div>
 
