@@ -1150,7 +1150,7 @@ def download_xml(filename):
     return send_file(
             buffer,
             as_attachment=True,
-            attachment_filename=filename,
+            download_name=filename,
             mimetype='text/xml'
         )
 
