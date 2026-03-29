@@ -110,6 +110,7 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
     
     root = ET.Element("ST26SequenceListing", {
         "originalFreeTextLanguageCode": "en",
+        "nonEnglishFreeTextLanguageCode": "",
         "dtdVersion": "V1_3",
         "fileName": f"{basic_data['ApplicantFileReference']}.xml",
         "softwareName": "WIPO Sequence",
