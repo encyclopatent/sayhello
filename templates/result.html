@@ -42,7 +42,6 @@
   <div class="nav-buttons">
     <a href="/" class="btn btn-secondary">返回主页</a>
     <a href="/st26" class="btn btn-primary">上传新文件</a>
-    <button id="clear-all-btn" class="btn btn-danger">清除所有数据</button>
   </div>
   
   <div class="section">
@@ -155,9 +154,8 @@
       const conversionError = document.getElementById('conversion-error');
       const errorMessage = document.getElementById('error-message');
       const statusText = document.getElementById('progress-status');
-      const clearAllBtn = document.getElementById('clear-all-btn');
       const uploadSuccess = document.getElementById('upload-success');
-      
+
       // 如果已有结果，隐藏进度区域，停止轮询
       if (hasExistingResult) {
         if (uploadSuccess) uploadSuccess.style.display = 'none';
@@ -166,46 +164,7 @@
         // 不需要执行任何轮询操作
         return;
       }
-      
-      // 添加清除按钮点击事件
-      if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', function() {
-          if (confirm('确定要清除所有数据吗？这将删除当前上传的文件和转换结果。')) {
-            // 添加loading状态提示
-            clearAllBtn.disabled = true;
-            clearAllBtn.textContent = '清除中...';
-            
-            fetch('/clear_all', {
-              method: 'POST',
-              credentials: 'include'
-            })
-            .then(function(response) {
-              if (!response.ok) {
-                throw new Error('Network response was not ok');
-              }
-              return response.json();
-            })
-            .then(function(data) {
-              console.log('清除响应:', data);
-              if (data.status === 'success') {
-                // 清除成功，重定向到ST26首页
-                window.location.href = createRelativePath('/st26');
-              } else {
-                alert('清除失败: ' + (data.message || '未知错误'));
-                clearAllBtn.disabled = false;
-                clearAllBtn.textContent = '清除所有数据';
-              }
-            })
-            .catch(function(error) {
-              console.error('清除请求出错:', error);
-              alert('清除请求失败，请稍后重试。错误: ' + error.message);
-              clearAllBtn.disabled = false;
-              clearAllBtn.textContent = '清除所有数据';
-            });
-          }
-        });
-      }
-      
+
       // 下载状态标记
       let isDownloading = false;
       

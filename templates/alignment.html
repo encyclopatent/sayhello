@@ -3,13 +3,13 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta http-equiv="Content-Style-Type" content="text/css">
-  <title>序列比对工具</title>
+  <title>序列比对工具 v2.0</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <style>
     /* 序列比对页面特定样式 */
     .container {
       max-width: 1200px;
-      margin: 0 auto;
+      margin: 60px auto 20px;
       padding: 20px;
     }
     
@@ -196,9 +196,9 @@
   </div>
   
   <div class="container">
-    <a href="{{ url_for('main') }}" class="back-link">← 返回工具列表</a>
+    <a href="{{ url_for('main.index') }}" class="back-link">← 返回工具列表</a>
     
-    <h1>🧬 序列比对工具</h1>
+    <h1>🧬 序列比对工具 v2.0</h1>
     <p class="description">
       进行序列比对分析，支持多种比对算法，可查看序列同一性和特定位点匹配情况。靶序列为权利要求中限定的参比序列，特定位点为权利要求限定的位点，算法将特定位点匹配至查询序列，从而可以判断查询序列中的关键位点是否落入权利要求。如果不输入任何位点，则只进行序列同一性计算。
     </p>
@@ -248,8 +248,8 @@
     <div class="results-container" id="results-container" style="display: none;">
       <h2>比对结果</h2>
       <div class="btn-container" style="margin-bottom: 20px;">
-        <a href="{{ url_for('alignment_download_excel') }}" class="btn" id="download-excel-btn" style="margin-right: 10px;" target="_blank">下载Excel结果</a>
-        <a href="{{ url_for('alignment_download_needle') }}" class="btn" id="download-needle-btn" target="_blank">下载Needle原始结果</a>
+        <a href="{{ url_for('alignment.download_excel') }}" class="btn" id="download-excel-btn" style="margin-right: 10px;" target="_blank">下载Excel结果</a>
+        <a href="{{ url_for('alignment.download_needle') }}" class="btn" id="download-needle-btn" target="_blank">下载Needle原始结果</a>
       </div>
       <div id="results-content">
         <!-- 结果将通过JavaScript动态填充 -->
@@ -294,7 +294,7 @@
         
         // 发送AJAX请求
         $.ajax({
-          url: '{{ url_for('alignment_analyze') }}',
+          url: '{{ url_for('alignment.analyze') }}',
           type: 'POST',
           data: formData,
           dataType: 'json',

@@ -130,10 +130,10 @@
     </h2>
     <p>请先下载模板文件，按照模板格式填写数据：</p>
     <div class="button-group">
-      <a href="{{ url_for('download_template') }}" class="download-btn">
+      <a href="{{ url_for('st26.template') }}" class="download-btn">
         下载Excel模板
       </a>
-      <a href="{{ url_for('st26_guide') }}" class="download-btn" style="background-color: #4CAF50;">
+      <a href="{{ url_for('st26.guide') }}" class="download-btn" style="background-color: #4CAF50;">
         📖 查看使用指南
       </a>
     </div>
@@ -252,7 +252,7 @@
       <div class="status-box">
         <p><b>XML文件已成功生成！</b></p>
         <p>文件名: {{ xml_file }}</p>
-        <a href="{{ url_for('download_xml', filename=xml_file) }}" class="xml-download">
+        <a href="{{ url_for('st26.download', filename=xml_file) }}" class="xml-download">
           下载XML文件并删除缓存数据
         </a>
       </div>

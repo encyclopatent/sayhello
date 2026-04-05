@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>化合物拆解分析工具</title>
+    <title>化合物拆解分析工具 v2.0</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <style>
         /* 化合物拆解工具特定样式 */
@@ -282,8 +282,8 @@
     
     <div class="fragment-container">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1>🧪 化合物拆解分析工具</h1>
-            <a href="{{ url_for('main') }}" class="btn btn-secondary">返回主页</a>
+            <h1>🧪 化合物拆解分析工具 v2.0</h1>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">返回主页</a>
         </div>
         
         <div class="file-input-section">
@@ -576,7 +576,8 @@
             
             // 页面关闭时提醒用户数据将被删除
             window.addEventListener('beforeunload', function(e) {
-                const hasSelectedFiles = fileInput.files.length > 0;
+                const fileInput = document.getElementById('excel-file');
+                const hasSelectedFiles = fileInput && fileInput.files.length > 0;
                 const hasResults = resultsSection.classList.contains('show');
                 
                 if (hasSelectedFiles || hasResults) {

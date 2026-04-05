@@ -1,144 +1,389 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>生物序列分析工具集</title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2685.3">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <style>
-    /* 主页面特定样式 */
-    .tools-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 30px;
-      margin: 40px 0;
+    /* ===== 主页面浅色主题 ===== */
+    .home-page {
+      background: #eef2f7;
+      min-height: 100vh;
     }
-    
-    .tool-card {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-      padding: 40px;
-      width: 350px;
+
+    /* ===== Hero Section ===== */
+    .hero {
+      position: relative;
+      padding: 70px 20px 55px;
       text-align: center;
-      transition: var(--transition);
+      background: linear-gradient(160deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden;
     }
-    
-    .tool-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 70%, rgba(255,255,255,0.12) 0%, transparent 50%);
+      pointer-events: none;
     }
-    
-    .tool-icon {
-      font-size: 48px;
-      margin-bottom: 20px;
-      display: block;
+
+    .hero-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 45px 45px;
+      pointer-events: none;
     }
-    
-    .tool-title {
-      color: var(--primary-color);
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 15px;
-    }
-    
-    .tool-description {
-      color: var(--text-secondary);
-      margin-bottom: 25px;
-      line-height: 1.6;
-    }
-    
-    .tool-btn {
-      display: inline-block;
-      background-color: var(--primary-color);
-      color: white;
-      padding: 12px 30px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: bold;
-      transition: var(--transition);
-    }
-    
-    .tool-btn:hover {
-      background-color: var(--primary-dark);
-    }
-    
-    .welcome-section {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    
-    .welcome-section h1 {
-      font-size: 32px;
-      margin-bottom: 15px;
-      color: var(--text-dark);
-    }
-    
-    .welcome-section p {
-      color: var(--text-secondary);
-      font-size: 18px;
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
       max-width: 600px;
       margin: 0 auto;
     }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 20px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .hero-badge svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    .hero p {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.88);
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* DNA装饰 */
+    .hero-dna {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      opacity: 0.18;
+      pointer-events: none;
+    }
+
+    .hero-dna.left {
+      left: -15px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .hero-dna.right {
+      right: -15px;
+      top: 35%;
+    }
+
+    /* ===== Tools Section ===== */
+    .tools-section {
+      padding: 45px 20px 65px;
+      max-width: 1050px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .section-header h2 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: #8896ab;
+      margin: 0 0 6px;
+      background: none;
+      padding: 0;
+      border: none;
+    }
+
+    .section-header p {
+      font-size: 0.9rem;
+      color: #a0aec0;
+      margin: 0;
+    }
+
+    /* ===== Tools Grid ===== */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 18px;
+    }
+
+    /* ===== Tool Card ===== */
+    .tool-card {
+      position: relative;
+      background: #fff;
+      border-radius: 14px;
+      padding: 26px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+      border: 1px solid #e4eaf2;
+      overflow: hidden;
+    }
+
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 28px rgba(102,126,234,0.12), 0 4px 12px rgba(0,0,0,0.06);
+      border-color: transparent;
+    }
+
+    .tool-card:hover::before {
+      opacity: 1;
+    }
+
+    .tool-card:nth-child(1)::before { background: linear-gradient(90deg, #667eea, #764ba2); }
+    .tool-card:nth-child(2)::before { background: linear-gradient(90deg, #11998e, #38ef7d); }
+    .tool-card:nth-child(3)::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+    .tool-card:nth-child(4)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+    .tool-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 24px;
+      transition: transform 0.3s ease;
+    }
+
+    .tool-card:hover .tool-card-icon {
+      transform: scale(1.08) rotate(-3deg);
+    }
+
+    .tool-card:nth-child(1) .tool-card-icon { background: linear-gradient(135deg, #667eea18, #764ba218); }
+    .tool-card:nth-child(2) .tool-card-icon { background: linear-gradient(135deg, #11998e18, #38ef7d18); }
+    .tool-card:nth-child(3) .tool-card-icon { background: linear-gradient(135deg, #8b5cf618, #a78bfa18); }
+    .tool-card:nth-child(4) .tool-card-icon { background: linear-gradient(135deg, #f59e0b18, #fbbf2418); }
+
+    .tool-card h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0 0 9px;
+      letter-spacing: -0.01em;
+    }
+
+    .tool-card p {
+      font-size: 0.85rem;
+      color: #718096;
+      line-height: 1.6;
+      margin: 0 0 18px;
+    }
+
+    .tool-card-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 9px 18px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 7px;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 10px rgba(102,126,234,0.25);
+    }
+
+    .tool-card-btn:hover {
+      transform: translateX(3px);
+      box-shadow: 0 4px 14px rgba(102,126,234,0.35);
+    }
+
+    .tool-card-btn svg {
+      width: 13px;
+      height: 13px;
+      transition: transform 0.3s ease;
+    }
+
+    .tool-card-btn:hover svg {
+      transform: translateX(2px);
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      text-align: center;
+      padding: 28px 20px;
+      background: #fff;
+      border-top: 1px solid #e4eaf2;
+    }
+
+    .footer p {
+      font-size: 12px;
+      color: #a0aec0;
+      margin: 0;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .hero {
+        padding: 55px 20px 40px;
+      }
+
+      .tool-card {
+        padding: 20px;
+      }
+
+      .tools-grid {
+        gap: 14px;
+      }
+
+      .hero-dna {
+        display: none;
+      }
+    }
   </style>
 </head>
-<body>
-  <div class="welcome-section">
-    <h1>🧬 生物序列分析工具集</h1>
-    <p>个人工具分享，结果仅供参考</p>
-  </div>
-  
-  <div class="tools-container">
-    <!-- ST26工具卡片 -->
-    <div class="tool-card">
-      <span class="tool-icon">📄</span>
-      <h2 class="tool-title">ST26 XML生成工具</h2>
-      <p class="tool-description">
-        快速将Excel格式的序列数据转换为符合ST26格式的XML文件，支持DNA、RNA和氨基酸序列的处理与验证。
-      </p>
-      <a href="{{ url_for('st26_index') }}?new=true" class="tool-btn">
-        进入ST26工具
-      </a>
+<body class="home-page">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+
+    <svg class="hero-dna left" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="1.5">
+      <path d="M30 10 Q50 25 70 10 Q50 35 30 20 Q50 45 70 30 Q50 55 30 40 Q50 65 70 50 Q50 75 30 60 Q50 85 70 70"/>
+      <circle cx="30" cy="10" r="3" fill="white"/>
+      <circle cx="70" cy="30" r="3" fill="white"/>
+      <circle cx="30" cy="50" r="3" fill="white"/>
+      <circle cx="70" cy="70" r="3" fill="white"/>
+    </svg>
+
+    <svg class="hero-dna right" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="1.5">
+      <path d="M30 10 Q50 25 70 10 Q50 35 30 20 Q50 45 70 30 Q50 55 30 40 Q50 65 70 50 Q50 75 30 60 Q50 85 70 70"/>
+      <circle cx="70" cy="10" r="3" fill="white"/>
+      <circle cx="30" cy="30" r="3" fill="white"/>
+      <circle cx="70" cy="50" r="3" fill="white"/>
+      <circle cx="30" cy="70" r="3" fill="white"/>
+    </svg>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        Bioinformatics Tools
+      </div>
+      <h1>生物序列分析工具集</h1>
+      <p>个人工具分享，结果仅供参考</p>
     </div>
-    
-    <!-- siRNA工具卡片 -->
-    <div class="tool-card">
-      <span class="tool-icon">🔬</span>
-      <h2 class="tool-title">siRNA序列匹配工具</h2>
-      <p class="tool-description">
-        分析siRNA序列与靶序列的匹配情况，支持正义链和反义链检测，帮助评估是否为现有技术公开。
-      </p>
-      <a href="{{ url_for('sirna_index') }}" class="tool-btn">
-        进入siRNA工具
-      </a>
+  </section>
+
+  <!-- Tools Section -->
+  <section class="tools-section">
+    <div class="section-header">
+      <h2>Tools</h2>
+      <p>选择你需要的工具开始分析</p>
     </div>
-    
-    <!-- 化合物拆解工具卡片 -->
-    <div class="tool-card">
-      <span class="tool-icon">🧪</span>
-      <h2 class="tool-title">化合物拆解分析工具</h2>
-      <p class="tool-description">
-        将包含核心结构的化合物拆解为片段，支持结构匹配、片段提取和可视化，帮助分析化合物结构特征。
-      </p>
-      <a href="{{ url_for('fragment_index') }}" class="tool-btn">
-        进入拆解工具
-      </a>
+
+    <div class="tools-grid">
+      <!-- ST26工具卡片 -->
+      <div class="tool-card">
+        <div class="tool-card-icon st26">📄</div>
+        <h3>ST26 XML生成工具</h3>
+        <p>快速将Excel格式的序列数据转换为符合ST26格式的XML文件，支持DNA、RNA和氨基酸序列的处理与验证。</p>
+        <a href="{{ url_for('st26.index') }}?new=true" class="tool-card-btn">
+          开始使用
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- siRNA工具卡片 -->
+      <div class="tool-card">
+        <div class="tool-card-icon sirna">🔬</div>
+        <h3>siRNA序列匹配工具</h3>
+        <p>分析siRNA序列与靶序列的匹配情况，支持正义链和反义链检测，帮助评估是否为现有技术公开。</p>
+        <a href="{{ url_for('sirna.index') }}" class="tool-card-btn">
+          开始使用
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- 化合物拆解工具卡片 -->
+      <div class="tool-card">
+        <div class="tool-card-icon fragment">🧪</div>
+        <h3>化合物拆解分析工具</h3>
+        <p>将包含核心结构的化合物拆解为片段，支持结构匹配、片段提取和可视化，帮助分析化合物结构特征。</p>
+        <a href="{{ url_for('fragment.index') }}" class="tool-card-btn">
+          开始使用
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- 序列比对工具卡片 -->
+      <div class="tool-card">
+        <div class="tool-card-icon alignment">🧬</div>
+        <h3>序列比对工具</h3>
+        <p>进行序列比对分析，支持全局比对和局部比对，可查看序列同一性和特定位点匹配情况，检测关键位点。</p>
+        <a href="{{ url_for('alignment.index') }}" class="tool-card-btn">
+          开始使用
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
     </div>
-    
-    <!-- 序列比对工具卡片 -->
-    <div class="tool-card">
-      <span class="tool-icon">🧬</span>
-      <h2 class="tool-title">序列比对工具</h2>
-      <p class="tool-description">
-        进行序列比对分析，支持全局比对和局部比对，可查看序列同一性和特定位点匹配情况，检测关键位点。
-      </p>
-      <a href="{{ url_for('alignment_index') }}" class="tool-btn">
-        进入比对工具
-      </a>
-    </div>
-  </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Bioinformatics Tools · 2024</p>
+  </footer>
 </body>
 </html>
