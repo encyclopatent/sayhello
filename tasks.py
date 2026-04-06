@@ -1,6 +1,13 @@
 """Celery tasks for async processing."""
 import logging
+import os
+import sys
 from celery_app import celery
+
+# Ensure project root is in Python path for Celery workers
+_task_dir = os.path.dirname(os.path.abspath(__file__))
+if _task_dir not in sys.path:
+    sys.path.insert(0, _task_dir)
 
 logger = logging.getLogger(__name__)
 
