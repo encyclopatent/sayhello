@@ -590,18 +590,8 @@
                 window.location.href = '/sirna/download';
             });
             
-            // 页面关闭时提醒用户数据将被删除
-            window.addEventListener('beforeunload', function(e) {
-                const hasSelectedFiles = selectedFastaFiles.length > 0 || document.getElementById('excel-file').files.length > 0;
-                const hasResults = resultsSection.style.display === 'block';
-                
-                if (hasSelectedFiles || hasResults) {
-                    const confirmationMessage = '您即将离开此页面。所有上传的文件和处理结果将被删除，服务器不保存任何数据。\n\n请确保已下载您需要的结果文件。';
-                    e.returnValue = confirmationMessage;
-                    return confirmationMessage;
-                }
-            });
         });
+    </script>
     </script>
 </body>
 </html>
