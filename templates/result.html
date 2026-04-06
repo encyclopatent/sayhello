@@ -87,7 +87,7 @@
       
       <div class="download-links">
         <p><b>请下载以下文件：</b></p>
-        <a href="{{ url_for('download_xml', filename=xml_file) }}" class="download-btn xml-download">
+        <a href="{{ url_for('st26.download', filename=xml_file) }}" class="download-btn xml-download">
           下载 ST26 XML 文件
         </a>
       </div>
@@ -183,7 +183,7 @@
         let downloadSectionHtml = `
           <p><b>XML文件已成功生成！</b></p>
           <p>文件名: ${data.xml_file}</p>
-          <a href="/download_xml/${encodeURIComponent(data.xml_file)}" class="xml-download">
+          <a href="/st26/download/${encodeURIComponent(data.xml_file)}" class="xml-download">
             下载XML文件并删除缓存数据
           </a>
         `;
