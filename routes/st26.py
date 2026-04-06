@@ -144,7 +144,7 @@ def result():
         return redirect(url_for('st26.index'))
 
     try:
-        from app import convert_excel_task
+        from tasks import convert_excel_task
         task = convert_excel_task.AsyncResult(task_id)
         task_state = task.state
 
@@ -172,7 +172,7 @@ def result():
 @st26_bp.route('/download/<filename>')
 def download(filename):
     """Download generated XML file."""
-    from app import _get_uploaded_file_path
+    from utils.security import get_uploaded_file_path
 
     xml_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], filename)
     if not os.path.exists(xml_path):
@@ -191,7 +191,8 @@ def download(filename):
         uploaded_filename = session.pop('uploaded_filename', None)
         if uploaded_filename:
             try:
-                uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                upload_folder = current_app.config['UPLOAD_FOLDER']
+                uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                 if os.path.exists(uploaded_file_path):
                     os.remove(uploaded_file_path)
             except (ValueError, OSError):
@@ -230,7 +231,8 @@ def template():
 @st26_bp.route('/clear_task/<task_id>', methods=['GET', 'POST'])
 def clear_task(task_id):
     """Clear task information."""
-    from app import convert_excel_task, celery, _get_uploaded_file_path
+    from utils.security import get_uploaded_file_path
+    from tasks import convert_excel_task
 
     try:
         task = convert_excel_task.AsyncResult(task_id)
@@ -248,13 +250,14 @@ def clear_task(task_id):
             uploaded_filename = session.pop('uploaded_filename', None)
             if uploaded_filename:
                 try:
-                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                    upload_folder = current_app.config['UPLOAD_FOLDER']
+                    uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                     if os.path.exists(uploaded_file_path):
                         os.remove(uploaded_file_path)
                 except (ValueError, OSError):
                     pass
 
-            celery.control.revoke(task_id, terminate=True)
+            current_app.celery.control.revoke(task_id, terminate=True)
             session.pop('task_id', None)
             session.pop('original_filename', None)
             session.pop('xml_file', None)
@@ -268,7 +271,8 @@ def clear_task(task_id):
             uploaded_filename = session.pop('uploaded_filename', None)
             if uploaded_filename:
                 try:
-                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                    upload_folder = current_app.config['UPLOAD_FOLDER']
+                    uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                     if os.path.exists(uploaded_file_path):
                         os.remove(uploaded_file_path)
                 except (ValueError, OSError):
@@ -294,7 +298,7 @@ def clear_task(task_id):
 @st26_bp.route('/clear_all', methods=['GET', 'POST'])
 def clear_all():
     """Clear all task data."""
-    from app import _get_uploaded_file_path
+    from utils.security import get_uploaded_file_path
 
     try:
         task_id = session.get('task_id')
@@ -302,7 +306,8 @@ def clear_all():
             uploaded_filename = session.get('uploaded_filename')
             if uploaded_filename:
                 try:
-                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                    upload_folder = current_app.config['UPLOAD_FOLDER']
+                    uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                     if os.path.exists(uploaded_file_path):
                         os.remove(uploaded_file_path)
                 except (ValueError, OSError):
@@ -346,7 +351,8 @@ def xml_info():
 @st26_bp.route('/task_status/<task_id>')
 def task_status(task_id):
     """Check Celery task status."""
-    from app import convert_excel_task, _get_uploaded_file_path
+    from utils.security import get_uploaded_file_path
+    from tasks import convert_excel_task
 
     try:
         task = convert_excel_task.AsyncResult(task_id)
@@ -391,7 +397,8 @@ def task_status(task_id):
                         uploaded_filename = session.pop('uploaded_filename', None)
                         if uploaded_filename:
                             try:
-                                uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                                upload_folder = current_app.config['UPLOAD_FOLDER']
+                                uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                                 if os.path.exists(uploaded_file_path):
                                     os.remove(uploaded_file_path)
                             except (ValueError, OSError):
@@ -404,7 +411,8 @@ def task_status(task_id):
                     uploaded_filename = session.pop('uploaded_filename', None)
                     if uploaded_filename:
                         try:
-                            uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                            upload_folder = current_app.config['UPLOAD_FOLDER']
+                            uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                             if os.path.exists(uploaded_file_path):
                                 os.remove(uploaded_file_path)
                         except (ValueError, OSError):
@@ -423,7 +431,8 @@ def task_status(task_id):
             uploaded_filename = session.pop('uploaded_filename', None)
             if uploaded_filename:
                 try:
-                    uploaded_file_path = _get_uploaded_file_path(uploaded_filename)
+                    upload_folder = current_app.config['UPLOAD_FOLDER']
+                    uploaded_file_path = get_uploaded_file_path(upload_folder, uploaded_filename)
                     if os.path.exists(uploaded_file_path):
                         os.remove(uploaded_file_path)
                 except (ValueError, OSError):
