@@ -56,6 +56,7 @@ def create_app():
     redis_url += f'{redis_host}:{redis_port}/{redis_db}'
 
     # Celery configuration
+    # 1. 保留给 Flask（如果其他插件需要）
     app.config['CELERY_BROKER_URL'] = redis_url
     app.config['CELERY_RESULT_BACKEND'] = redis_url
     app.config['CELERY_BROKER_POOL_LIMIT'] = 10
@@ -63,6 +64,10 @@ def create_app():
     app.config['CELERY_BROKER_CONNECTION_TIMEOUT'] = 20
     app.config['CELERY_RESULT_BACKEND_MAX_RETRIES'] = 3
     app.config['CELERY_RESULT_BACKEND_RETRY_INTERVAL'] = 1
+
+    # 2. 直接用新版小写规范，精准喂给 Celery 实例
+    celery.conf.broker_url = redis_url
+    celery.conf.result_backend = redis_url
 
     # Configure logging
     _configure_logging(app)

@@ -97,11 +97,7 @@
                     <h4>转换失败</h4>
                     <div id="error-message">未知错误</div>
                 </div>
-                
-                <!-- 清除按钮 -->
-                <div class="text-center mt-3">
-                    <button id="clear-all-btn" class="btn btn-secondary">清除所有数据</button>
-                </div>
+
             </div>
         </div>
     </div>
@@ -119,61 +115,23 @@
             const taskProgressStatus = document.getElementById('task-progress-status');
             const conversionError = document.getElementById('conversion-error');
             const errorMessage = document.getElementById('error-message');
-            const clearAllBtn = document.getElementById('clear-all-btn');
-            
+
             // 下载状态标记
             let isDownloading = false;
-            
-            // 添加清除按钮点击事件
-            if (clearAllBtn) {
-                clearAllBtn.addEventListener('click', function() {
-                    if (confirm('确定要清除所有数据吗？这将删除当前上传的文件和转换结果。')) {
-                        clearAllBtn.disabled = true;
-                        clearAllBtn.textContent = '清除中...';
-                        
-                        fetch('/clear_all', {
-                            method: 'POST',
-                            credentials: 'include'
-                        })
-                        .then(function(response) {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
-                        .then(function(data) {
-                            console.log('清除响应:', data);
-                            if (data.status === 'success') {
-                                window.location.href = createRelativePath('/st26');
-                            } else {
-                                alert('清除失败: ' + (data.message || '未知错误'));
-                                clearAllBtn.disabled = false;
-                                clearAllBtn.textContent = '清除所有数据';
-                            }
-                        })
-                        .catch(function(error) {
-                            console.error('清除请求出错:', error);
-                            alert('清除请求失败，请稍后重试。错误: ' + error.message);
-                            clearAllBtn.disabled = false;
-                            clearAllBtn.textContent = '清除所有数据';
-                        });
-                    }
-                });
-            }
-            
+
             // 监听下载链接点击事件
             document.addEventListener('click', function(e) {
                 if (e.target && e.target.classList.contains('xml-download')) {
                     isDownloading = true;
                     console.log('开始下载XML文件');
-                    
+
                     // 2秒后重置下载状态
                     setTimeout(() => {
                         isDownloading = false;
                     }, 2000);
                 }
             });
-            
+
             // 检查是否有任务ID
             if (taskId) {
                 // 显示进度区域
@@ -185,7 +143,7 @@
                 let statusInterval = null;
                 
                 function checkTaskStatus() {
-                    fetch('/task_status/' + taskId, {
+                    fetch('/st26/task_status/' + taskId, {
                         method: 'GET',
                         credentials: 'include'
                     })
@@ -233,7 +191,7 @@
                             }
                             
                             // 获取XML文件信息
-                            fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
+                            fetch('/st26/xml_info?task_id=' + encodeURIComponent(taskId), {
                                 method: 'GET',
                                 credentials: 'include'
                             })

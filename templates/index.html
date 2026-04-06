@@ -207,7 +207,7 @@
       <b>上传填写的数据文件</b>
     </h2>
     
-    <form method="post" enctype="multipart/form-data" action="/upload">
+    <form method="post" enctype="multipart/form-data" action="/st26/upload">
       <div class="upload-area">
         <p class="upload-title">
           <b>点击选择文件或拖放到此处</b>
@@ -343,7 +343,7 @@
           if (shouldClearData) {
             console.log('用户选择清除数据，正在执行清除操作...');
             // 发送清除请求
-            fetch('/clear_all', {
+            fetch('/st26/clear_all', {
               method: 'POST',
               credentials: 'include'
             })
@@ -395,7 +395,7 @@
             const hasXmlFile = "{{ 'true' if 'xml_file' in session else 'false' }}";
             if (hasXmlFile === 'true') {
               console.log('发现之前的XML数据，开始清除');
-              fetch('/clear_all', {
+              fetch('/st26/clear_all', {
                 method: 'POST',
                 credentials: 'include'
               })
@@ -465,7 +465,7 @@
           formData.append('expert_settings', JSON.stringify(expertSettings));
 
           // 使用fetch上传文件
-          fetch('/upload', {
+          fetch('/st26/upload', {
             method: 'POST',
             body: formData
           })
@@ -527,7 +527,7 @@
         }
         
         const pollTaskStatus = function() {
-          fetch(`/task_status/${taskId}`, {
+          fetch(`/st26/task_status/${taskId}`, {
             method: 'GET',
             cache: 'no-cache',
             credentials: 'include',
@@ -563,7 +563,7 @@
                 }
                 
                 // 获取XML文件信息并显示下载链接
-                 fetch('/get_xml_info', {
+                 fetch('/st26/xml_info', {
                    method: 'GET',
                    credentials: 'include'
                  })

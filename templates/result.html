@@ -268,7 +268,7 @@
       if (taskId) {
         // 轮询任务状态
         function checkTaskStatus() {
-          fetch('/task_status/' + taskId, {
+          fetch('/st26/task_status/' + taskId, {
             method: 'GET',
             credentials: 'include'
           })
@@ -333,7 +333,7 @@
               }
               
               // 获取XML文件信息并直接显示结果
-              fetch('/get_xml_info?task_id=' + encodeURIComponent(taskId), {
+              fetch('/st26/xml_info?task_id=' + encodeURIComponent(taskId), {
                 method: 'GET',
                 credentials: 'include'
               })
