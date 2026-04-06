@@ -196,7 +196,6 @@ def download():
         fasta_paths = session.get('sirna_fasta_paths', [])
 
         if not results_path or not os.path.exists(results_path):
-            flash('⚠️ 结果文件不存在', 'error')
             return redirect(url_for('sirna.index'))
 
         filename = os.path.basename(results_path)
@@ -228,5 +227,4 @@ def download():
         )
 
     except Exception as e:
-        flash(f'⚠️ 下载失败：{str(e)}', 'error')
         return redirect(url_for('sirna.index'))
