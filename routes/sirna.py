@@ -223,7 +223,7 @@ def download():
         return send_file(
             buffer,
             as_attachment=True,
-            download_name=filename,
+            attachment_filename=filename,
             mimetype='application/vnd.ms-excel'
         )
 

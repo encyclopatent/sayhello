@@ -209,7 +209,7 @@ def download(filename):
     return send_file(
         buffer,
         as_attachment=True,
-        download_name=filename,
+        attachment_filename=filename,
         mimetype='text/xml'
     )
 
@@ -224,7 +224,7 @@ def template():
     return send_file(
         template_path,
         as_attachment=True,
-        download_name='template.xlsx'
+        attachment_filename='template.xlsx'
     )
 
 

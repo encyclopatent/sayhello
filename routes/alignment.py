@@ -74,7 +74,7 @@ def download_excel():
         return send_file(
             buffer,
             as_attachment=True,
-            download_name='序列比对结果.xlsx',
+            attachment_filename='序列比对结果.xlsx',
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
     except Exception as e:
@@ -100,7 +100,7 @@ def download_needle():
         return send_file(
             buffer,
             as_attachment=True,
-            download_name='needle比对结果.txt',
+            attachment_filename='needle比对结果.txt',
             mimetype='text/plain'
         )
     except Exception as e:
