@@ -128,7 +128,7 @@ def upload():
         session.pop('error_sequence', None)
         session.pop('error_position', None)
 
-        return redirect(url_for('result', task_id=task.id))
+        return redirect(url_for('st26.result', task_id=task.id))
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
