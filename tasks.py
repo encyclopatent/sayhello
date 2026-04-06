@@ -25,6 +25,12 @@ def convert_excel_task(self, file_path: str, output_folder: str, expert_settings
     Returns:
         Tuple of (xml_filename, sequence_summary, reminders)
     """
+    # 动态添加项目根目录到 sys.path
+    _task_file = os.path.abspath(__file__)
+    _task_dir = os.path.dirname(_task_file)  # tasks.py 所在目录
+    if _task_dir not in sys.path:
+        sys.path.insert(0, _task_dir)
+
     try:
         from st26autonew import convert_excel_to_xml
 
