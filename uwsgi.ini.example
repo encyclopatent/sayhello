@@ -1,0 +1,52 @@
+[uwsgi]
+#项目目录
+chdir=/www/wwwroot/sayhello
+
+#指定项目application
+wsgi-file=/www/wwwroot/sayhello/app.py
+# 指向你刚刚找到的虚拟环境根目录
+virtualenv = /www/wwwroot/sayhello/venv
+#python 程序内用以启动的application 变量名
+callable=app
+
+# 进程个数
+processes=4
+
+# 线程个数
+threads=2
+
+#指定启动时的pid文件路径（用于停止服务和重启服务，请勿删除）
+pidfile=/www/wwwroot/sayhello/uwsgi.pid
+
+# 指定ip及端口
+# 默认http模式，可切换至socket模式
+#http=0.0.0.0:
+#socket=0.0.0.0:
+# 指定ip及端口
+# 注释掉 http 模式，因为 Nginx 用的是 uwsgi_pass
+# http=0.0.0.0:
+
+# 开启 socket 模式，并填入 Nginx 正在寻找的那个 .sock 文件路径
+socket=/www/wwwroot/sayhello/sayhello.sock
+
+# 赋予 .sock 文件读写权限，防止 Nginx 因为权限不足无法访问而报错 502
+chmod-socket = 666
+
+
+#启动uwsgi的用户名和用户组
+uid=www
+gid=www
+
+#启用主进程
+master=true
+
+# 设置缓冲区大小
+buffer-size = 32768
+
+# 后台运行,并输出日志
+daemonize = /www/wwwlogs/python/sayhello/uwsgi.log
+
+# 自定义设置项请写到该处, 
+# 如果项目的启动方式您不想使用 wsgi-file 请注释掉,但不要删除，通讯方式(http, socket)同理;
+# 最好以上面相同的格式 <注释 + 换行 + key = value> 进行书写，方便以后查阅
+

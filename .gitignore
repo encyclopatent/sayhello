@@ -28,6 +28,10 @@ needle.txt
 test_*.txt
 
 # 上传和处理结果文件
-static/uploads/*.xlsx
-static/fragment_outputs/
+static/uploads/
+static/sirna_uploads/
+static/fragment_uploads/
+static/sirna_outputs/
+static/outputs/
 processed_results_*.xlsx
+*.fasta
