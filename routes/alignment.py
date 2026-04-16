@@ -1,11 +1,20 @@
 """Sequence alignment routes."""
-from flask import Blueprint, render_template, request, session, jsonify, send_file
+from flask import Blueprint, render_template, request, session, jsonify, send_file as flask_send_file
 import os
 import re
 import io
 import pandas as pd
+import flask
 
 alignment_bp = Blueprint('alignment', __name__, url_prefix='/alignment')
+
+
+def send_file_compat(*args, **kwargs):
+    """Flask 版本兼容的 send_file 包装器"""
+    attachment_filename = kwargs.pop('attachment_filename', None)
+    if attachment_filename:
+        kwargs['download_name'] = attachment_filename
+    return flask_send_file_compat(*args, **kwargs)
 
 
 @alignment_bp.route('/')
@@ -71,7 +80,7 @@ def download_excel():
             df.to_excel(writer, index=False, sheet_name='比对结果')
         buffer.seek(0)
 
-        return send_file(
+        return send_file_compat(
             buffer,
             as_attachment=True,
             attachment_filename='序列比对结果.xlsx',
@@ -97,7 +106,7 @@ def download_needle():
         buffer.write(needle_raw_result.encode('utf-8'))
         buffer.seek(0)
 
-        return send_file(
+        return send_file_compat(
             buffer,
             as_attachment=True,
             attachment_filename='needle比对结果.txt',

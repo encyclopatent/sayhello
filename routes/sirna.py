@@ -1,11 +1,20 @@
 """siRNA analysis routes."""
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash, send_file as flask_send_file
 from werkzeug.utils import secure_filename
 import os
 import re
 import io
+import flask
 
 sirna_bp = Blueprint('sirna', __name__, url_prefix='/sirna')
+
+
+def send_file_compat(*args, **kwargs):
+    """Flask 版本兼容的 send_file 包装器"""
+    attachment_filename = kwargs.pop('attachment_filename', None)
+    if attachment_filename:
+        kwargs['download_name'] = attachment_filename
+    return flask_send_file_compat(*args, **kwargs)
 
 
 @sirna_bp.route('/')
@@ -219,7 +228,7 @@ def download():
         session.pop('sirna_output_filename', None)
         session.pop('blast_task_id', None)
 
-        return send_file(
+        return send_file_compat(
             buffer,
             as_attachment=True,
             attachment_filename=filename,

@@ -1,13 +1,23 @@
 """ST26 XML conversion routes."""
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, make_response, flash, send_file, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, make_response, flash, send_file as flask_send_file, current_app
 from werkzeug.utils import secure_filename
 import os
 import uuid
 import json
 import io
 import openpyxl
+import flask
 
 st26_bp = Blueprint('st26', __name__, url_prefix='/st26')
+
+
+def send_file_compat(*args, **kwargs):
+    """Flask 版本兼容的 send_file 包装器"""
+    # 尝试使用 attachment_filename，如果不支持则使用 download_name
+    attachment_filename = kwargs.pop('attachment_filename', None)
+    if attachment_filename:
+        kwargs['download_name'] = attachment_filename
+    return flask_send_file(*args, **kwargs)
 
 
 @st26_bp.route('/guide')
@@ -206,7 +216,7 @@ def download(filename):
     except Exception as e:
         flash(f'清理临时文件时出错: {str(e)}', 'warning')
 
-    return send_file(
+    return send_file_compat(
         buffer,
         as_attachment=True,
         attachment_filename=filename,
@@ -221,7 +231,7 @@ def template():
     if not os.path.exists(template_path):
         flash('⚠️ 模板文件未找到', 'error')
         return redirect(url_for('st26.index'))
-    return send_file(
+    return send_file_compat(
         template_path,
         as_attachment=True,
         attachment_filename='template.xlsx'
