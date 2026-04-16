@@ -381,8 +381,15 @@ def task_status(task_id):
             if 'xml_file' not in session:
                 try:
                     result = task.result
-                    if isinstance(result, (tuple, list)) and len(result) == 3:
-                        xml_file, sequence_summary, reminders = result
+                    if isinstance(result, (tuple, list)) and len(result) >= 2:
+                        xml_file = result[0]
+                        sequence_summary = result[1]
+                        # Handle both 2-element and 3-element tuples
+                        if len(result) == 3:
+                            reminders = result[2]
+                        else:
+                            # Extract reminder count from summary
+                            reminders = sequence_summary.get('reminder_count', 0)
                         session['xml_file'] = xml_file
                         session['sequence_summary'] = sequence_summary
                         session['reminders'] = reminders
@@ -390,7 +397,7 @@ def task_status(task_id):
                     elif isinstance(result, dict) and result.get('status') == 'success':
                         session['xml_file'] = result['xml_file']
                         session['sequence_summary'] = result['sequence_summary']
-                        session['reminders'] = result['reminders']
+                        session['reminders'] = result.get('reminders', 0)
                         session.pop('task_id', None)
                     else:
                         error_msg = f'转换结果格式错误: {str(result)}'
