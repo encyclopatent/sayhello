@@ -1,0 +1,48 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: 🔒
+    - generic [ref=e4]: 注意：数据仅在本次会话中保留，关闭页面后将自动删除，服务器不保存任何数据
+  - generic [ref=e5]:
+    - heading "🧬 siRNA序列匹配分析工具 v2.0" [level=1] [ref=e6]
+    - link "返回主页" [ref=e8] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e9]:
+      - heading "文件输入" [level=2] [ref=e10]
+      - generic [ref=e11]:
+        - generic [ref=e12]: 查询序列文件（Excel）：
+        - generic [ref=e13]: A列放置查询的正义链或反义链（第1行输入列名“序列”），B列放置靶序列（第1行输入列名“靶序列”）
+        - button "查询序列文件（Excel）：" [ref=e14]
+      - generic [ref=e15]:
+        - generic [ref=e16]: 文献序列文件（FASTA）：
+        - generic [ref=e17]:
+          - text: 推荐在
+          - link "https://lens.org/" [ref=e18] [cursor=pointer]:
+            - /url: https://lens.org/
+          - text: 下载
+        - generic [ref=e19]:
+          - generic [ref=e20]: 请选择FASTA文件
+          - button "增加fasta文件" [ref=e21] [cursor=pointer]
+      - generic [ref=e22]:
+        - heading "模板文件下载" [level=3] [ref=e23]
+        - paragraph [ref=e24]:
+          - link "下载查询序列Excel模板" [ref=e25] [cursor=pointer]:
+            - /url: /static/sirna_templates/INHBE%20siRNA.xlsx
+          - link "下载文献序列FASTA模板" [ref=e26] [cursor=pointer]:
+            - /url: /static/sirna_templates/WO_2025_223537_A1.fasta
+      - generic [ref=e27]:
+        - generic [ref=e28]: 输出文件名：
+        - textbox "输出文件名：" [ref=e29]: siRNA_匹配结果
+      - generic [ref=e30]:
+        - generic [ref=e31]: 允许的最大错配个数：
+        - combobox "允许的最大错配个数：" [ref=e32]:
+          - option "1个错配" [selected]
+          - option "2个错配"
+          - option "3个错配"
+          - option "4个错配"
+    - generic [ref=e33]:
+      - heading "预处理信息" [level=2] [ref=e34]
+      - textbox [ref=e35]
+    - generic [ref=e36]:
+      - button "预处理文件" [ref=e37] [cursor=pointer]
+      - generic [ref=e40]: 就绪
+      - button "开始分析" [disabled] [ref=e41]

@@ -1,0 +1,29 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: 🔒
+    - generic [ref=e4]: 注意：数据仅在本次会话中保留，关闭页面后将自动删除，服务器不保存任何数据
+  - generic [ref=e5]:
+    - link "← 返回工具列表" [ref=e6] [cursor=pointer]:
+      - /url: /
+    - heading "🧬 序列比对工具 v2.0" [level=1] [ref=e7]
+    - paragraph [ref=e8]: 进行序列比对分析，支持多种比对算法，可查看序列同一性和特定位点匹配情况。靶序列为权利要求中限定的参比序列，特定位点为权利要求限定的位点，算法将特定位点匹配至查询序列，从而可以判断查询序列中的关键位点是否落入权利要求。如果不输入任何位点，则只进行序列同一性计算。
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: 靶序列
+          - textbox "靶序列" [ref=e15]:
+            - /placeholder: 请输入靶序列...
+        - generic [ref=e17]:
+          - generic [ref=e18]: 查询序列
+          - textbox "查询序列" [ref=e19]:
+            - /placeholder: 请输入查询序列...
+      - generic [ref=e20]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: 特定位点 (逗号分隔，如：266,389,422)
+          - textbox "特定位点 (逗号分隔，如：266,389,422)" [ref=e24]:
+            - /placeholder: 请输入特定位点...
+        - generic [ref=e26]:
+          - generic [ref=e27]: 关键位点 (逗号分隔，如：266,389,422)
+          - textbox "关键位点 (逗号分隔，如：266,389,422)" [ref=e28]:
+            - /placeholder: 请输入关键位点...
+      - button "开始比对" [ref=e30] [cursor=pointer]

@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: 🔒
+    - generic [ref=e4]: 注意：数据仅在本次会话中保留，关闭页面后将自动删除，服务器不保存任何数据
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - heading "🧪 化合物拆解分析工具 v2.0" [level=1] [ref=e7]
+      - link "返回主页" [ref=e8] [cursor=pointer]:
+        - /url: /
+    - generic [ref=e9]:
+      - heading "文件上传" [level=2] [ref=e10]
+      - generic [ref=e12]:
+        - generic [ref=e13]: Excel文件
+        - generic [ref=e14]: 请上传包含化合物SMILES的Excel文件，第一行为列名，第二行为核心结构（化合物编号为'core'），后续为待分析化合物
+        - button "Excel文件" [ref=e15]
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - heading "操作" [level=3] [ref=e18]
+        - paragraph [ref=e19]: 点击"开始分析"按钮处理化合物并生成结果
+      - generic [ref=e20]:
+        - button "开始分析" [ref=e21] [cursor=pointer]
+        - button "重置" [ref=e22] [cursor=pointer]

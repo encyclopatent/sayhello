@@ -266,8 +266,13 @@
       
       // 检查是否有任务ID
       if (taskId) {
+        let statusInterval = null;
+        let shouldPoll = true;
+
         // 轮询任务状态
         function checkTaskStatus() {
+          if (!shouldPoll) return;
+
           fetch('/st26/task_status/' + taskId, {
             method: 'GET',
             credentials: 'include'
@@ -277,7 +282,7 @@
           })
           .then(function(data) {
             console.log('任务状态:', data);
-            
+
             if (data.state === 'PENDING') {
               // 任务在排队中
               if (progressStatus) {
@@ -310,16 +315,18 @@
             } else if (data.state === 'SUCCESS') {
               // 任务成功完成
               console.log('任务完成，直接显示结果...');
-              
+
               // 停止轮询
-              if (typeof statusInterval !== 'undefined') {
+              shouldPoll = false;
+              if (statusInterval) {
                 clearInterval(statusInterval);
+                statusInterval = null;
               }
-              
+
               if (statusText) {
                 statusText.textContent = '✅ 处理完成，正在加载结果...';
               }
-              
+
               // 隐藏进度条
               if (progressBar) {
                 progressBar.style.width = '100%';
@@ -331,7 +338,7 @@
               if (uploadSuccess) {
                 uploadSuccess.style.display = 'none';
               }
-              
+
               // 获取XML文件信息并直接显示结果
               fetch('/st26/xml_info?task_id=' + encodeURIComponent(taskId), {
                 method: 'GET',
@@ -343,20 +350,24 @@
                   createDownloadSection(data);
                   statusText.textContent = '✅ 处理完成，可下载结果文件';
                 } else {
-                  // 如果获取失败，尝试刷新页面
-                  console.log('获取XML信息失败，尝试刷新页面');
-                  window.location.reload();
+                  // 如果获取失败，显示错误信息
+                  console.log('获取XML信息失败:', data);
+                  statusText.textContent = '⚠️ 获取结果失败，请刷新页面重试';
                 }
               })
               .catch(error => {
                 console.error('获取XML信息出错:', error);
-                // 出错时尝试刷新页面
-                window.location.reload();
+                statusText.textContent = '⚠️ 网络错误，请刷新页面重试';
               });
               return;
             } else if (data.state === 'FAILURE') {
               // 任务失败
               console.log('任务失败:', data);
+              shouldPoll = false;
+              if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+              }
               if (conversionError) {
                 conversionError.classList.remove('hidden');
               }
@@ -369,10 +380,10 @@
             console.error('检查任务状态出错:', error);
           });
         }
-        
+
         // 初始检查
         checkTaskStatus();
-        
+
         // 每2秒检查一次状态
         statusInterval = setInterval(checkTaskStatus, 2000);
       }

@@ -30,6 +30,11 @@ def create_app():
     # Secret key configuration
     app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')
 
+    # Session configuration
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_HTTPONLY'] = False
+    app.config['SESSION_COOKIE_SECURE'] = False
+
     # Debug mode
     app.debug = os.environ.get('DEBUG', 'False').lower() == 'true'
 

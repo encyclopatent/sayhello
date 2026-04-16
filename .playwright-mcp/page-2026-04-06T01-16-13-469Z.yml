@@ -1,0 +1,37 @@
+- generic [active] [ref=e1]:
+  - heading "ST26格式序列表XML生成工具 v2.0" [level=1] [ref=e2]
+  - link "返回主页" [ref=e4] [cursor=pointer]:
+    - /url: /
+  - generic [ref=e5]:
+    - heading "1 下载模板" [level=2] [ref=e6]:
+      - generic [ref=e7]: "1"
+      - text: 下载模板
+    - paragraph [ref=e8]: 请先下载模板文件，按照模板格式填写数据：
+    - generic [ref=e9]:
+      - link "下载Excel模板" [ref=e10] [cursor=pointer]:
+        - /url: /st26/template
+      - link "📖 查看使用指南" [ref=e11] [cursor=pointer]:
+        - /url: /st26/guide
+  - generic [ref=e12]:
+    - heading "2 专家模式设置（可选）" [level=2] [ref=e13]:
+      - generic [ref=e14]: "2"
+      - text: 专家模式设置（可选）
+    - paragraph [ref=e15]: 自定义修饰符的显示名称，如不需要可跳过此步骤：
+    - button "🔧 展开专家模式设置 ▼" [ref=e17] [cursor=pointer]:
+      - generic [ref=e18]: 🔧 展开专家模式设置
+      - generic [ref=e19]: ▼
+  - generic [ref=e20]:
+    - heading "3 上传填写的数据文件" [level=2] [ref=e21]:
+      - generic [ref=e22]: "3"
+      - text: 上传填写的数据文件
+    - generic [ref=e24] [cursor=pointer]:
+      - paragraph [ref=e25]: 点击选择文件或拖放到此处
+      - generic [ref=e26]: 上传并生成 XML
+  - heading "处理状态" [level=2] [ref=e28]
+  - generic [ref=e29]:
+    - button "使用说明 ▼" [ref=e31] [cursor=pointer]:
+      - generic [ref=e32]: 使用说明
+      - generic [ref=e33]: ▼
+    - button "免责声明 ▼" [ref=e35] [cursor=pointer]:
+      - generic [ref=e36]: 免责声明
+      - generic [ref=e37]: ▼

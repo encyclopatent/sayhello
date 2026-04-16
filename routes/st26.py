@@ -37,7 +37,20 @@ def index():
     is_new_navigation = request.args.get('new', 'false').lower() == 'true'
 
     xml_file = session.get('xml_file', None)
-    sequence_summary = session.get('sequence_summary', None)
+    summary_file = session.get('summary_file', None)
+    sequence_summary = None
+
+    # Read sequence summary from file
+    if summary_file and xml_file:
+        try:
+            summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+            if os.path.exists(summary_path):
+                import json
+                with open(summary_path, 'r') as f:
+                    sequence_summary = json.load(f)
+        except Exception:
+            pass
+
     reminders = session.get('reminders', None)
     task_id = session.get('task_id', None)
     original_filename = session.get('original_filename', None)
@@ -47,6 +60,14 @@ def index():
 
     if is_new_navigation:
         if xml_file or task_id or error_message:
+            # Clean up summary file if exists
+            if summary_file:
+                try:
+                    summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                    if os.path.exists(summary_path):
+                        os.remove(summary_path)
+                except Exception:
+                    pass
             session.clear()
             xml_file = sequence_summary = reminders = task_id = original_filename = error_message = error_sequence = error_position = None
     else:
@@ -132,7 +153,7 @@ def upload():
         session['original_filename'] = file.filename
 
         session.pop('xml_file', None)
-        session.pop('sequence_summary', None)
+        session.pop('summary_file', None)
         session.pop('reminders', None)
         session.pop('error_message', None)
         session.pop('error_sequence', None)
@@ -160,7 +181,7 @@ def result():
 
         if task_state in ['PENDING', 'PROGRESS']:
             session.pop('xml_file', None)
-            session.pop('sequence_summary', None)
+            session.pop('summary_file', None)
             session.pop('reminders', None)
             session.pop('error_message', None)
             session.pop('error_sequence', None)
@@ -169,7 +190,20 @@ def result():
         pass
 
     xml_file = session.get('xml_file')
-    sequence_summary = session.get('sequence_summary')
+    summary_file = session.get('summary_file')
+    sequence_summary = None
+
+    # Read sequence summary from file
+    if summary_file and xml_file:
+        try:
+            summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+            if os.path.exists(summary_path):
+                import json
+                with open(summary_path, 'r') as f:
+                    sequence_summary = json.load(f)
+        except Exception:
+            pass
+
     reminders = session.get('reminders')
 
     return render_template('result.html',
@@ -208,8 +242,17 @@ def download(filename):
             except (ValueError, OSError):
                 pass
 
+        # Clean up summary file
+        summary_file = session.pop('summary_file', None)
+        if summary_file:
+            try:
+                summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                if os.path.exists(summary_path):
+                    os.remove(summary_path)
+            except Exception:
+                pass
+
         session.pop('xml_file', None)
-        session.pop('sequence_summary', None)
         session.pop('reminders', None)
         session.pop('task_id', None)
         session.pop('original_filename', None)
@@ -249,6 +292,15 @@ def clear_task(task_id):
         task_state = task.state
 
         if task_state == 'SUCCESS':
+            # Clean up summary file
+            summary_file = session.pop('summary_file', None)
+            if summary_file:
+                try:
+                    summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                    if os.path.exists(summary_path):
+                        os.remove(summary_path)
+                except Exception:
+                    pass
             session.pop('task_id', None)
             session.pop('uploaded_filename', None)
             session.pop('original_filename', None)
@@ -267,11 +319,20 @@ def clear_task(task_id):
                 except (ValueError, OSError):
                     pass
 
+            # Clean up summary file
+            summary_file = session.pop('summary_file', None)
+            if summary_file:
+                try:
+                    summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                    if os.path.exists(summary_path):
+                        os.remove(summary_path)
+                except Exception:
+                    pass
+
             current_app.celery.control.revoke(task_id, terminate=True)
             session.pop('task_id', None)
             session.pop('original_filename', None)
             session.pop('xml_file', None)
-            session.pop('sequence_summary', None)
             session.pop('reminders', None)
             session.pop('error_message', None)
             session.pop('error_sequence', None)
@@ -288,10 +349,19 @@ def clear_task(task_id):
                 except (ValueError, OSError):
                     pass
 
+            # Clean up summary file
+            summary_file = session.pop('summary_file', None)
+            if summary_file:
+                try:
+                    summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                    if os.path.exists(summary_path):
+                        os.remove(summary_path)
+                except Exception:
+                    pass
+
             session.pop('task_id', None)
             session.pop('original_filename', None)
             session.pop('xml_file', None)
-            session.pop('sequence_summary', None)
             session.pop('reminders', None)
             session.pop('error_message', None)
             session.pop('error_sequence', None)
@@ -323,6 +393,16 @@ def clear_all():
                 except (ValueError, OSError):
                     pass
 
+        # Clean up summary file
+        summary_file = session.get('summary_file')
+        if summary_file:
+            try:
+                summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                if os.path.exists(summary_path):
+                    os.remove(summary_path)
+            except Exception:
+                pass
+
         session.clear()
 
         if request.method == 'POST':
@@ -342,12 +422,25 @@ def xml_info():
     session_task_id = session.get('task_id')
     xml_file = session.get('xml_file', None)
     error_message = session.get('error_message', None)
+    summary_file = session.get('summary_file', None)
 
     if xml_file:
+        # Read sequence summary from file
+        sequence_summary = None
+        if summary_file:
+            try:
+                summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_file)
+                if os.path.exists(summary_path):
+                    import json
+                    with open(summary_path, 'r') as f:
+                        sequence_summary = json.load(f)
+            except Exception:
+                pass
+
         return jsonify({
             'status': 'success',
             'xml_file': xml_file,
-            'sequence_summary': session.get('sequence_summary', None),
+            'sequence_summary': sequence_summary,
             'reminders': session.get('reminders', None)
         })
     elif error_message:
@@ -400,14 +493,28 @@ def task_status(task_id):
                         else:
                             # Extract reminder count from summary
                             reminders = sequence_summary.get('reminder_count', 0)
+
+                        # Store only essential data in session
                         session['xml_file'] = xml_file
-                        session['sequence_summary'] = sequence_summary
                         session['reminders'] = reminders
+                        # Store sequence summary in a temp file instead of session
+                        import json
+                        summary_filename = f"summary_{uuid.uuid4().hex}.json"
+                        summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_filename)
+                        with open(summary_path, 'w') as f:
+                            json.dump(sequence_summary, f)
+                        session['summary_file'] = summary_filename
                         session.pop('task_id', None)
                     elif isinstance(result, dict) and result.get('status') == 'success':
                         session['xml_file'] = result['xml_file']
-                        session['sequence_summary'] = result['sequence_summary']
                         session['reminders'] = result.get('reminders', 0)
+                        # Store sequence summary in a temp file
+                        import json
+                        summary_filename = f"summary_{uuid.uuid4().hex}.json"
+                        summary_path = os.path.join(current_app.config['OUTPUTS_FOLDER'], summary_filename)
+                        with open(summary_path, 'w') as f:
+                            json.dump(result['sequence_summary'], f)
+                        session['summary_file'] = summary_filename
                         session.pop('task_id', None)
                     else:
                         error_msg = f'转换结果格式错误: {str(result)}'
