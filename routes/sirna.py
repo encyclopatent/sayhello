@@ -31,6 +31,8 @@ def upload():
     try:
         sirna_upload_folder = os.path.join('static', 'sirna_uploads')
         os.makedirs(sirna_upload_folder, exist_ok=True)
+        # 确保目录有写权限
+        os.chmod(sirna_upload_folder, 0o755)
 
         if 'excel_file' not in request.files:
             return jsonify({'status': 'error', 'message': '未选择Excel文件'})

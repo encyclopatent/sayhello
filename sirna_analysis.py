@@ -551,7 +551,15 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
 
     # 5. 生成Excel结果文件
     output_folder = os.path.join('static', 'sirna_outputs')
-    os.makedirs(output_folder, exist_ok=True)
+    try:
+        os.makedirs(output_folder, exist_ok=True)
+        # 确保目录有写权限
+        os.chmod(output_folder, 0o755)
+    except OSError as e:
+        # 如果无法创建目录，尝试使用系统临时目录
+        import tempfile
+        output_folder = tempfile.gettempdir()
+        print(f"警告: 无法创建 static/sirna_outputs 目录，使用临时目录: {output_folder}")
 
     # 按原始输入顺序排序
     df_results = pd.DataFrame(excel_results)
@@ -568,7 +576,17 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
     # 生成带时间戳的文件名 - 使用净化后的文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = os.path.join(output_folder, f'{safe_output_filename}_主报告_{timestamp}.xlsx')
-    df_results.to_excel(output_path, index=False)
+    try:
+        df_results.to_excel(output_path, index=False)
+        # 确保文件有读权限
+        os.chmod(output_path, 0o644)
+    except (OSError, PermissionError) as e:
+        # 如果写入失败，尝试使用临时目录
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        output_path = os.path.join(temp_dir, f'{safe_output_filename}_主报告_{timestamp}.xlsx')
+        df_results.to_excel(output_path, index=False)
+        print(f"警告: 无法写入原始目录，已保存到临时目录: {output_path}")
 
     # 生成文献报告 - 净化文件名以防止特殊字符错误
     for file_name, results in literature_reports.items():
@@ -589,7 +607,12 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
                 output_folder,
                 f"文献_{safe_file_name}_报告_{timestamp}.xlsx"
             )
-            lit_df.to_excel(lit_report_path, index=False)
+            try:
+                lit_df.to_excel(lit_report_path, index=False)
+                os.chmod(lit_report_path, 0o644)
+            except (OSError, PermissionError):
+                # 静默跳过文献报告写入失败，主报告已经生成
+                pass
 
     # 生成用于前端显示的结果格式
     front_end_results = []
