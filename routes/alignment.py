@@ -14,7 +14,7 @@ def send_file_compat(*args, **kwargs):
     attachment_filename = kwargs.pop('attachment_filename', None)
     if attachment_filename:
         kwargs['download_name'] = attachment_filename
-    return flask_send_file_compat(*args, **kwargs)
+    return flask_send_file(*args, **kwargs)
 
 
 @alignment_bp.route('/')
