@@ -3,24 +3,20 @@ import subprocess
 from Bio import AlignIO
 import os
 
-def create_aligner(mode): 
-    # 1. 创建对齐器实例 
-    aligner = PairwiseAligner() 
-    
-    # 2. 加载 BLOSUM62 矩阵 (这是 BLASTP 的标准矩阵) 
-    try: 
-        matrix = substitution_matrices.load("BLOSUM62") 
-        aligner.substitution_matrix = matrix 
-    except Exception as e: 
-        # 如果加载失败（极少数情况），打印警告或使用默认 
-        print(f"Warning: Could not load BLOSUM62 matrix: {e}") 
+def create_aligner(mode, matrix_name="BLOSUM62"):
+    # 1. 创建对齐器实例
+    aligner = PairwiseAligner()
 
-    # 3. 设置模式 
-    if mode == 'global': 
-        aligner.mode = 'global' 
-    else: 
-        aligner.mode = 'local' # 假设你有局部比对的需求 
-        
+    # 2. 加载替代矩阵
+    try:
+        matrix = substitution_matrices.load(matrix_name)
+        aligner.substitution_matrix = matrix
+    except Exception as e:
+        print(f"Warning: Could not load {matrix_name} matrix: {e}")
+
+    # 3. 设置模式
+    aligner.mode = mode
+
     return aligner
 
 def calculate_identity(t_aligned, q_aligned):
@@ -29,7 +25,8 @@ def calculate_identity(t_aligned, q_aligned):
     total = len(t_aligned)
     return matches / total if total > 0 else 0.0
 
-def process_alignment(target, query, sites, key_positions=None, algorithm='global'):
+def process_alignment(target, query, sites, key_positions=None, algorithm='global',
+                      matrix_name='BLOSUM62', gapopen=10.0, gapextend=0.5):
     """处理序列比对，使用BioPython内置功能和外部工具"""
     if key_positions is None:
         key_positions = set()
@@ -45,7 +42,7 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
     }
     
     # 执行全局比对
-    global_aligner = create_aligner('global')
+    global_aligner = create_aligner('global', matrix_name)
     global_alignments = global_aligner.align(target, query)
     if not global_alignments:
         global_identity = 0.0
@@ -83,7 +80,7 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         aligned_sequences['global']['query'] = str(seq_b)
 
     # 执行局部比对
-    local_aligner = create_aligner('local')
+    local_aligner = create_aligner('local', matrix_name)
     local_alignments = local_aligner.align(target, query)
     if not local_alignments:
         local_identity = 0.0
@@ -158,8 +155,8 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         with open("clustalw.cfg", "w") as config_file:
             config_file.write("TYPE = PROTEIN\n")
             config_file.write("MATRIX = BLOSUM\n")
-            config_file.write("GAP_OPEN = 10.0\n")
-            config_file.write("GAP_EXTEND = 0.2\n")
+            config_file.write(f"GAP_OPEN = {gapopen}\n")
+            config_file.write(f"GAP_EXTEND = {gapextend}\n")
         
         # 使用ClustalW进行比对
         clustalw_path = "/opt/anaconda3/envs/rdkit-env/bin/clustalw2"
@@ -205,7 +202,7 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         needle_path = "/opt/anaconda3/envs/rdkit-env/bin/_needle"
         needle_cmd = (
             f"{needle_path} -nobrief -asequence=temp_target.fasta -bsequence=temp_query.fasta "
-            f"-gapopen=10.0 -gapextend=0.5 -outfile=needle.txt"
+            f"-gapopen={gapopen} -gapextend={gapextend} -outfile=needle.txt"
         )
         subprocess.run(
             needle_cmd,
@@ -301,7 +298,7 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         water_path = "/opt/anaconda3/envs/rdkit-env/bin/_water"
         water_cmd = (
             f"{water_path} -nobrief -asequence=temp_target.fasta -bsequence=temp_query.fasta "
-            f"-gapopen=10.0 -gapextend=0.5 -outfile=water.txt"
+            f"-gapopen={gapopen} -gapextend={gapextend} -outfile=water.txt"
         )
         subprocess.run(
             water_cmd,

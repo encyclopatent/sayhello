@@ -33,7 +33,16 @@ def analyze():
         query_sequence = re.sub(r'\s+', '', request.form.get('query_sequence', '').strip()).upper()
         target_sites_str = request.form.get('target_sites', '').strip()
         key_positions_str = request.form.get('key_positions', '').strip()
-        algorithm = 'global'
+        algorithm = request.form.get('param_mode', 'global')
+        matrix_name = request.form.get('param_matrix', 'BLOSUM62')
+        try:
+            gapopen = float(request.form.get('param_gapopen', 10.0))
+        except (ValueError, TypeError):
+            gapopen = 10.0
+        try:
+            gapextend = float(request.form.get('param_gapextend', 0.5))
+        except (ValueError, TypeError):
+            gapextend = 0.5
 
         target_sites = []
         if target_sites_str:
@@ -43,7 +52,10 @@ def analyze():
         if key_positions_str:
             key_positions = {int(m.group()) for m in re.finditer(r'\d+', key_positions_str)}
 
-        alignment_results = process_alignment(target_sequence, query_sequence, target_sites, key_positions, algorithm)
+        alignment_results = process_alignment(
+            target_sequence, query_sequence, target_sites, key_positions, algorithm,
+            matrix_name=matrix_name, gapopen=gapopen, gapextend=gapextend
+        )
 
         session['alignment_results'] = alignment_results
         session['target_sequence'] = target_sequence
@@ -51,6 +63,9 @@ def analyze():
         session['target_sites'] = target_sites
         session['key_positions'] = list(key_positions)
         session['algorithm'] = algorithm
+        session['matrix_name'] = matrix_name
+        session['gapopen'] = gapopen
+        session['gapextend'] = gapextend
 
         return jsonify({
             'status': 'success',
