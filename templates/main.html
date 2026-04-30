@@ -6,9 +6,9 @@
   <title>生物序列分析工具集</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <style>
-    /* ===== 主页面浅色主题 ===== */
+    /* ===== 主页面蓝白主题 ===== */
     .home-page {
-      background: #eef2f7;
+      background: #f5f8fc;
       min-height: 100vh;
     }
 
@@ -17,21 +17,28 @@
       position: relative;
       padding: 70px 20px 55px;
       text-align: center;
-      background: linear-gradient(160deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1e88e5 0%, #1565c0 50%, #0d47a1 100%);
       overflow: hidden;
     }
 
     .hero::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
       background:
-        radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.18) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 70%, rgba(255,255,255,0.12) 0%, transparent 50%);
+        radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.10) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(255,255,255,0.06) 0%, transparent 50%);
       pointer-events: none;
+      animation: heroGlow 12s ease-in-out infinite alternate;
+    }
+
+    @keyframes heroGlow {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(2%, 2%); }
     }
 
     .hero-grid {
@@ -41,33 +48,33 @@
       right: 0;
       bottom: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
-      background-size: 45px 45px;
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 52px 52px;
       pointer-events: none;
     }
 
     .hero-content {
       position: relative;
       z-index: 1;
-      max-width: 600px;
+      max-width: 640px;
       margin: 0 auto;
     }
 
     .hero-badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 16px;
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
+      gap: 7px;
+      padding: 5px 15px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.25);
       border-radius: 100px;
       font-size: 11px;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 20px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
+      font-weight: 500;
+      color: rgba(255,255,255,0.92);
+      margin-bottom: 22px;
+      letter-spacing: 0.08em;
     }
 
     .hero-badge svg {
@@ -76,68 +83,69 @@
     }
 
     .hero h1 {
-      font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+      font-size: clamp(2rem, 5vw, 3rem);
       font-weight: 700;
       color: #fff;
-      margin: 0 0 14px;
+      margin: 0 0 12px;
       letter-spacing: -0.02em;
-      line-height: 1.25;
+      line-height: 1.2;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.10);
     }
 
     .hero p {
-      font-size: 1rem;
-      color: rgba(255,255,255,0.88);
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.85);
       margin: 0 auto;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     /* DNA装饰 */
     .hero-dna {
       position: absolute;
-      width: 140px;
-      height: 140px;
-      opacity: 0.18;
+      width: 130px;
+      height: 130px;
+      opacity: 0.12;
       pointer-events: none;
     }
 
     .hero-dna.left {
-      left: -15px;
+      left: -10px;
       top: 50%;
       transform: translateY(-50%);
     }
 
     .hero-dna.right {
-      right: -15px;
+      right: -10px;
       top: 35%;
     }
 
     /* ===== Tools Section ===== */
     .tools-section {
-      padding: 45px 20px 65px;
+      padding: 50px 20px 70px;
       max-width: 1050px;
       margin: 0 auto;
     }
 
     .section-header {
       text-align: center;
-      margin-bottom: 36px;
+      margin-bottom: 38px;
     }
 
     .section-header h2 {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: #8896ab;
-      margin: 0 0 6px;
+      letter-spacing: 0.18em;
+      color: var(--primary-color, #2b84d2);
+      margin: 0 0 4px;
       background: none;
       padding: 0;
       border: none;
     }
 
     .section-header p {
-      font-size: 0.9rem;
-      color: #a0aec0;
+      font-size: 0.95rem;
+      color: #8896ab;
       margin: 0;
     }
 
@@ -145,7 +153,7 @@
     .tools-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 18px;
+      gap: 20px;
     }
 
     /* ===== Tool Card ===== */
@@ -153,10 +161,10 @@
       position: relative;
       background: #fff;
       border-radius: 14px;
-      padding: 26px;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
-      border: 1px solid #e4eaf2;
+      padding: 28px 26px;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(21,101,192,0.06);
+      border: 1px solid #e4ecf5;
       overflow: hidden;
     }
 
@@ -168,12 +176,12 @@
       right: 0;
       height: 3px;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.35s ease;
     }
 
     .tool-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 28px rgba(102,126,234,0.12), 0 4px 12px rgba(0,0,0,0.06);
+      transform: translateY(-6px);
+      box-shadow: 0 16px 32px rgba(21,101,192,0.10), 0 4px 12px rgba(0,0,0,0.05);
       border-color: transparent;
     }
 
@@ -181,66 +189,74 @@
       opacity: 1;
     }
 
-    .tool-card:nth-child(1)::before { background: linear-gradient(90deg, #667eea, #764ba2); }
-    .tool-card:nth-child(2)::before { background: linear-gradient(90deg, #11998e, #38ef7d); }
-    .tool-card:nth-child(3)::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-    .tool-card:nth-child(4)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .tool-card:nth-child(1)::before { background: linear-gradient(90deg, #1e88e5, #42a5f5); }
+    .tool-card:nth-child(2)::before { background: linear-gradient(90deg, #00897b, #26a69a); }
+    .tool-card:nth-child(3)::before { background: linear-gradient(90deg, #5c6bc0, #7986cb); }
+    .tool-card:nth-child(4)::before { background: linear-gradient(90deg, #ff8f00, #ffb300); }
 
     .tool-card-icon {
       width: 48px;
       height: 48px;
-      border-radius: 11px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 16px;
-      font-size: 24px;
-      transition: transform 0.3s ease;
+      margin-bottom: 18px;
+      font-size: 22px;
+      transition: transform 0.35s ease;
     }
 
     .tool-card:hover .tool-card-icon {
-      transform: scale(1.08) rotate(-3deg);
+      transform: scale(1.06) rotate(-2deg);
     }
 
-    .tool-card:nth-child(1) .tool-card-icon { background: linear-gradient(135deg, #667eea18, #764ba218); }
-    .tool-card:nth-child(2) .tool-card-icon { background: linear-gradient(135deg, #11998e18, #38ef7d18); }
-    .tool-card:nth-child(3) .tool-card-icon { background: linear-gradient(135deg, #8b5cf618, #a78bfa18); }
-    .tool-card:nth-child(4) .tool-card-icon { background: linear-gradient(135deg, #f59e0b18, #fbbf2418); }
+    .tool-card:nth-child(1) .tool-card-icon { background: linear-gradient(135deg, #e3f2fd, #bbdefb); }
+    .tool-card:nth-child(2) .tool-card-icon { background: linear-gradient(135deg, #e0f2f1, #b2dfdb); }
+    .tool-card:nth-child(3) .tool-card-icon { background: linear-gradient(135deg, #e8eaf6, #c5cae9); }
+    .tool-card:nth-child(4) .tool-card-icon { background: linear-gradient(135deg, #fff8e1, #ffecb3); }
 
     .tool-card h3 {
       font-size: 1.1rem;
       font-weight: 600;
-      color: #2d3748;
-      margin: 0 0 9px;
+      color: #1a2a3a;
+      margin: 0 0 8px;
       letter-spacing: -0.01em;
     }
 
     .tool-card p {
       font-size: 0.85rem;
-      color: #718096;
-      line-height: 1.6;
-      margin: 0 0 18px;
+      color: #6b7a8f;
+      line-height: 1.65;
+      margin: 0 0 20px;
     }
 
     .tool-card-btn {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 9px 18px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      border-radius: 7px;
+      gap: 6px;
+      padding: 9px 20px;
+      background: linear-gradient(135deg, #1e88e5, #1565c0);
+      border-radius: 8px;
       color: #fff;
       font-size: 0.82rem;
       font-weight: 500;
       text-decoration: none;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 10px rgba(102,126,234,0.25);
+      box-shadow: 0 3px 10px rgba(21,101,192,0.20);
     }
 
+    .tool-card:nth-child(2) .tool-card-btn { background: linear-gradient(135deg, #00897b, #00695c); box-shadow: 0 3px 10px rgba(0,137,123,0.20); }
+    .tool-card:nth-child(3) .tool-card-btn { background: linear-gradient(135deg, #5c6bc0, #3949ab); box-shadow: 0 3px 10px rgba(92,107,192,0.20); }
+    .tool-card:nth-child(4) .tool-card-btn { background: linear-gradient(135deg, #ff8f00, #ff6f00); box-shadow: 0 3px 10px rgba(255,143,0,0.20); }
+
     .tool-card-btn:hover {
-      transform: translateX(3px);
-      box-shadow: 0 4px 14px rgba(102,126,234,0.35);
+      transform: translateX(4px);
+      box-shadow: 0 6px 16px rgba(21,101,192,0.30);
     }
+
+    .tool-card:nth-child(2) .tool-card-btn:hover { box-shadow: 0 6px 16px rgba(0,137,123,0.30); }
+    .tool-card:nth-child(3) .tool-card-btn:hover { box-shadow: 0 6px 16px rgba(92,107,192,0.30); }
+    .tool-card:nth-child(4) .tool-card-btn:hover { box-shadow: 0 6px 16px rgba(255,143,0,0.30); }
 
     .tool-card-btn svg {
       width: 13px;
@@ -249,7 +265,7 @@
     }
 
     .tool-card-btn:hover svg {
-      transform: translateX(2px);
+      transform: translateX(3px);
     }
 
     /* ===== Footer ===== */
@@ -257,7 +273,7 @@
       text-align: center;
       padding: 28px 20px;
       background: #fff;
-      border-top: 1px solid #e4eaf2;
+      border-top: 1px solid #e4ecf5;
     }
 
     .footer p {
@@ -273,11 +289,11 @@
       }
 
       .tool-card {
-        padding: 20px;
+        padding: 22px;
       }
 
       .tools-grid {
-        gap: 14px;
+        gap: 16px;
       }
 
       .hero-dna {
