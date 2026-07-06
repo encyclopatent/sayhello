@@ -299,7 +299,9 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
             for seg in segments:
                 feature = ET.SubElement(insd_feature_table, "INSDFeature")
                 ET.SubElement(feature, "INSDFeature_key").text = "misc_feature"
-                ET.SubElement(feature, "INSDFeature_location").text = f"{seg['start']}..{seg['end']}"
+                # 单碱基段用 N，范围段用 N..M（符合 INSDC/ST26 规范）
+                location = str(seg['start']) if seg['start'] == seg['end'] else f"{seg['start']}..{seg['end']}"
+                ET.SubElement(feature, "INSDFeature_location").text = location
                 
                 quals = ET.SubElement(feature, "INSDFeature_quals")
                 qual = ET.SubElement(quals, "INSDQualifier")

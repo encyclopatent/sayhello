@@ -748,6 +748,7 @@ _RING_PATTERN = re.compile(r'region\s*[:：]?\s*(\d+)\.\.(\d+).*note\s*[:：]?\s
 # 杂合段匹配
 _HYBRID_SEGMENT_PATTERN1 = re.compile(r'\s*(\d+)\s*\.\.\s*(\d+)\s*(RNA|DNA)\s*', re.IGNORECASE)
 _HYBRID_SEGMENT_PATTERN2 = re.compile(r'\s*(\d+)\s*-\s*(\d+)\s*(RNA|DNA)\s*', re.IGNORECASE)
+_HYBRID_SEGMENT_PATTERN3 = re.compile(r'\s*(\d+)\s+(RNA|DNA)\s*', re.IGNORECASE)
 
 
 def read_sequences_from_excel(file_path: str) -> List[Dict[str, Any]]:
@@ -781,6 +782,7 @@ def read_sequences_from_excel(file_path: str) -> List[Dict[str, Any]]:
     ring_pattern = _RING_PATTERN
     hybrid_segment_pattern1 = _HYBRID_SEGMENT_PATTERN1
     hybrid_segment_pattern2 = _HYBRID_SEGMENT_PATTERN2
+    hybrid_segment_pattern3 = _HYBRID_SEGMENT_PATTERN3
 
     seq_col = None
     for i, col in enumerate(col_names):
@@ -887,12 +889,18 @@ def read_sequences_from_excel(file_path: str) -> List[Dict[str, Any]]:
                 for seg_col in segment_cols:
                     if pd.notna(row[seg_col]):
                         seg_str = str(row[seg_col]).strip()
-                        match = hybrid_segment_pattern1.match(seg_str) or hybrid_segment_pattern2.match(seg_str)
-                        
+                        match = (hybrid_segment_pattern1.match(seg_str) or
+                                 hybrid_segment_pattern2.match(seg_str) or
+                                 hybrid_segment_pattern3.match(seg_str))
+
                         if match:
+                            seg_type = match.group(match.lastindex)
                             start = int(match.group(1))
-                            end = int(match.group(2))
-                            seg_type = match.group(3)
+                            # pattern3 (单碱基) 只有2组，start即end
+                            if match.lastindex >= 3:
+                                end = int(match.group(2))
+                            else:
+                                end = start
                             
                             if start <= 0:
                                 raise ValueError(f"第{row_idx+1}行区段起始位置必须大于0")
