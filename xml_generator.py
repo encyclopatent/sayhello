@@ -459,7 +459,7 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
         if moltype == "AA" and ring_infos:
             # 二硫键位置允许的含巯基特殊氨基酸关键词
             # 这些以X表示，在freetext中写明具体名称
-            _CYS_KEYWORDS = ['cysteine', 'penicillamine']
+            _CYS_KEYWORDS = ['cysteine', 'cys', 'penicillamine', 'pen']
 
             def _is_valid_disulfide_residue(pos):
                 """检查指定位置是否可形成二硫键：C 直接通过，X 需查freetext含半胱氨酸相关关键字"""
