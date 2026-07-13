@@ -462,14 +462,28 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
             _CYS_KEYWORDS = ['cysteine', 'cys', 'penicillamine', 'pen']
 
             def _is_valid_disulfide_residue(pos):
-                """检查指定位置是否可形成二硫键：C 直接通过，X 需查freetext含半胱氨酸相关关键字"""
+                """检查指定位置是否可形成二硫键：C 直接通过，X 查freetext含半胱氨酸相关关键字"""
                 seq_char = naked_sequence[pos - 1]
                 if seq_char == 'C':
                     return True
                 if seq_char == 'X':
                     for x_pos, ft in zip(special_positions, freetexts):
                         if x_pos == pos:
-                            return any(kw in ft.lower() for kw in _CYS_KEYWORDS)
+                            # freetext匹配到cys/pen关键字→通过
+                            if any(kw in ft.lower() for kw in _CYS_KEYWORDS):
+                                return True
+                            # 有freetext但未匹配到关键字→给出提醒但不阻止
+                            reminders.append(
+                                f"序列{sequence_id_counter}位置{pos}是特殊氨基酸('{ft}')，"
+                                f"请确认其是否含巯基"
+                            )
+                            return True
+                    # X位置无对应freetext→无法判断，放行但给提醒
+                    reminders.append(
+                        f"序列{sequence_id_counter}位置{pos}为特殊氨基酸(X)，"
+                        f"请确认其是否含巯基并可形成二硫键"
+                    )
+                    return True
                 return False
 
             for ring in ring_infos:
