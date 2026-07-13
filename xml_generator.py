@@ -457,17 +457,33 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
 
         # 处理环信息
         if moltype == "AA" and ring_infos:
+            # 二硫键位置允许的含巯基特殊氨基酸关键词
+            # 这些以X表示，在freetext中写明具体名称
+            _CYS_KEYWORDS = ['cysteine', 'penicillamine']
+
+            def _is_valid_disulfide_residue(pos):
+                """检查指定位置是否可形成二硫键：C 直接通过，X 需查freetext含半胱氨酸相关关键字"""
+                seq_char = naked_sequence[pos - 1]
+                if seq_char == 'C':
+                    return True
+                if seq_char == 'X':
+                    for x_pos, ft in zip(special_positions, freetexts):
+                        if x_pos == pos:
+                            return any(kw in ft.lower() for kw in _CYS_KEYWORDS)
+                return False
+
             for ring in ring_infos:
                 if 'disulfide' in ring['note'].lower():
-                    start_idx = ring['start'] - 1
-                    end_idx = ring['end'] - 1
                     errors = []
-                    if naked_sequence[start_idx] not in {'C','X'}:
+                    if not _is_valid_disulfide_residue(ring['start']):
                         errors.append(ring['start'])
-                    if naked_sequence[end_idx] not in {'C','X' }:
+                    if not _is_valid_disulfide_residue(ring['end']):
                         errors.append(ring['end'])
                     if errors:
-                        raise ValueError(f"序列{sequence_id_counter}的二硫键位置错误：位置{errors}不是半胱氨酸")
+                        raise ValueError(
+                            f"序列{sequence_id_counter}的二硫键位置错误："
+                            f"位置{errors}不是半胱氨酸或含半胱氨酸的特殊氨基酸"
+                        )
 
                 feature = ET.SubElement(insd_feature_table, "INSDFeature")
                 ET.SubElement(feature, "INSDFeature_key").text = "REGION"
