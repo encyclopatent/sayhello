@@ -76,9 +76,8 @@ def batch():
 
         results = batch_compare_from_excel(excel_path, gapopen, gapextend)
 
-        # 清理上传文件
-        if os.path.exists(excel_path):
-            os.remove(excel_path)
+        # 保存文件路径供下载使用，不清除原文件
+        session['compare_batch_file'] = excel_path
 
         # 只存储下载所需的最小数据到session（剔除alignments/raw_results等大数据）
         session['compare_batch_results'] = [
@@ -149,33 +148,46 @@ def download_excel():
 
 @compare_bp.route('/download/batch')
 def download_batch():
-    """Download batch comparison summary as Excel."""
+    """在原上传Excel基础上追加序列同一性和突变位点列表后下载。"""
     try:
         results = session.get('compare_batch_results')
-        if not results:
+        file_path = session.get('compare_batch_file')
+        if not results or not file_path or not os.path.exists(file_path):
             return render_template('error.html', message='未找到批量比对结果'), 400
 
-        rows = []
+        # 读取原始上传的Excel
+        df = pd.read_excel(file_path, engine='openpyxl')
+
+        # 读完后清理上传文件
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        session.pop('compare_batch_file', None)
+
+        # 追加序列同一性列
+        identities = [f"{r['identity']:.2%}" for r in results]
+        df['序列同一性'] = identities
+
+        # 追加突变位点列表列（"-"连接的格式，如 V2G-E31S）
+        mutation_strs = []
         for r in results:
-            rows.append({
-                '序列名称': r.get('name', ''),
-                '序列同一性': f"{r['identity']:.2%}",
-                '匹配数': r['matches'],
-                '错配数': r['mismatches'],
-                '总比对位置': r['total_positions'],
-                '突变数量': len(r['mutations']),
-            })
+            if r['mutations']:
+                ms = '-'.join(f"{m['reference_residue']}{m['numbering_position']}{m['target_residue']}" for m in r['mutations'])
+            else:
+                ms = '-'
+            mutation_strs.append(ms)
+        df['突变位点列表'] = mutation_strs
 
         buffer = io.BytesIO()
-        df = pd.DataFrame(rows)
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='批量比对汇总')
+            df.to_excel(writer, index=False, sheet_name='批量比对结果')
         buffer.seek(0)
 
         return send_file(
             buffer,
             as_attachment=True,
-            download_name='批量比对汇总.xlsx',
+            download_name='批量比对结果.xlsx',
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
 
