@@ -244,21 +244,17 @@ def _build_visual_alignment(
         is_mutation = (ref_char != '-' and tgt_char != '-' and ref_char != tgt_char)
         marker_chars.append('*' if is_mutation else ' ')
 
-    # 坐标轴：每10个位置标注数字
+    # 坐标轴：数字最后一位与所在位点对齐
+    # 例如 10 → '1'在位置9, '0'在位置10；20 → '2'在位置19, '0'在位置20
     coord_chars = [' '] * seq_len
-    # 标注位置1
-    if seq_len >= 1:
-        s = '1'
-        for j, c in enumerate(s):
-            if j < seq_len:
-                coord_chars[j] = c
-    # 标注每10个位置：10, 20, 30 ...
-    for i in range(10, seq_len + 1, 10):
-        s = str(i)
-        idx = i - 1  # 0-indexed
-        for j, c in enumerate(s):
-            if idx + j < seq_len:
-                coord_chars[idx + j] = c
+    for i in range(1, seq_len + 1):
+        if i == 1 or i % 10 == 0:
+            s = str(i)
+            last_idx = i - 1          # 数字最后一位的0-indexed位置
+            start = last_idx - len(s) + 1
+            for j, c in enumerate(s):
+                if 0 <= start + j < seq_len:
+                    coord_chars[start + j] = c
 
     return {
         'coord_ruler': ''.join(coord_chars),
