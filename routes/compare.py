@@ -32,10 +32,18 @@ def analyze():
 
         result = compare_sequences(ref_seq, num_seq, tgt_seq, gapopen, gapextend)
 
-        session['compare_result'] = result
-        session['ref_sequence'] = ref_seq
-        session['num_sequence'] = num_seq
-        session['tgt_sequence'] = tgt_seq
+        # 只存储下载所需的最小数据到session（raw_results等大数据只返回给前端不存session）
+        session['compare_result_mini'] = {
+            'identity': result['identity'],
+            'matches': result['matches'],
+            'mismatches': result['mismatches'],
+            'total_positions': result['total_positions'],
+            'mutations': result['mutations'],
+            'alignments_identity': {
+                'ref_vs_num': result['alignments']['ref_vs_num']['identity'],
+                'tgt_vs_num': result['alignments']['tgt_vs_num']['identity'],
+            },
+        }
 
         return jsonify({'status': 'success', 'result': result})
 
@@ -72,7 +80,19 @@ def batch():
         if os.path.exists(excel_path):
             os.remove(excel_path)
 
-        session['compare_batch_results'] = results
+        # 只存储下载所需的最小数据到session（剔除alignments/raw_results等大数据）
+        session['compare_batch_results'] = [
+            {
+                'name': r.get('name', ''),
+                'index': r.get('index', 0),
+                'identity': r['identity'],
+                'matches': r['matches'],
+                'mismatches': r['mismatches'],
+                'total_positions': r['total_positions'],
+                'mutations': r['mutations'],
+            }
+            for r in results
+        ]
 
         return jsonify({'status': 'success', 'results': results, 'count': len(results)})
 
@@ -84,7 +104,7 @@ def batch():
 def download_excel():
     """Download single comparison result as Excel."""
     try:
-        result = session.get('compare_result')
+        result = session.get('compare_result_mini')
         if not result:
             return render_template('error.html', message='未找到比对结果'), 400
 
@@ -93,8 +113,8 @@ def download_excel():
         # 同一性汇总行
         data.append({
             '分析项目': '序列同一性',
-            '参比-编号同一性': f"{result['alignments']['ref_vs_num']['identity']:.2%}",
-            '目标-编号同一性': f"{result['alignments']['tgt_vs_num']['identity']:.2%}",
+            '参比-编号同一性': f"{result['alignments_identity']['ref_vs_num']:.2%}",
+            '目标-编号同一性': f"{result['alignments_identity']['tgt_vs_num']:.2%}",
             '参比-目标同一性': f"{result['identity']:.2%}",
             '匹配/总比对': f"{result['matches']}/{result['total_positions']}",
             '突变数': len(result['mutations']),
