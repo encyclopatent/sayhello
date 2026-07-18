@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三序列比对与突变分析</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    .container { max-width: 1200px; margin: 60px auto 20px; padding: 20px; }
+    h1 { color: var(--primary-color); text-align: center; margin-bottom: 10px; }
+    .subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 30px; font-size: 14px; }
+    .mode-tabs { display: flex; justify-content: center; gap: 0; margin-bottom: 30px; }
+    .mode-tab { padding: 12px 32px; border: 1px solid #ddd; background: #f5f5f5; cursor: pointer; font-size: 15px; font-weight: 600; color: #666; transition: all 0.2s; }
+    .mode-tab:first-child { border-radius: 8px 0 0 8px; }
+    .mode-tab:last-child { border-radius: 0 8px 8px 0; }
+    .mode-tab.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+    .mode-tab:hover:not(.active) { background: #e8e8e8; }
+    .form-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 30px; margin-bottom: 30px; display: none; }
+    .form-container.active { display: block; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--text-primary); font-size: 14px; }
+    .form-group textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: 'Courier New', monospace; resize: vertical; }
+    .form-group input[type="file"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .form-row { display: flex; gap: 20px; margin-bottom: 0; }
+    .form-column { flex: 1; }
+    .seq-label { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: white; }
+    .seq-label.ref { background: #3498db; }
+    .seq-label.num { background: #2ecc71; }
+    .seq-label.tgt { background: #e74c3c; }
+    .btn { display: inline-block; background-color: var(--primary-color); color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: var(--transition); }
+    .btn:hover { background-color: var(--primary-dark); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: #6c757d; }
+    .btn-secondary:hover { background: #5a6268; }
+    .btn-success { background: #28a745; }
+    .btn-success:hover { background: #218838; }
+    .btn-container { text-align: center; margin-top: 20px; }
+    .results-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 30px; margin-top: 30px; display: none; }
+    .results-container.active { display: block; }
+    .loading { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+    .loading .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: #f8faff; border: 1px solid #e4ecf5; border-radius: 10px; padding: 18px 15px; text-align: center; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: var(--primary-color); }
+    .stat-card .label { font-size: 13px; color: #666; margin-top: 4px; }
+    .stat-card.highlight { background: #e8f5e9; border-color: #a5d6a7; }
+    .stat-card.warning { background: #fff3e0; border-color: #ffcc80; }
+    .stat-card.danger { background: #fce4ec; border-color: #ef9a9a; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: center; border: 1px solid #ddd; }
+    th { background: var(--primary-light); color: var(--primary-color); font-weight: 600; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    tr:hover { background: #f0f4fa; }
+    .mutation-row { background: #fff8e1 !important; }
+    .mutation-row:hover { background: #ffecb3 !important; }
+    .aligned-seqs { font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; margin-top: 15px; overflow-x: auto; white-space: nowrap; padding: 15px; background: #f8faff; border: 1px solid #e4ecf5; border-radius: 8px; }
+    .aligned-seqs .line { display: flex; }
+    .aligned-seqs .label-col { width: 80px; text-align: right; padding-right: 12px; font-weight: 600; flex-shrink: 0; }
+    .aligned-seqs .seq-col { letter-spacing: 2px; }
+    .aligned-seqs .ref-col { color: #3498db; }
+    .aligned-seqs .num-col { color: #27ae60; }
+    .aligned-seqs .tgt-col { color: #e74c3c; }
+    .aligned-seqs .marker-col { color: #e67e22; }
+    .aligned-seqs .mutation-mark { color: #e74c3c; font-weight: 700; }
+    .download-bar { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: var(--primary-color); text-decoration: none; font-weight: bold; }
+    .back-link:hover { text-decoration: underline; }
+    .seq-summary { font-size: 13px; color: #666; margin-bottom: 15px; padding: 12px; background: #f8faff; border-radius: 8px; text-align: center; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .no-mutations { text-align: center; padding: 30px; color: #666; font-size: 15px; }
+    .no-mutations .icon { font-size: 48px; margin-bottom: 10px; }
+    .sheet-info { background: #f0f7ff; border: 1px solid #d0e3f7; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 13px; color: #1a56db; }
+    .sheet-info code { background: #e8f0fe; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <div class="data-security-banner">
+    <span class="banner-icon">🔒</span>
+    <span class="banner-text">注意：数据仅在本次会话中保留，关闭页面后将自动删除，服务器不保存任何数据</span>
+  </div>
+
+  <div class="container">
+    <a href="{{ url_for('main.index') }}" class="back-link">← 返回工具列表</a>
+
+    <h1>🧬 三序列比对与突变分析</h1>
+    <p class="subtitle">
+      基于EMBOSS needle全局比对算法，以<strong>编号序列</strong>为坐标系统，比较参比序列与目标序列的同一性和突变位点
+    </p>
+
+    <!-- 模式切换 -->
+    <div class="mode-tabs">
+      <div class="mode-tab active" data-mode="single" onclick="switchMode('single')">📝 序列输入模式</div>
+      <div class="mode-tab" data-mode="batch" onclick="switchMode('batch')">📂 Excel批量模式</div>
+    </div>
+
+    <!-- ========= 单序列输入模式 ========= -->
+    <div class="form-container active" id="single-mode">
+      <form id="single-form">
+        <div class="form-row">
+          <div class="form-column">
+            <div class="form-group">
+              <label><span class="seq-label ref">参比序列</span> Reference</label>
+              <textarea id="ref-sequence" name="ref_sequence" placeholder="输入参比序列...&#10;例如: MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSPGSAQVKAHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR"></textarea>
+            </div>
+          </div>
+          <div class="form-column">
+            <div class="form-group">
+              <label><span class="seq-label num">编号序列</span> Numbering</label>
+              <textarea id="num-sequence" name="num_sequence" placeholder="输入编号序列...&#10;编号序列提供坐标系统，参比序列和目标序列将分别与编号序列比对"></textarea>
+            </div>
+          </div>
+          <div class="form-column">
+            <div class="form-group">
+              <label><span class="seq-label tgt">目标序列</span> Target</label>
+              <textarea id="tgt-sequence" name="tgt_sequence" placeholder="输入目标序列...&#10;例如: MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSPGSAQVKAHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKLLSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- 参数设置 -->
+        <div style="margin: 20px 0 0; border-top: 1px solid #e4ecf5; padding-top: 16px;">
+          <div style="display: flex; justify-content: center;">
+            <button type="button" id="params-toggle" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; background: #f0f4fa; border: 1px solid #dde5ef; border-radius: 20px; cursor: pointer; font-size: 13px; color: #2b84d2; transition: all 0.2s;">
+              <span>⚙️</span>
+              <span>比对参数设置</span>
+              <span id="params-toggle-icon" style="font-size: 10px;">▼</span>
+            </button>
+          </div>
+          <div id="params-content" style="display: none; margin-top: 12px; padding: 18px 20px; background: #f8faff; border: 1px solid #e4ecf5; border-radius: 10px;">
+            <div style="font-size: 13px; font-weight: 600; color: #1a2a3a; margin-bottom: 12px;">needle 算法参数 (默认值)</div>
+            <div class="form-row">
+              <div class="form-column">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 13px;">Gap Open 罚分</label>
+                  <input type="number" id="param-gapopen" name="param_gapopen" value="10.0" step="0.5" min="0" max="50" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%;">
+                </div>
+              </div>
+              <div class="form-column">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 13px;">Gap Extend 罚分</label>
+                  <input type="number" id="param-gapextend" name="param_gapextend" value="0.5" step="0.1" min="0" max="20" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%;">
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; color: #8896ab; text-align: center;">
+              算法：EMBOSS needle 全局比对 &nbsp;|&nbsp; 默认值：Gap Open=10.0，Gap Extend=0.5
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-container">
+          <button type="submit" class="btn">🔍 开始分析</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ========= Excel批量模式 ========= -->
+    <div class="form-container" id="batch-mode">
+      <div class="sheet-info">
+        <strong>📋 Excel格式要求：</strong><br>
+        文件需要包含以下列（列名匹配关键字即可）：
+        <code>参比序列</code> / <code>reference</code> / <code>ref</code>，
+        <code>编号序列</code> / <code>numbering</code> / <code>num</code>，
+        <code>目标序列</code> / <code>target</code> / <code>tgt</code>，
+        <code>序列名称</code> / <code>name</code>（可选）<br>
+        系统将自动按列名匹配，逐行进行三序列比对。
+      </div>
+      <form id="batch-form" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="batch-excel">选择Excel文件 (.xlsx)</label>
+          <input type="file" id="batch-excel" name="excel_file" accept=".xlsx, .xls">
+        </div>
+
+        <div style="margin: 16px 0; border-top: 1px solid #e4ecf5; padding-top: 14px;">
+          <div style="display: flex; justify-content: center;">
+            <button type="button" id="batch-params-toggle" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; background: #f0f4fa; border: 1px solid #dde5ef; border-radius: 20px; cursor: pointer; font-size: 13px; color: #2b84d2;">
+              <span>⚙️</span>
+              <span>比对参数</span>
+              <span id="batch-params-icon" style="font-size: 10px;">▼</span>
+            </button>
+          </div>
+          <div id="batch-params-content" style="display: none; margin-top: 12px; padding: 18px 20px; background: #f8faff; border: 1px solid #e4ecf5; border-radius: 10px;">
+            <div class="form-row">
+              <div class="form-column">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 13px;">Gap Open 罚分</label>
+                  <input type="number" id="batch-gapopen" name="param_gapopen" value="10.0" step="0.5" min="0" max="50" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%;">
+                </div>
+              </div>
+              <div class="form-column">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 13px;">Gap Extend 罚分</label>
+                  <input type="number" id="batch-gapextend" name="param_gapextend" value="0.5" step="0.1" min="0" max="20" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%;">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-container">
+          <button type="submit" class="btn btn-success" id="batch-submit">📊 批量处理</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 加载状态 -->
+    <div class="results-container" id="loading-container">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>正在进行三序列比对与突变分析，请稍候...</p>
+      </div>
+    </div>
+
+    <!-- 单序列结果 -->
+    <div class="results-container" id="single-results">
+      <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 20px;">📊 分析结果</h2>
+
+      <div class="download-bar">
+        <a href="{{ url_for('compare.download_excel') }}" class="btn" id="download-excel-btn" target="_blank">📥 下载Excel结果</a>
+        <button class="btn btn-secondary" onclick="location.reload()">🔄 重新分析</button>
+      </div>
+
+      <div id="single-results-content"></div>
+    </div>
+
+    <!-- 批量结果 -->
+    <div class="results-container" id="batch-results">
+      <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 20px;">📊 批量分析结果</h2>
+
+      <div class="download-bar">
+        <a href="{{ url_for('compare.download_batch') }}" class="btn" id="download-batch-btn" target="_blank">📥 下载汇总Excel</a>
+        <button class="btn btn-secondary" onclick="location.reload()">🔄 重新分析</button>
+      </div>
+
+      <div id="batch-results-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============ 模式切换 ============
+    function switchMode(mode) {
+      $('.mode-tab').removeClass('active');
+      $(`.mode-tab[data-mode="${mode}"]`).addClass('active');
+      $('.form-container').removeClass('active');
+      $(`#${mode}-mode`).addClass('active');
+    }
+
+    // ============ 参数折叠 ============
+    $('#params-toggle').click(function() {
+      var c = $('#params-content');
+      var icon = $('#params-toggle-icon');
+      c.slideToggle(200);
+      icon.text(c.is(':visible') ? '▲' : '▼');
+    });
+    $('#batch-params-toggle').click(function() {
+      var c = $('#batch-params-content');
+      var icon = $('#batch-params-icon');
+      c.slideToggle(200);
+      icon.text(c.is(':visible') ? '▲' : '▼');
+    });
+
+    // ============ 单序列提交 ============
+    $('#single-form').submit(function(e) {
+      e.preventDefault();
+
+      var refSeq = $('#ref-sequence').val().trim().toUpperCase().replace(/\\s+/g, '');
+      var numSeq = $('#num-sequence').val().trim().toUpperCase().replace(/\\s+/g, '');
+      var tgtSeq = $('#tgt-sequence').val().trim().toUpperCase().replace(/\\s+/g, '');
+
+      if (!refSeq || !numSeq || !tgtSeq) {
+        alert('请填写三个序列');
+        return;
+      }
+
+      // 显示加载
+      $('#single-results').removeClass('active').hide();
+      $('#loading-container').addClass('active').show();
+
+      var formData = {
+        ref_sequence: refSeq,
+        num_sequence: numSeq,
+        tgt_sequence: tgtSeq,
+        param_gapopen: $('#param-gapopen').val(),
+        param_gapextend: $('#param-gapextend').val()
+      };
+
+      $.ajax({
+        url: '{{ url_for('compare.analyze') }}',
+        type: 'POST',
+        data: formData,
+        dataType: 'json',
+        success: function(response) {
+          $('#loading-container').removeClass('active').hide();
+          if (response.status === 'success') {
+            displaySingleResults(response.result);
+          } else {
+            showError(response.message);
+          }
+        },
+        error: function(xhr, status, error) {
+          $('#loading-container').removeClass('active').hide();
+          showError('分析失败：' + error);
+        }
+      });
+    });
+
+    // ============ 批量提交 ============
+    $('#batch-form').submit(function(e) {
+      e.preventDefault();
+
+      var fileInput = $('#batch-excel')[0];
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('请选择Excel文件');
+        return;
+      }
+
+      var formData = new FormData(this);
+
+      // 显示加载
+      $('#batch-results').removeClass('active').hide();
+      $('#loading-container').addClass('active').show();
+
+      $.ajax({
+        url: '{{ url_for('compare.batch') }}',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(response) {
+          $('#loading-container').removeClass('active').hide();
+          if (response.status === 'success') {
+            displayBatchResults(response.results, response.count);
+          } else {
+            showError(response.message);
+          }
+        },
+        error: function(xhr, status, error) {
+          $('#loading-container').removeClass('active').hide();
+          showError('批量处理失败：' + error);
+        }
+      });
+    });
+
+    // ============ 显示单序列结果 ============
+    function displaySingleResults(result) {
+      var html = '';
+
+      // 序列摘要
+      html += '<div class="seq-summary">';
+      html += '<span class="badge badge-blue">参比序列长度: ' + getLengthFromAlign(result.alignments.ref_vs_num.sequence_a) + '</span> &nbsp; ';
+      html += '<span class="badge badge-green">编号序列长度: ' + getLengthFromAlign(result.alignments.ref_vs_num.sequence_b) + '</span> &nbsp; ';
+      html += '<span class="badge badge-red">目标序列长度: ' + getLengthFromAlign(result.alignments.tgt_vs_num.sequence_a) + '</span>';
+      html += '</div>';
+
+      // 统计卡片
+      html += '<div class="stats-grid">';
+      html += '<div class="stat-card highlight"><div class="value">' + (result.identity * 100).toFixed(2) + '%</div><div class="label">参比-目标同一性</div></div>';
+      html += '<div class="stat-card"><div class="value">' + result.matches + '</div><div class="label">匹配数</div></div>';
+      html += '<div class="stat-card warning">' + (result.mismatches > 0 ? '<div class="value">' + result.mismatches + '</div>' : '<div class="value">0</div>') + '<div class="label">错配/突变数</div></div>';
+      html += '<div class="stat-card"><div class="value">' + result.total_positions + '</div><div class="label">总比对位置</div></div>';
+      html += '<div class="stat-card"><div class="value">' + (result.alignments.ref_vs_num.identity * 100).toFixed(1) + '%</div><div class="label">参比-编号同一性</div></div>';
+      html += '<div class="stat-card"><div class="value">' + (result.alignments.tgt_vs_num.identity * 100).toFixed(1) + '%</div><div class="label">目标-编号同一性</div></div>';
+      html += '</div>';
+
+      // 突变位点表格
+      html += '<h3 style="margin-top: 25px;">🧬 突变位点列表</h3>';
+      if (result.mutations.length === 0) {
+        html += '<div class="no-mutations"><div class="icon">✅</div><p>参比序列与目标序列完全一致，无突变位点</p></div>';
+      } else {
+        html += '<table><thead><tr>';
+        html += '<th>#</th><th>编号位置</th><th>参比残基</th><th>目标残基</th><th>突变类型</th>';
+        html += '</tr></thead><tbody>';
+        result.mutations.forEach(function(m, idx) {
+          html += '<tr class="mutation-row">';
+          html += '<td>' + (idx + 1) + '</td>';
+          html += '<td><strong>' + m.numbering_position + '</strong></td>';
+          html += '<td style="color:#3498db;font-weight:700;">' + m.reference_residue + '</td>';
+          html += '<td style="color:#e74c3c;font-weight:700;">' + m.target_residue + '</td>';
+          html += '<td><code>' + m.reference_residue + m.numbering_position + m.target_residue + '</code></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+
+      // 比对可视化
+      html += '<h3 style="margin-top: 30px;">🔍 三序列比对可视化</h3>';
+      html += '<p style="font-size:12px;color:#888;margin-bottom:8px;">* = 突变位点｜蓝色=参比｜绿色=编号｜红色=目标</p>';
+      html += '<div class="aligned-seqs">';
+
+      var va = result.visual_alignments;
+      html += '<div class="line"><span class="label-col ref-col">参比:</span><span class="seq-col ref-col">' + escapeHtml(va.reference) + '</span></div>';
+      html += '<div class="line"><span class="label-col num-col">编号:</span><span class="seq-col num-col">' + escapeHtml(va.numbering) + '</span></div>';
+      html += '<div class="line"><span class="label-col tgt-col">目标:</span><span class="seq-col tgt-col">' + escapeHtml(va.target) + '</span></div>';
+      html += '<div class="line"><span class="label-col marker-col">标记:</span><span class="seq-col marker-col">' + escapeHtml(va.marker) + '</span></div>';
+      html += '</div>';
+
+      $('#single-results-content').html(html);
+      $('#single-results').addClass('active').show();
+      $('#download-excel-btn').show();
+    }
+
+    // ============ 显示批量结果 ============
+    function displayBatchResults(results, count) {
+      var html = '';
+      html += '<p style="text-align:center;font-size:15px;color:#666;margin-bottom:20px;">共处理 <strong>' + count + '</strong> 条序列</p>';
+
+      // 汇总表
+      html += '<table><thead><tr>';
+      html += '<th>#</th><th>序列名称</th><th>同一性</th><th>匹配/总</th><th>突变数</th></tr>';
+      html += '</thead><tbody>';
+
+      results.forEach(function(r, idx) {
+        html += '<tr>';
+        html += '<td>' + (idx + 1) + '</td>';
+        html += '<td><strong>' + escapeHtml(r.name) + '</strong></td>';
+        html += '<td>' + (r.identity * 100).toFixed(2) + '%</td>';
+        html += '<td>' + r.matches + '/' + r.total_positions + '</td>';
+        html += '<td>' + (r.mutations ? r.mutations.length : 0) + '</td>';
+        html += '</tr>';
+
+        // 如果有突变，展开显示
+        if (r.mutations && r.mutations.length > 0) {
+          html += '<tr style="background:#fff8e1;"><td colspan="5" style="padding:8px 15px;text-align:left;">';
+          html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">突变详情:</div>';
+          html += '<div style="font-size:12px;">';
+          r.mutations.forEach(function(m) {
+            html += '<span style="display:inline-block;margin:2px 6px 2px 0;padding:1px 6px;background:#ffe0b2;border-radius:3px;">';
+            html += '<strong>' + m.reference_residue + m.numbering_position + m.target_residue + '</strong>';
+            html += '</span> ';
+          });
+          html += '</div></td></tr>';
+        }
+      });
+
+      html += '</tbody></table>';
+      html += '<p style="text-align:center;font-size:13px;color:#999;margin-top:12px;">点击下方按钮可下载完整汇总Excel</p>';
+
+      $('#batch-results-content').html(html);
+      $('#batch-results').addClass('active').show();
+      $('#download-batch-btn').show();
+    }
+
+    // ============ 显示错误 ============
+    function showError(message) {
+      var html = '<div style="text-align:center;padding:30px;">';
+      html += '<p style="color:#e74c3c;font-size:16px;">❌ ' + escapeHtml(message) + '</p>';
+      html += '</div>';
+      $('#single-results-content').html(html);
+      $('#single-results').addClass('active').show();
+    }
+
+    // ============ 工具函数 ============
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function getLengthFromAlign(alignedSeq) {
+      return alignedSeq.replace(/-/g, '').length;
+    }
+
+    // ============ 页面关闭提醒 ============
+    $(window).on('beforeunload', function(e) {
+      var hasSeq = $('#ref-sequence').val().trim() || $('#num-sequence').val().trim() || $('#tgt-sequence').val().trim();
+      if (hasSeq) {
+        var msg = '您即将离开此页面。所有数据仅在本次会话中保留。';
+        e.returnValue = msg;
+        return msg;
+      }
+    });
+  </script>
+</body>
+</html>
