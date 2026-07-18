@@ -221,34 +221,60 @@ def _build_visual_alignment(
     num_pos_to_tgt: Dict[int, str],
 ) -> Dict[str, str]:
     """
-    构建可视化的三行比对（ref / numbering / tgt）表示，标注突变位置。
-    """
-    ref_line_parts = []
-    num_line_parts = []
-    tgt_line_parts = []
-    marker_line_parts = []
+    构建可视化的序列比对，顺序为：坐标轴 → 编号序列 → 参比序列 → 目标序列 → 标记。
 
-    for pos in range(len(num_seq)):
+    返回原始字符串（无空格），配合CSS letter-spacing实现精确对齐。
+    """
+    seq_len = len(num_seq)
+
+    num_chars: List[str] = []
+    ref_chars: List[str] = []
+    tgt_chars: List[str] = []
+    marker_chars: List[str] = []
+
+    for pos in range(seq_len):
         ref_char = num_pos_to_ref.get(pos, '-')
         tgt_char = num_pos_to_tgt.get(pos, '-')
         num_char = num_seq[pos]
 
-        ref_line_parts.append(ref_char)
-        num_line_parts.append(num_char)
-        tgt_line_parts.append(tgt_char)
+        num_chars.append(num_char)
+        ref_chars.append(ref_char)
+        tgt_chars.append(tgt_char)
 
         is_mutation = (ref_char != '-' and tgt_char != '-' and ref_char != tgt_char)
-        marker_line_parts.append('*' if is_mutation else ' ')
+        marker_chars.append('*' if is_mutation else ' ')
+
+    # 坐标轴：每10个位置标注数字
+    coord_chars = [' '] * seq_len
+    # 标注位置1
+    if seq_len >= 1:
+        s = '1'
+        for j, c in enumerate(s):
+            if j < seq_len:
+                coord_chars[j] = c
+    # 标注每10个位置：10, 20, 30 ...
+    for i in range(10, seq_len + 1, 10):
+        s = str(i)
+        idx = i - 1  # 0-indexed
+        for j, c in enumerate(s):
+            if idx + j < seq_len:
+                coord_chars[idx + j] = c
 
     return {
-        'reference': '  '.join(ref_line_parts),
-        'numbering': '  '.join(num_line_parts),
-        'target': '  '.join(tgt_line_parts),
-        'marker': '  '.join(marker_line_parts),
-        'compact_reference': ' '.join(ref_line_parts),
-        'compact_numbering': ' '.join(num_line_parts),
-        'compact_target': ' '.join(tgt_line_parts),
-        'compact_marker': ' '.join(marker_line_parts),
+        'coord_ruler': ''.join(coord_chars),
+        'numbering_raw': ''.join(num_chars),
+        'reference_raw': ''.join(ref_chars),
+        'target_raw': ''.join(tgt_chars),
+        'marker_raw': ''.join(marker_chars),
+        # 保留旧格式用于兼容
+        'numbering': '  '.join(num_chars),
+        'reference': '  '.join(ref_chars),
+        'target': '  '.join(tgt_chars),
+        'marker': '  '.join(marker_chars),
+        'compact_numbering': ' '.join(num_chars),
+        'compact_reference': ' '.join(ref_chars),
+        'compact_target': ' '.join(tgt_chars),
+        'compact_marker': ' '.join(marker_chars),
     }
 
 

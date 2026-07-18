@@ -54,15 +54,15 @@
     tr:hover { background: #f0f4fa; }
     .mutation-row { background: #fff8e1 !important; }
     .mutation-row:hover { background: #ffecb3 !important; }
-    .aligned-seqs { font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; margin-top: 15px; overflow-x: auto; white-space: nowrap; padding: 15px; background: #f8faff; border: 1px solid #e4ecf5; border-radius: 8px; }
-    .aligned-seqs .line { display: flex; }
-    .aligned-seqs .label-col { width: 80px; text-align: right; padding-right: 12px; font-weight: 600; flex-shrink: 0; }
-    .aligned-seqs .seq-col { letter-spacing: 2px; }
+    .aligned-seqs { font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; margin-top: 15px; overflow-x: auto; padding: 15px; background: #f8faff; border: 1px solid #e4ecf5; border-radius: 8px; white-space: nowrap; }
+    .aligned-seqs .line { display: flex; align-items: center; }
+    .aligned-seqs .label-col { width: 56px; text-align: right; padding-right: 8px; font-weight: 600; flex-shrink: 0; font-size: 12px; color: #888; user-select: none; }
+    .aligned-seqs .seq-col { letter-spacing: 3px; }
     .aligned-seqs .ref-col { color: #3498db; }
     .aligned-seqs .num-col { color: #27ae60; }
     .aligned-seqs .tgt-col { color: #e74c3c; }
     .aligned-seqs .marker-col { color: #e67e22; }
-    .aligned-seqs .mutation-mark { color: #e74c3c; font-weight: 700; }
+    .aligned-seqs .coord-col { color: #999; }
     .download-bar { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .back-link { display: inline-block; margin-bottom: 20px; color: var(--primary-color); text-decoration: none; font-weight: bold; }
     .back-link:hover { text-decoration: underline; }
@@ -390,14 +390,15 @@
 
       // 比对可视化
       html += '<h3 style="margin-top: 30px;">🔍 三序列比对可视化</h3>';
-      html += '<p style="font-size:12px;color:#888;margin-bottom:8px;">* = 突变位点｜蓝色=参比｜绿色=编号｜红色=目标</p>';
+      html += '<p style="font-size:12px;color:#888;margin-bottom:8px;">* = 突变位点 ｜ 绿色=编号 ｜ 蓝色=参比 ｜ 红色=目标</p>';
       html += '<div class="aligned-seqs">';
 
       var va = result.visual_alignments;
-      html += '<div class="line"><span class="label-col ref-col">参比:</span><span class="seq-col ref-col">' + escapeHtml(va.reference) + '</span></div>';
-      html += '<div class="line"><span class="label-col num-col">编号:</span><span class="seq-col num-col">' + escapeHtml(va.numbering) + '</span></div>';
-      html += '<div class="line"><span class="label-col tgt-col">目标:</span><span class="seq-col tgt-col">' + escapeHtml(va.target) + '</span></div>';
-      html += '<div class="line"><span class="label-col marker-col">标记:</span><span class="seq-col marker-col">' + escapeHtml(va.marker) + '</span></div>';
+      html += '<div class="line"><span class="label-col coord-col">位置:</span><span class="seq-col coord-col">' + escapeHtml(va.coord_ruler) + '</span></div>';
+      html += '<div class="line"><span class="label-col num-col">编号:</span><span class="seq-col num-col">' + escapeHtml(va.numbering_raw) + '</span></div>';
+      html += '<div class="line"><span class="label-col ref-col">参比:</span><span class="seq-col ref-col">' + escapeHtml(va.reference_raw) + '</span></div>';
+      html += '<div class="line"><span class="label-col tgt-col">目标:</span><span class="seq-col tgt-col">' + escapeHtml(va.target_raw) + '</span></div>';
+      html += '<div class="line"><span class="label-col marker-col">标记:</span><span class="seq-col marker-col">' + escapeHtml(va.marker_raw) + '</span></div>';
       html += '</div>';
 
       $('#single-results-content').html(html);
