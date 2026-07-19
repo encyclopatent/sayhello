@@ -186,7 +186,7 @@ def compare_sequences(
     logger.info(f"Comparison complete: identity={identity:.2%}, mutations={len(mutations)}")
 
     # 构建可视化字符串
-    visual_alignments = _build_visual_alignment(mutations, num_seq, num_pos_to_ref, num_pos_to_tgt)
+    alignment_chunks = _build_visual_alignment(mutations, num_seq, num_pos_to_ref, num_pos_to_tgt)
 
     return {
         'identity': identity,
@@ -210,7 +210,7 @@ def compare_sequences(
             'ref_vs_num': raw_ref_num,
             'tgt_vs_num': raw_tgt_num,
         },
-        'visual_alignments': visual_alignments,
+        'alignment_chunks': alignment_chunks,
     }
 
 
@@ -219,11 +219,14 @@ def _build_visual_alignment(
     num_seq: str,
     num_pos_to_ref: Dict[int, str],
     num_pos_to_tgt: Dict[int, str],
-) -> Dict[str, str]:
+    chunk_size: int = 30,
+) -> List[Dict[str, Any]]:
     """
-    构建可视化的序列比对，顺序为：坐标轴 → 编号序列 → 参比序列 → 目标序列 → 标记。
+    构建可视化的序列比对，每30个残基为一块分块显示。
 
-    返回原始字符串（无空格），配合CSS letter-spacing实现精确对齐。
+    返回块列表，每块包含:
+    - range_start / range_end: 该块的编号范围
+    - coord, numbering, reference, target, marker: 对应行字符串
     """
     seq_len = len(num_seq)
 
@@ -245,33 +248,32 @@ def _build_visual_alignment(
         marker_chars.append('*' if is_mutation else ' ')
 
     # 坐标轴：数字最后一位与所在位点对齐
-    # 例如 10 → '1'在位置9, '0'在位置10；20 → '2'在位置19, '0'在位置20
     coord_chars = [' '] * seq_len
     for i in range(1, seq_len + 1):
         if i == 1 or i % 10 == 0:
             s = str(i)
-            last_idx = i - 1          # 数字最后一位的0-indexed位置
+            last_idx = i - 1
             start = last_idx - len(s) + 1
             for j, c in enumerate(s):
                 if 0 <= start + j < seq_len:
                     coord_chars[start + j] = c
 
-    return {
-        'coord_ruler': ''.join(coord_chars),
-        'numbering_raw': ''.join(num_chars),
-        'reference_raw': ''.join(ref_chars),
-        'target_raw': ''.join(tgt_chars),
-        'marker_raw': ''.join(marker_chars),
-        # 保留旧格式用于兼容
-        'numbering': '  '.join(num_chars),
-        'reference': '  '.join(ref_chars),
-        'target': '  '.join(tgt_chars),
-        'marker': '  '.join(marker_chars),
-        'compact_numbering': ' '.join(num_chars),
-        'compact_reference': ' '.join(ref_chars),
-        'compact_target': ' '.join(tgt_chars),
-        'compact_marker': ' '.join(marker_chars),
-    }
+    # 分块
+    chunks = []
+    for start_pos in range(0, seq_len, chunk_size):
+        end_pos = min(start_pos + chunk_size, seq_len)
+        chunk = {
+            'range_start': start_pos + 1,
+            'range_end': end_pos,
+            'coord': ''.join(coord_chars[start_pos:end_pos]),
+            'numbering': ''.join(num_chars[start_pos:end_pos]),
+            'reference': ''.join(ref_chars[start_pos:end_pos]),
+            'target': ''.join(tgt_chars[start_pos:end_pos]),
+            'marker': ''.join(marker_chars[start_pos:end_pos]),
+        }
+        chunks.append(chunk)
+
+    return chunks
 
 
 def batch_compare_from_excel(
