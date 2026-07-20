@@ -56,6 +56,7 @@ Key modules:
 - `/sirna` - siRNA analysis tool
 - `/fragment` - Peptide fragmentation
 - `/alignment` - Sequence alignment
+- `/compare` - Three-sequence comparison & mutation analysis
 
 ### Async Task Processing
 Celery handles long-running conversions asynchronously:
@@ -87,3 +88,17 @@ root = ET.Element("ST26SequenceListing", {
 - `REDIS_PASSWORD` - Redis auth (if configured)
 - `PORT` - Server port override
 - `HOST` - Server host (default: 0.0.0.0)
+
+## Skills
+
+### Three-Sequence Comparison (`/compare-sequences`)
+基于EMBOSS needle的三序列比对与突变分析。详情见 `.claude/skills/compare-sequences/SKILL.md`。
+
+```python
+from compare_utils import compare_sequences
+result = compare_sequences(ref_seq, num_seq, tgt_seq)
+```
+
+- `compare_utils.py` — needle比对封装、三序列比对引擎、Excel批量处理
+- `routes/compare.py` — 蓝图路由（`/compare/`）
+- `templates/compare.html` — 前端页面（序列输入 + Excel批量两种模式）
