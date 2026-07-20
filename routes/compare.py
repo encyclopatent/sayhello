@@ -33,15 +33,16 @@ def analyze():
         result = compare_sequences(ref_seq, num_seq, tgt_seq, gapopen, gapextend)
 
         # 只存储下载所需的最小数据到session（raw_results等大数据只返回给前端不存session）
+        # 序列一致性使用needle最长一致性（Longest_Identity）
         session['compare_result_mini'] = {
-            'identity': result['identity'],
+            'identity': result['longest_identity'],
             'matches': result['matches'],
             'mismatches': result['mismatches'],
             'total_positions': result['total_positions'],
             'mutations': result['mutations'],
             'alignments_identity': {
-                'ref_vs_num': result['alignments']['ref_vs_num']['identity'],
-                'tgt_vs_num': result['alignments']['tgt_vs_num']['identity'],
+                'ref_vs_num': result['alignments']['ref_vs_num']['longest_identity'],
+                'tgt_vs_num': result['alignments']['tgt_vs_num']['longest_identity'],
             },
         }
 
@@ -80,11 +81,12 @@ def batch():
         session['compare_batch_file'] = excel_path
 
         # 只存储下载所需的最小数据到session（剔除alignments/raw_results等大数据）
+        # 序列一致性使用needle最长一致性（Longest_Identity）
         session['compare_batch_results'] = [
             {
                 'name': r.get('name', ''),
                 'index': r.get('index', 0),
-                'identity': r['identity'],
+                'identity': r.get('longest_identity', r['identity']),
                 'matches': r['matches'],
                 'mismatches': r['mismatches'],
                 'total_positions': r['total_positions'],
@@ -169,11 +171,11 @@ def download_batch():
         identities = [f"{r['identity']:.2%}" for r in results]
         df['序列同一性'] = identities
 
-        # 追加突变位点列表列（"-"连接的格式，如 V2G-E31S）
+        # 追加突变位点列表列（"/"连接的格式，如 V2G/E31S）
         mutation_strs = []
         for r in results:
             if r['mutations']:
-                ms = '-'.join(f"{m['reference_residue']}{m['numbering_position']}{m['target_residue']}" for m in r['mutations'])
+                ms = '/'.join(f"{m['reference_residue']}{m['numbering_position']}{m['target_residue']}" for m in r['mutations'])
             else:
                 ms = '-'
             mutation_strs.append(ms)

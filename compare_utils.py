@@ -36,7 +36,7 @@ def run_needle_alignment(
     seq_b: str,
     gapopen: float = DEFAULT_GAPOPEN,
     gapextend: float = DEFAULT_GAPEXTEND,
-) -> Tuple[str, str, str, float]:
+) -> Tuple[str, str, str, float, float]:
     """
     运行EMBOSS needle进行双序列全局比对。
 
@@ -47,7 +47,8 @@ def run_needle_alignment(
         gapextend: Gap extend罚分
 
     Returns:
-        (aligned_a, aligned_b, raw_result, identity)
+        (aligned_a, aligned_b, raw_result, identity, longest_identity)
+        longest_identity为最长一致性比例 (0~1)
     """
     seq_a = re.sub(r'\s+', '', seq_a)
     seq_b = re.sub(r'\s+', '', seq_b)
@@ -79,6 +80,7 @@ def run_needle_alignment(
 
         # 提取同一性
         identity = 0.0
+        longest_identity = 0.0
         for line in raw_result.split('\n'):
             if "# Identity:" in line:
                 parts = line.split()
@@ -86,14 +88,22 @@ def run_needle_alignment(
                     vals = parts[2].split('/')
                     if len(vals) == 2:
                         identity = float(vals[0]) / float(vals[1]) if float(vals[1]) > 0 else 0.0
-                        break
+            elif "# Longest_Identity" in line:
+                # Longest_Identity = 100.00%
+                parts = line.split('=')
+                if len(parts) > 1:
+                    val = parts[1].strip().strip('%').strip()
+                    try:
+                        longest_identity = float(val) / 100.0
+                    except ValueError:
+                        pass
 
         # 读取比对结果
         alignment = AlignIO.read(outfile, "emboss")
         aligned_a = str(alignment[0].seq)
         aligned_b = str(alignment[1].seq)
 
-        return aligned_a, aligned_b, raw_result, identity
+        return aligned_a, aligned_b, raw_result, identity, longest_identity
 
     finally:
         for f in [fasta_a, fasta_b, outfile]:
@@ -121,6 +131,7 @@ def compare_sequences(
     Returns:
         dict:
             - identity: 参比vs目标同一性
+            - longest_identity: needle最长一致性（Longest_Identity）
             - matches: 匹配数
             - mismatches: 错配数
             - total_positions: 总比对位置
@@ -131,16 +142,16 @@ def compare_sequences(
     logger.info("Starting three-sequence comparison analysis")
 
     # Step 1: Align Reference vs Numbering
-    ref_aligned, num_aligned_ref, raw_ref_num, identity_ref_num = run_needle_alignment(
+    ref_aligned, num_aligned_ref, raw_ref_num, identity_ref_num, longest_id_ref = run_needle_alignment(
         ref_seq, num_seq, gapopen, gapextend
     )
-    logger.info(f"Ref vs Num identity: {identity_ref_num:.2%}")
+    logger.info(f"Ref vs Num identity: {identity_ref_num:.2%}, longest: {longest_id_ref:.2%}")
 
     # Step 2: Align Target vs Numbering
-    tgt_aligned, num_aligned_tgt, raw_tgt_num, identity_tgt_num = run_needle_alignment(
+    tgt_aligned, num_aligned_tgt, raw_tgt_num, identity_tgt_num, longest_id_tgt = run_needle_alignment(
         tgt_seq, num_seq, gapopen, gapextend
     )
-    logger.info(f"Tgt vs Num identity: {identity_tgt_num:.2%}")
+    logger.info(f"Tgt vs Num identity: {identity_tgt_num:.2%}, longest: {longest_id_tgt:.2%}")
 
     # Step 3: Build numbering-position-to-residue maps
     num_pos_to_ref: Dict[int, str] = {}
@@ -190,6 +201,7 @@ def compare_sequences(
 
     return {
         'identity': identity,
+        'longest_identity': max(longest_id_ref, longest_id_tgt),
         'matches': matches,
         'mismatches': mismatches,
         'total_positions': total,
@@ -199,11 +211,13 @@ def compare_sequences(
                 'sequence_a': ref_aligned,
                 'sequence_b': num_aligned_ref,
                 'identity': identity_ref_num,
+                'longest_identity': longest_id_ref,
             },
             'tgt_vs_num': {
                 'sequence_a': tgt_aligned,
                 'sequence_b': num_aligned_tgt,
                 'identity': identity_tgt_num,
+                'longest_identity': longest_id_tgt,
             },
         },
         'raw_results': {
