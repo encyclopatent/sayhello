@@ -33,16 +33,16 @@ def analyze():
         result = compare_sequences(ref_seq, num_seq, tgt_seq, gapopen, gapextend)
 
         # 只存储下载所需的最小数据到session（raw_results等大数据只返回给前端不存session）
-        # 序列一致性使用needle最长一致性（Longest_Identity）
+        # 序列一致性使用needle ref-vs-tgt 最长一致性（Longest_Identity）
         session['compare_result_mini'] = {
-            'identity': result['longest_identity'],
+            'identity': result.get('ref_tgt_longest_identity', result['longest_identity']),
             'matches': result['matches'],
             'mismatches': result['mismatches'],
             'total_positions': result['total_positions'],
             'mutations': result['mutations'],
             'alignments_identity': {
-                'ref_vs_num': result['alignments']['ref_vs_num']['longest_identity'],
-                'tgt_vs_num': result['alignments']['tgt_vs_num']['longest_identity'],
+                'ref_vs_num': result['alignments']['ref_vs_num'].get('longest_identity', result['alignments']['ref_vs_num']['identity']),
+                'tgt_vs_num': result['alignments']['tgt_vs_num'].get('longest_identity', result['alignments']['tgt_vs_num']['identity']),
             },
         }
 

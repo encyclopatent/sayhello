@@ -153,6 +153,12 @@ def compare_sequences(
     )
     logger.info(f"Tgt vs Num identity: {identity_tgt_num:.2%}, longest: {longest_id_tgt:.2%}")
 
+    # Step 2.5: Align Reference vs Target for direct longest_identity
+    ref_vs_tgt_aligned_a, ref_vs_tgt_aligned_b, raw_ref_tgt, identity_ref_tgt, longest_id_ref_tgt = run_needle_alignment(
+        ref_seq, tgt_seq, gapopen, gapextend
+    )
+    logger.info(f"Ref vs Tgt identity: {identity_ref_tgt:.2%}, longest: {longest_id_ref_tgt:.2%}")
+
     # Step 3: Build numbering-position-to-residue maps
     num_pos_to_ref: Dict[int, str] = {}
     num_pos_to_tgt: Dict[int, str] = {}
@@ -201,7 +207,7 @@ def compare_sequences(
 
     return {
         'identity': identity,
-        'longest_identity': max(longest_id_ref, longest_id_tgt),
+        'longest_identity': longest_id_ref_tgt,
         'matches': matches,
         'mismatches': mismatches,
         'total_positions': total,
@@ -220,9 +226,12 @@ def compare_sequences(
                 'longest_identity': longest_id_tgt,
             },
         },
+        'ref_tgt_identity': identity_ref_tgt,
+        'ref_tgt_longest_identity': longest_id_ref_tgt,
         'raw_results': {
             'ref_vs_num': raw_ref_num,
             'tgt_vs_num': raw_tgt_num,
+            'ref_vs_tgt': raw_ref_tgt,
         },
         'alignment_chunks': alignment_chunks,
     }

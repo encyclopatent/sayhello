@@ -367,12 +367,13 @@
 
       // 统计卡片
       html += '<div class="stats-grid">';
-      html += '<div class="stat-card highlight"><div class="value">' + (result.longest_identity * 100).toFixed(2) + '%</div><div class="label">needle最长一致性 ✦</div></div>';
+      var longestId = result.ref_tgt_longest_identity != null ? result.ref_tgt_longest_identity : result.longest_identity;
+      html += '<div class="stat-card highlight"><div class="value">' + (longestId * 100).toFixed(2) + '%</div><div class="label">needle最长一致性 ✦</div></div>';
       html += '<div class="stat-card"><div class="value">' + (result.identity * 100).toFixed(2) + '%</div><div class="label">参比-目标同一性</div></div>';
       html += '<div class="stat-card"><div class="value">' + result.matches + '</div><div class="label">匹配数</div></div>';
       html += '<div class="stat-card warning">' + (result.mismatches > 0 ? '<div class="value">' + result.mismatches + '</div>' : '<div class="value">0</div>') + '<div class="label">错配/突变数</div></div>';
-      html += '<div class="stat-card"><div class="value">' + (result.alignments.ref_vs_num.longest_identity * 100).toFixed(1) + '%</div><div class="label">参比-编号最长一致</div></div>';
-      html += '<div class="stat-card"><div class="value">' + (result.alignments.tgt_vs_num.longest_identity * 100).toFixed(1) + '%</div><div class="label">目标-编号最长一致</div></div>';
+      html += '<div class="stat-card"><div class="value">' + (result.alignments.ref_vs_num.longest_identity * 100).toFixed(1) + '%</div><div class="label">ref-num最长一致</div></div>';
+      html += '<div class="stat-card"><div class="value">' + (result.alignments.tgt_vs_num.longest_identity * 100).toFixed(1) + '%</div><div class="label">tgt-num最长一致</div></div>';
       html += '</div>';
 
       // 突变位点表格
