@@ -133,9 +133,10 @@ def compare_sequences(
             - identity: 参比vs目标同一性
             - longest_identity: needle最长一致性（Longest_Identity）
             - matches: 匹配数
-            - mismatches: 错配数
+            - mismatches: 错配数(含替换+缺失+插入)
             - total_positions: 总比对位置
             - mutations: 突变列表 [{numbering_position, reference_residue, target_residue}]
+              格式: substitution=V2G, deletion=V2-, insertion=-3G
             - alignments: 比对序列详情
             - raw_results: needle原始输出
     """
@@ -185,9 +186,31 @@ def compare_sequences(
         ref_char = num_pos_to_ref.get(num_pos, '-')
         tgt_char = num_pos_to_tgt.get(num_pos, '-')
 
-        if ref_char == '-' or tgt_char == '-':
-            continue  # 任一缺失则不统计
+        if ref_char == '-' and tgt_char == '-':
+            # 两侧都是gap，跳过
+            continue
 
+        if ref_char == '-' and tgt_char != '-':
+            # 插入：参考序列在此位置无对应残基，目标序列有
+            mismatches += 1
+            mutations.append({
+                'numbering_position': num_pos + 1,
+                'reference_residue': '-',
+                'target_residue': tgt_char,
+            })
+            continue
+
+        if ref_char != '-' and tgt_char == '-':
+            # 缺失：参考序列有残基，目标序列在此位置为gap
+            mismatches += 1
+            mutations.append({
+                'numbering_position': num_pos + 1,
+                'reference_residue': ref_char,
+                'target_residue': '-',
+            })
+            continue
+
+        # 两侧都有残基
         if ref_char == tgt_char:
             matches += 1
         else:
@@ -267,7 +290,11 @@ def _build_visual_alignment(
         ref_chars.append(ref_char)
         tgt_chars.append(tgt_char)
 
-        is_mutation = (ref_char != '-' and tgt_char != '-' and ref_char != tgt_char)
+        is_mutation = (
+            (ref_char != '-' and tgt_char != '-' and ref_char != tgt_char) or  # 替换
+            (ref_char != '-' and tgt_char == '-') or                           # 缺失
+            (ref_char == '-' and tgt_char != '-')                               # 插入
+        )
         marker_chars.append('*' if is_mutation else ' ')
 
     # 坐标轴：数字最后一位与所在位点对齐
