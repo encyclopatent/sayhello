@@ -1,9 +1,9 @@
-"""序列比对与突变分析路由 - 基于编号序列的三序列比对"""
+"""三序列比对与突变分析路由 - 基于编号序列坐标系统的比对"""
 from flask import Blueprint, render_template, request, session, jsonify, send_file
 from werkzeug.utils import secure_filename
 import os
 import io
-import pandas as pd
+import re
 
 compare_bp = Blueprint('compare', __name__, url_prefix='/compare')
 
@@ -32,17 +32,18 @@ def analyze():
 
         result = compare_sequences(ref_seq, num_seq, tgt_seq, gapopen, gapextend)
 
-        # 只存储下载所需的最小数据到session（raw_results等大数据只返回给前端不存session）
-        # 序列一致性使用needle ref-vs-tgt 最长一致性（Longest_Identity）
+        # 只存储下载所需的最小数据到session
         session['compare_result_mini'] = {
-            'identity': result.get('ref_tgt_longest_identity', result['longest_identity']),
-            'matches': result['matches'],
-            'mismatches': result['mismatches'],
-            'total_positions': result['total_positions'],
+            'longest_identity': result['longest_identity'],
+            'core_identity': result['core_identity'],
+            'core_matches': result['core_matches'],
+            'core_length': result['core_length'],
+            'total_mutations': result['total_mutations'],
+            'mutation_string': result.get('mutation_string', ''),
             'mutations': result['mutations'],
             'alignments_identity': {
-                'ref_vs_num': result['alignments']['ref_vs_num'].get('longest_identity', result['alignments']['ref_vs_num']['identity']),
-                'tgt_vs_num': result['alignments']['tgt_vs_num'].get('longest_identity', result['alignments']['tgt_vs_num']['identity']),
+                'ref_vs_num': round(result['alignments']['ref_vs_num'].get('longest_identity', result['alignments']['ref_vs_num']['identity']) * 100, 2),
+                'ref_vs_tgt_core': result['core_identity'],
             },
         }
 
@@ -77,19 +78,20 @@ def batch():
 
         results = batch_compare_from_excel(excel_path, gapopen, gapextend)
 
-        # 保存文件路径供下载使用，不清除原文件
+        # 保存文件路径供下载使用
         session['compare_batch_file'] = excel_path
 
-        # 只存储下载所需的最小数据到session（剔除alignments/raw_results等大数据）
-        # 序列一致性使用needle最长一致性（Longest_Identity）
+        # 只存储下载所需的最小数据到session
         session['compare_batch_results'] = [
             {
                 'name': r.get('name', ''),
                 'index': r.get('index', 0),
-                'identity': r.get('longest_identity', r['identity']),
-                'matches': r['matches'],
-                'mismatches': r['mismatches'],
-                'total_positions': r['total_positions'],
+                'core_identity': r['core_identity'],
+                'longest_identity': r['longest_identity'],
+                'core_matches': r['core_matches'],
+                'core_length': r['core_length'],
+                'total_mutations': r['total_mutations'],
+                'mutation_string': r.get('mutation_string', ''),
                 'mutations': r['mutations'],
             }
             for r in results
@@ -109,26 +111,37 @@ def download_excel():
         if not result:
             return render_template('error.html', message='未找到比对结果'), 400
 
+        import pandas as pd
+
         data = []
 
         # 同一性汇总行
         data.append({
-            '分析项目': '序列同一性',
-            '参比-编号同一性': f"{result['alignments_identity']['ref_vs_num']:.2%}",
-            '目标-编号同一性': f"{result['alignments_identity']['tgt_vs_num']:.2%}",
-            '参比-目标同一性': f"{result['identity']:.2%}",
-            '匹配/总比对': f"{result['matches']}/{result['total_positions']}",
-            '突变数': len(result['mutations']),
+            '分析项目': '核心区间同一性',
+            '值': f"{result['core_identity']}%",
+        })
+        data.append({
+            '分析项目': 'needle最长一致性',
+            '值': f"{result['longest_identity']}%",
+        })
+        data.append({
+            '分析项目': '核心区间匹配/总长',
+            '值': f"{result['core_matches']}/{result['core_length']}",
+        })
+        data.append({
+            '分析项目': '突变总数',
+            '值': result['total_mutations'],
+        })
+        data.append({
+            '分析项目': '突变位点字符串',
+            '值': result.get('mutation_string', ''),
         })
 
         # 突变明细
         for m in result['mutations']:
             data.append({
                 '分析项目': '突变位点',
-                '编号位置': m['numbering_position'],
-                '参比序列残基': m['reference_residue'],
-                '目标序列残基': m['target_residue'],
-                '突变表示': f"{m['reference_residue']}{m['numbering_position']}{m['target_residue']}",
+                '值': m.get('mutation_string', f"{m['reference_residue']}{m['numbering_position']}{m['target_residue']}"),
             })
 
         buffer = io.BytesIO()
@@ -152,6 +165,8 @@ def download_excel():
 def download_batch():
     """在原上传Excel基础上追加序列同一性和突变位点列表后下载。"""
     try:
+        import pandas as pd
+
         results = session.get('compare_batch_results')
         file_path = session.get('compare_batch_file')
         if not results or not file_path or not os.path.exists(file_path):
@@ -167,19 +182,12 @@ def download_batch():
             pass
         session.pop('compare_batch_file', None)
 
-        # 追加序列同一性列
-        identities = [f"{r['identity']:.2%}" for r in results]
+        # 追加序列同一性列（核心区间同一性）
+        identities = [f"{r.get('core_identity', r.get('longest_identity', 0))}%" for r in results]
         df['序列同一性'] = identities
 
-        # 追加突变位点列表列（"/"连接的格式，如 V2G/E31S）
-        mutation_strs = []
-        for r in results:
-            if r['mutations']:
-                ms = '/'.join(f"{m['reference_residue']}{m['numbering_position']}{m['target_residue']}" for m in r['mutations'])
-            else:
-                ms = '-'
-            mutation_strs.append(ms)
-        df['突变位点列表'] = mutation_strs
+        # 追加突变位点列表列（"/"连接，如 S3T/N43R）
+        df['突变位点列表'] = [r.get('mutation_string', '') or '-' for r in results]
 
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
@@ -195,7 +203,3 @@ def download_batch():
 
     except Exception as e:
         return render_template('error.html', message=f'下载失败：{str(e)}'), 500
-
-
-# 导入re模块（用于analyze中）
-import re

@@ -2,10 +2,32 @@
 三序列比对与突变分析模块 - 基于EMBOSS needle算法
 
 分析流程：
-1. needle比对 参比序列 vs 编号序列
-2. needle比对 目标序列 vs 编号序列
-3. 以编号序列为坐标系统，比对参比与目标的差异
-4. 计算序列同一性并报告突变位点
+1. needle比对 ref vs numbering → 建立 ref 残基到编号位置的映射
+2. needle比对 ref vs tgt → 提取差异、合并相邻ins/del、计算核心区间同一性
+3. 差异位点通过编号映射转换为编号位置
+4. 输出：核心区间最长一致性 + 按编号映射的突变列表
+
+同一性口径：
+- ref vs tgt needle 全局比对 → 去掉两端 terminal overhang → 核心区间
+- identity = 匹配数 / 核心区间总长（含内部gap）
+- 结果保留两位小数
+
+突变编号：
+- 以 numbering sequence 的编号为准
+- 先做 ref vs numbering needle，建立 ref 残基索引 → numbering 编号的映射
+- 再做 ref vs tgt needle，提取差异位点
+- 每个差异用映射位置作为编号
+
+突变格式：
+- ref残基 + 编号位置 + tgt残基，如 S3T
+- 缺失：D36-（ref有残基，tgt为gap）
+- 多个位点用 / 分隔，不加空格
+
+gap处理：
+- 两端 terminal gap 不列入突变
+- 相邻的 deletion/insertion 合并为替换（如 D36-/-37S → D36S）
+- 内部 deletion 保留为 D36-
+- 单独插入保留插入标记
 """
 
 import os
@@ -40,15 +62,8 @@ def run_needle_alignment(
     """
     运行EMBOSS needle进行双序列全局比对。
 
-    Args:
-        seq_a: 第一条序列
-        seq_b: 第二条序列
-        gapopen: Gap open罚分
-        gapextend: Gap extend罚分
-
     Returns:
         (aligned_a, aligned_b, raw_result, identity, longest_identity)
-        longest_identity为最长一致性比例 (0~1)
     """
     seq_a = re.sub(r'\s+', '', seq_a)
     seq_b = re.sub(r'\s+', '', seq_b)
@@ -89,7 +104,6 @@ def run_needle_alignment(
                     if len(vals) == 2:
                         identity = float(vals[0]) / float(vals[1]) if float(vals[1]) > 0 else 0.0
             elif "# Longest_Identity" in line:
-                # Longest_Identity = 100.00%
                 parts = line.split('=')
                 if len(parts) > 1:
                     val = parts[1].strip().strip('%').strip()
@@ -111,6 +125,192 @@ def run_needle_alignment(
                 os.remove(f)
 
 
+def _compute_core_identity(aligned_a: str, aligned_b: str) -> Tuple[float, int, int, int, int]:
+    """
+    计算核心区间同一性。
+
+    去掉两端 terminal overhang/gap（只有一方有残基的区域），
+    在剩余核心区间内计算 identity = matches / core_length。
+
+    Returns:
+        (identity, matches, core_length, core_start, core_end)
+    """
+    n = len(aligned_a)
+    # 找到核心区间的起始和结束
+    start = 0
+    while start < n and (aligned_a[start] == '-' or aligned_b[start] == '-'):
+        start += 1
+    end = n - 1
+    while end >= start and (aligned_a[end] == '-' or aligned_b[end] == '-'):
+        end -= 1
+
+    if end < start:
+        return 0.0, 0, 0, 0, 0
+
+    core_length = end - start + 1
+    matches = sum(1 for i in range(start, end + 1) if aligned_a[i] == aligned_b[i])
+    identity = matches / core_length if core_length > 0 else 0.0
+    return identity, matches, core_length, start, end
+
+
+def _build_ref_to_numbering_map(ref_aligned: str, num_aligned: str) -> Dict[int, int]:
+    """
+    建立 ref 残基索引 → numbering 编号位置的映射。
+
+    Args:
+        ref_aligned: ref vs numbering needle 比对结果中的 ref 行
+        num_aligned: ref vs numbering needle 比对结果中的 numbering 行
+
+    Returns:
+        {ref_residue_index_1base: numbering_position_1base}
+        例如 ref 的第5个残基对应编号位置17 → {5: 17}
+        只有 ref 和 numbering 都有残基的对齐位置才记录映射
+    """
+    mapping: Dict[int, int] = {}
+    ref_idx = 0
+    num_pos = 0
+    for r_char, n_char in zip(ref_aligned, num_aligned):
+        if r_char != '-':
+            ref_idx += 1
+        if n_char != '-':
+            num_pos += 1
+        if r_char != '-' and n_char != '-':
+            mapping[ref_idx] = num_pos
+    return mapping
+
+
+def _find_core_mutations(
+    ref_aligned: str,
+    tgt_aligned: str,
+    core_start: int,
+    core_end: int,
+    ref_to_num: Dict[int, int],
+) -> List[Dict[str, Any]]:
+    """
+    在核心区间内提取差异位点，合并相邻ins/del，映射到编号位置。
+
+    Args:
+        ref_aligned: ref vs tgt needle ref行
+        tgt_aligned: ref vs tgt needle tgt行
+        core_start: 核心区间起始位置（0-based, aligned坐标）
+        core_end: 核心区间结束位置（0-based, aligned坐标）
+        ref_to_num: {ref_idx: numbering_position}
+
+    Returns:
+        突变列表 [{reference_residue, numbering_position, target_residue, mutation_string}]
+    """
+    if core_start < 0 or core_end < 0:
+        return []
+
+    # --- 第一步：收集核心区间内的原始差异 ---
+    # raw_diffs: [(aligned_pos, ref_char, tgt_char)]
+    raw_diffs: List[Tuple[int, str, str]] = []
+    for i in range(core_start, core_end + 1):
+        r_char = ref_aligned[i]
+        t_char = tgt_aligned[i]
+        if r_char != t_char:
+            raw_diffs.append((i, r_char, t_char))
+
+    if not raw_diffs:
+        return []
+
+    # --- 辅助：获取 aligned 位置对应的 ref 索引（1-based）---
+    def _ref_idx_at(aln_pos: int) -> Optional[int]:
+        if ref_aligned[aln_pos] == '-':
+            return None
+        cnt = sum(1 for j in range(0, aln_pos + 1) if ref_aligned[j] != '-')
+        return cnt
+
+    # --- 辅助：获取编号位置 ---
+    def _num_pos_at(aln_pos: int) -> Optional[int]:
+        ref_idx = _ref_idx_at(aln_pos)
+        if ref_idx is not None:
+            return ref_to_num.get(ref_idx)
+        # ref 为 gap（插入），找左侧最近 ref 残基的编号位置
+        for j in range(aln_pos - 1, -1, -1):
+            if ref_aligned[j] != '-':
+                idx = _ref_idx_at(j)
+                if idx and idx in ref_to_num:
+                    return ref_to_num[idx]
+        return None
+
+    # --- 第二步：合并相邻 ins/del 对 ---
+    merged: List[Tuple[str, int, str]] = []  # (ref_char, num_pos, tgt_char)
+
+    i = 0
+    while i < len(raw_diffs):
+        aln_pos, r_char, t_char = raw_diffs[i]
+
+        # 检查是否与下一个差异构成相邻 ins/del 对
+        is_del = (r_char != '-' and t_char == '-')
+        is_ins = (r_char == '-' and t_char != '-')
+        is_sub = (r_char != '-' and t_char != '-')
+
+        if (is_del or is_ins) and i + 1 < len(raw_diffs):
+            next_pos, next_r, next_t = raw_diffs[i + 1]
+            if next_pos == aln_pos + 1:  # 在比对中相邻
+                next_is_del = (next_r != '-' and next_t == '-')
+                next_is_ins = (next_r == '-' and next_t != '-')
+
+                # Case 1: deletion followed by insertion → 合并为替换
+                if is_del and next_is_ins:
+                    ref_idx = _ref_idx_at(aln_pos)
+                    num_pos = ref_to_num.get(ref_idx) if ref_idx else None
+                    if num_pos is not None:
+                        merged.append((r_char, num_pos, next_t))
+                        i += 2
+                        continue
+
+                # Case 2: insertion followed by deletion → 合并为替换
+                if is_ins and next_is_del:
+                    ref_idx = _ref_idx_at(next_pos)
+                    num_pos = ref_to_num.get(ref_idx) if ref_idx else None
+                    if num_pos is not None:
+                        merged.append((next_r, num_pos, t_char))
+                        i += 2
+                        continue
+
+        # 无法合并：正常处理
+        num_pos = _num_pos_at(aln_pos)
+        if num_pos is None:
+            i += 1
+            continue
+
+        if is_sub:
+            merged.append((r_char, num_pos, t_char))
+        elif is_del:
+            # 内部 deletion: D36-
+            merged.append((r_char, num_pos, '-'))
+        elif is_ins:
+            # 单独插入：保留插入标记
+            merged.append(('-', num_pos, t_char))
+
+        i += 1
+
+    # --- 第三步：格式化为突变列表 ---
+    mutations: List[Dict[str, Any]] = []
+    seen_positions: set = set()
+
+    for r_char, num_pos, t_char in merged:
+        # 去重：同一个编号位置可能有多个差异
+        key = (num_pos, r_char, t_char)
+        if key in seen_positions:
+            continue
+        seen_positions.add(key)
+
+        mutation_str = f"{r_char}{num_pos}{t_char}"
+        mutations.append({
+            'reference_residue': r_char,
+            'numbering_position': num_pos,
+            'target_residue': t_char,
+            'mutation_string': mutation_str,
+        })
+
+    # 按编号位置排序
+    mutations.sort(key=lambda m: m['numbering_position'])
+    return mutations
+
+
 def compare_sequences(
     ref_seq: str,
     num_seq: str,
@@ -121,139 +321,133 @@ def compare_sequences(
     """
     三序列比对分析：以编号序列为坐标，比较参比序列与目标序列的差异。
 
+    流程：
+    1. ref vs numbering needle → 建立编号映射
+    2. ref vs tgt needle → core identity + 差异位点
+    3. 差异位点 → 编号映射 → 突变列表
+
     Args:
-        ref_seq: 参比序列
-        num_seq: 编号序列（提供坐标系统）
-        tgt_seq: 目标序列
+        ref_seq: 参比序列（权利要求用于限定同一性的参考序列）
+        num_seq: 编号序列（权利要求指定用于编号的位置序列，默认等于 ref_seq）
+        tgt_seq: 目标序列（待评估的目标蛋白序列）
         gapopen: Gap open罚分
         gapextend: Gap extend罚分
 
     Returns:
         dict:
-            - identity: 参比vs目标同一性
-            - longest_identity: needle最长一致性（Longest_Identity）
-            - matches: 匹配数
-            - mismatches: 错配数(含替换+缺失+插入)
-            - total_positions: 总比对位置
-            - mutations: 突变列表 [{numbering_position, reference_residue, target_residue}]
-              格式: substitution=V2G, deletion=V2-, insertion=-3G
-            - alignments: 比对序列详情
-            - raw_results: needle原始输出
+            - core_identity: 核心区间同一性（去掉terminal overhang后的identity）
+            - longest_identity: needle Longest_Identity
+            - matches: 核心区间匹配数
+            - core_length: 核心区间长度（含内部gap）
+            - total_mutations: 突变总数
+            - mutations: 突变列表 [{reference_residue, numbering_position, target_residue, mutation_string}]
+            - mutation_string: 斜杠连接的突变字符串，如 "S3T/N43R/G118M"
+            - alignments: 比对详情
+            - alignment_chunks: 分块可视化
     """
     logger.info("Starting three-sequence comparison analysis")
 
-    # Step 1: Align Reference vs Numbering
-    ref_aligned, num_aligned_ref, raw_ref_num, identity_ref_num, longest_id_ref = run_needle_alignment(
+    # Step 1: Align Reference vs Numbering → 建立编号映射
+    ref_vs_num_a, num_aligned, raw_ref_num, identity_ref_num, longest_id_ref = run_needle_alignment(
         ref_seq, num_seq, gapopen, gapextend
     )
-    logger.info(f"Ref vs Num identity: {identity_ref_num:.2%}, longest: {longest_id_ref:.2%}")
+    ref_to_num = _build_ref_to_numbering_map(ref_vs_num_a, num_aligned)
+    logger.info(f"Ref vs Num: identity={identity_ref_num:.2%}, mapped {len(ref_to_num)} residues")
 
-    # Step 2: Align Target vs Numbering
-    tgt_aligned, num_aligned_tgt, raw_tgt_num, identity_tgt_num, longest_id_tgt = run_needle_alignment(
-        tgt_seq, num_seq, gapopen, gapextend
-    )
-    logger.info(f"Tgt vs Num identity: {identity_tgt_num:.2%}, longest: {longest_id_tgt:.2%}")
-
-    # Step 2.5: Align Reference vs Target for direct longest_identity
-    ref_vs_tgt_aligned_a, ref_vs_tgt_aligned_b, raw_ref_tgt, identity_ref_tgt, longest_id_ref_tgt = run_needle_alignment(
+    # Step 2: Align Reference vs Target
+    ref_vs_tgt_a, ref_vs_tgt_b, raw_ref_tgt, identity_full, longest_id_ref_tgt = run_needle_alignment(
         ref_seq, tgt_seq, gapopen, gapextend
     )
-    logger.info(f"Ref vs Tgt identity: {identity_ref_tgt:.2%}, longest: {longest_id_ref_tgt:.2%}")
+    logger.info(f"Ref vs Tgt: full_identity={identity_full:.2%}, longest={longest_id_ref_tgt:.2%}")
 
-    # Step 3: Build numbering-position-to-residue maps
+    # Step 3: 计算核心区间同一性
+    core_identity, core_matches, core_length, core_start, core_end = _compute_core_identity(
+        ref_vs_tgt_a, ref_vs_tgt_b
+    )
+    logger.info(f"Core region: identity={core_identity:.2%}, length={core_length}, matches={core_matches}")
+
+    # Step 4: 核心区间内提取突变
+    mutations = _find_core_mutations(
+        ref_vs_tgt_a, ref_vs_tgt_b, core_start, core_end, ref_to_num
+    )
+    logger.info(f"Mutations in core region: {len(mutations)}")
+
+    # Step 5: 突变字符串
+    mutation_string = '/'.join(m['mutation_string'] for m in mutations)
+
+    # Step 6: 构建可视化
+    # 重新获取 num_pos_to_ref / num_pos_to_tgt 用于可视化
     num_pos_to_ref: Dict[int, str] = {}
     num_pos_to_tgt: Dict[int, str] = {}
-
-    num_idx = 0
-    for i, char in enumerate(num_aligned_ref):
+    ref_idx = 0
+    for i, char in enumerate(num_aligned):
         if char != '-':
-            num_pos_to_ref[num_idx] = ref_aligned[i]
-            num_idx += 1
+            if ref_vs_num_a[i] != '-':
+                ref_idx += 1
+                num_pos_to_ref[ref_idx - 1] = ref_vs_num_a[i]
+    ref_idx = 0
+    # tgt vs numbering 对齐用于 tgt 序列可视化
+    _, num_aligned_tgt, _, _, _ = run_needle_alignment(tgt_seq, num_seq, gapopen, gapextend)
+    # 用 ref_vs_tgt 构建 tgt 行
+    tgt_aligned_for_viz = ref_vs_tgt_b
 
-    num_idx = 0
-    for i, char in enumerate(num_aligned_tgt):
-        if char != '-':
-            num_pos_to_tgt[num_idx] = tgt_aligned[i]
-            num_idx += 1
+    # 简单可视化：直接基于 ref vs tgt 比对构建
+    seq_len = len(num_seq)
+    num_chars = list(num_seq)
+    ref_chars_list: List[str] = []
+    tgt_chars_list: List[str] = []
+    marker_list: List[str] = []
 
-    # Step 4: Compare by numbering coordinate
-    mutations: List[Dict[str, Any]] = []
-    matches = 0
-    mismatches = 0
-    all_positions = sorted(set(num_pos_to_ref.keys()) | set(num_pos_to_tgt.keys()))
+    mutation_positions = {m['numbering_position'] for m in mutations}
 
-    for num_pos in all_positions:
-        ref_char = num_pos_to_ref.get(num_pos, '-')
-        tgt_char = num_pos_to_tgt.get(num_pos, '-')
+    # 映射编号位置到对齐位置
+    num_to_aln: Dict[int, int] = {}
+    num_cnt = 0
+    for i, n_char in enumerate(num_aligned):
+        if n_char != '-':
+            num_cnt += 1
+            num_to_aln[num_cnt] = i
 
-        if ref_char == '-' and tgt_char == '-':
-            # 两侧都是gap，跳过
-            continue
-
-        if ref_char == '-' and tgt_char != '-':
-            # 插入：参考序列在此位置无对应残基，目标序列有
-            mismatches += 1
-            mutations.append({
-                'numbering_position': num_pos + 1,
-                'reference_residue': '-',
-                'target_residue': tgt_char,
-            })
-            continue
-
-        if ref_char != '-' and tgt_char == '-':
-            # 缺失：参考序列有残基，目标序列在此位置为gap
-            mismatches += 1
-            mutations.append({
-                'numbering_position': num_pos + 1,
-                'reference_residue': ref_char,
-                'target_residue': '-',
-            })
-            continue
-
-        # 两侧都有残基
-        if ref_char == tgt_char:
-            matches += 1
+    for pos in range(len(num_seq)):
+        aln_pos = num_to_aln.get(pos + 1)
+        if aln_pos is not None and aln_pos < len(ref_vs_tgt_a) and aln_pos < len(ref_vs_tgt_b):
+            ref_chars_list.append(ref_vs_tgt_a[aln_pos])
+            tgt_chars_list.append(ref_vs_tgt_b[aln_pos])
+            is_mut = (pos + 1) in mutation_positions
+            marker_list.append('*' if is_mut else ' ')
         else:
-            mismatches += 1
-            mutations.append({
-                'numbering_position': num_pos + 1,
-                'reference_residue': ref_char,
-                'target_residue': tgt_char,
-            })
+            ref_chars_list.append('-')
+            tgt_chars_list.append('-')
+            marker_list.append(' ')
 
-    total = matches + mismatches
-    identity = matches / total if total > 0 else 0.0
-    logger.info(f"Comparison complete: identity={identity:.2%}, mutations={len(mutations)}")
-
-    # 构建可视化字符串
-    alignment_chunks = _build_visual_alignment(mutations, num_seq, num_pos_to_ref, num_pos_to_tgt)
+    alignment_chunks = _build_visual_alignment(
+        num_chars, ref_chars_list, tgt_chars_list, marker_list, len(num_seq)
+    )
 
     return {
-        'identity': identity,
-        'longest_identity': longest_id_ref_tgt,
-        'matches': matches,
-        'mismatches': mismatches,
-        'total_positions': total,
+        'core_identity': round(core_identity * 100, 2),
+        'longest_identity': round(longest_id_ref_tgt * 100, 2),
+        'core_matches': core_matches,
+        'core_length': core_length,
+        'total_mutations': len(mutations),
         'mutations': mutations,
+        'mutation_string': mutation_string,
         'alignments': {
             'ref_vs_num': {
-                'sequence_a': ref_aligned,
-                'sequence_b': num_aligned_ref,
+                'aligned_a': ref_vs_num_a,
+                'aligned_b': num_aligned,
                 'identity': identity_ref_num,
                 'longest_identity': longest_id_ref,
             },
-            'tgt_vs_num': {
-                'sequence_a': tgt_aligned,
-                'sequence_b': num_aligned_tgt,
-                'identity': identity_tgt_num,
-                'longest_identity': longest_id_tgt,
+            'ref_vs_tgt': {
+                'aligned_a': ref_vs_tgt_a,
+                'aligned_b': ref_vs_tgt_b,
+                'identity': identity_full,
+                'core_identity': round(core_identity, 4),
             },
         },
-        'ref_tgt_identity': identity_ref_tgt,
-        'ref_tgt_longest_identity': longest_id_ref_tgt,
         'raw_results': {
             'ref_vs_num': raw_ref_num,
-            'tgt_vs_num': raw_tgt_num,
             'ref_vs_tgt': raw_ref_tgt,
         },
         'alignment_chunks': alignment_chunks,
@@ -261,43 +455,21 @@ def compare_sequences(
 
 
 def _build_visual_alignment(
-    mutations: List[Dict[str, Any]],
-    num_seq: str,
-    num_pos_to_ref: Dict[int, str],
-    num_pos_to_tgt: Dict[int, str],
+    num_chars: List[str],
+    ref_chars: List[str],
+    tgt_chars: List[str],
+    marker_chars: List[str],
+    seq_len: int,
     chunk_size: int = 30,
 ) -> List[Dict[str, Any]]:
     """
-    构建可视化的序列比对，每30个残基为一块分块显示。
+    构建分块可视化比对。
 
     返回块列表，每块包含:
-    - range_start / range_end: 该块的编号范围
-    - coord, numbering, reference, target, marker: 对应行字符串
+    - range_start / range_end: 编号范围
+    - coord, numbering, reference, target, marker
     """
-    seq_len = len(num_seq)
-
-    num_chars: List[str] = []
-    ref_chars: List[str] = []
-    tgt_chars: List[str] = []
-    marker_chars: List[str] = []
-
-    for pos in range(seq_len):
-        ref_char = num_pos_to_ref.get(pos, '-')
-        tgt_char = num_pos_to_tgt.get(pos, '-')
-        num_char = num_seq[pos]
-
-        num_chars.append(num_char)
-        ref_chars.append(ref_char)
-        tgt_chars.append(tgt_char)
-
-        is_mutation = (
-            (ref_char != '-' and tgt_char != '-' and ref_char != tgt_char) or  # 替换
-            (ref_char != '-' and tgt_char == '-') or                           # 缺失
-            (ref_char == '-' and tgt_char != '-')                               # 插入
-        )
-        marker_chars.append('*' if is_mutation else ' ')
-
-    # 坐标轴：数字最后一位与所在位点对齐
+    # 坐标轴
     coord_chars = [' '] * seq_len
     for i in range(1, seq_len + 1):
         if i == 1 or i % 10 == 0:
@@ -308,7 +480,6 @@ def _build_visual_alignment(
                 if 0 <= start + j < seq_len:
                     coord_chars[start + j] = c
 
-    # 分块
     chunks = []
     for start_pos in range(0, seq_len, chunk_size):
         end_pos = min(start_pos + chunk_size, seq_len)
@@ -333,12 +504,6 @@ def batch_compare_from_excel(
 ) -> List[Dict[str, Any]]:
     """
     从Excel文件批量处理三序列比对。
-
-    Excel需要包含列:
-    - 参比序列 / reference / ref
-    - 编号序列 / numbering / num
-    - 目标序列 / target / tgt
-    - 序列名称 / name (可选)
 
     Returns:
         每个元素的dict包含 compare_sequences() 的输出 + name, index
@@ -387,6 +552,6 @@ def batch_compare_from_excel(
         result['name'] = seq_name
         result['index'] = idx + 1
         results.append(result)
-        logger.info(f"Batch {idx + 1}/{len(df)}: {seq_name} - identity: {result['identity']:.2%}")
+        logger.info(f"Batch {idx + 1}/{len(df)}: {seq_name} - core_identity={result['core_identity']}%")
 
     return results

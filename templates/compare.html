@@ -359,38 +359,48 @@
       var html = '';
 
       // 序列摘要
+      var refLen = result.alignments.ref_vs_num.aligned_a ? result.alignments.ref_vs_num.aligned_a.replace(/-/g, '').length : '?';
+      var numLen = result.alignments.ref_vs_num.aligned_b ? result.alignments.ref_vs_num.aligned_b.replace(/-/g, '').length : '?';
+      var tgtLen = result.alignments.ref_vs_tgt ? result.alignments.ref_vs_tgt.aligned_b.replace(/-/g, '').length : '?';
       html += '<div class="seq-summary">';
-      html += '<span class="badge badge-blue">参比序列长度: ' + getLengthFromAlign(result.alignments.ref_vs_num.sequence_a) + '</span> &nbsp; ';
-      html += '<span class="badge badge-green">编号序列长度: ' + getLengthFromAlign(result.alignments.ref_vs_num.sequence_b) + '</span> &nbsp; ';
-      html += '<span class="badge badge-red">目标序列长度: ' + getLengthFromAlign(result.alignments.tgt_vs_num.sequence_a) + '</span>';
+      html += '<span class="badge badge-blue">参比序列长度: ' + refLen + '</span> &nbsp; ';
+      html += '<span class="badge badge-green">编号序列长度: ' + numLen + '</span> &nbsp; ';
+      html += '<span class="badge badge-red">目标序列长度: ' + tgtLen + '</span>';
       html += '</div>';
 
       // 统计卡片
       html += '<div class="stats-grid">';
-      var longestId = result.ref_tgt_longest_identity != null ? result.ref_tgt_longest_identity : result.longest_identity;
-      html += '<div class="stat-card highlight"><div class="value">' + (longestId * 100).toFixed(2) + '%</div><div class="label">needle最长一致性 ✦</div></div>';
-      html += '<div class="stat-card"><div class="value">' + (result.identity * 100).toFixed(2) + '%</div><div class="label">参比-目标同一性</div></div>';
-      html += '<div class="stat-card"><div class="value">' + result.matches + '</div><div class="label">匹配数</div></div>';
-      html += '<div class="stat-card warning">' + (result.mismatches > 0 ? '<div class="value">' + result.mismatches + '</div>' : '<div class="value">0</div>') + '<div class="label">错配/突变数</div></div>';
+      html += '<div class="stat-card highlight"><div class="value">' + result.core_identity + '%</div><div class="label">核心区间同一性 ✦</div></div>';
+      html += '<div class="stat-card"><div class="value">' + result.longest_identity + '%</div><div class="label">needle最长一致性</div></div>';
+      html += '<div class="stat-card"><div class="value">' + result.core_matches + '</div><div class="label">核心匹配数</div></div>';
+      html += '<div class="stat-card warning"><div class="value">' + result.total_mutations + '</div><div class="label">突变总数</div></div>';
+      html += '<div class="stat-card"><div class="value">' + result.core_length + '</div><div class="label">核心区间长度</div></div>';
       html += '<div class="stat-card"><div class="value">' + (result.alignments.ref_vs_num.longest_identity * 100).toFixed(1) + '%</div><div class="label">ref-num最长一致</div></div>';
-      html += '<div class="stat-card"><div class="value">' + (result.alignments.tgt_vs_num.longest_identity * 100).toFixed(1) + '%</div><div class="label">tgt-num最长一致</div></div>';
       html += '</div>';
 
+      // 突变位点字符串摘要
+      if (result.mutation_string) {
+        html += '<div style="background:#fff8e1;border:1px solid #ffcc80;border-radius:8px;padding:12px 15px;margin-top:10px;">';
+        html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">突变位点字符串:</div>';
+        html += '<code style="font-size:13px;word-break:break-all;">' + escapeHtml(result.mutation_string) + '</code>';
+        html += '</div>';
+      }
+
       // 突变位点表格
-      html += '<h3 style="margin-top: 25px;">🧬 突变位点列表</h3>';
-      if (result.mutations.length === 0) {
+      html += '<h3 style="margin-top: 25px;">🧬 突变位点明细</h3>';
+      if (!result.mutations || result.mutations.length === 0) {
         html += '<div class="no-mutations"><div class="icon">✅</div><p>参比序列与目标序列完全一致，无突变位点</p></div>';
       } else {
         html += '<table><thead><tr>';
-        html += '<th>#</th><th>编号位置</th><th>参比残基</th><th>目标残基</th><th>突变类型</th>';
-        html += '</tr></thead><tbody>';
+        html += '<th>#</th><th>编号位置</th><th>参比残基</th><th>目标残基</th><th>突变表示</th></tr>';
+        html += '</thead><tbody>';
         result.mutations.forEach(function(m, idx) {
           html += '<tr class="mutation-row">';
           html += '<td>' + (idx + 1) + '</td>';
           html += '<td><strong>' + m.numbering_position + '</strong></td>';
-          html += '<td style="color:#3498db;font-weight:700;">' + m.reference_residue + '</td>';
-          html += '<td style="color:#e74c3c;font-weight:700;">' + m.target_residue + '</td>';
-          html += '<td><code>' + m.reference_residue + m.numbering_position + m.target_residue + '</code></td>';
+          html += '<td style="color:#3498db;font-weight:700;">' + escapeHtml(m.reference_residue) + '</td>';
+          html += '<td style="color:#e74c3c;font-weight:700;">' + escapeHtml(m.target_residue) + '</td>';
+          html += '<td><code>' + escapeHtml(m.mutation_string || m.reference_residue + m.numbering_position + m.target_residue) + '</code></td>';
           html += '</tr>';
         });
         html += '</tbody></table>';
@@ -422,7 +432,6 @@
         });
         html += '</div>';
       }
-      html += '</div>';
 
       $('#single-results-content').html(html);
       $('#single-results').addClass('active').show();
@@ -436,26 +445,37 @@
 
       // 汇总表
       html += '<table><thead><tr>';
-      html += '<th>#</th><th>序列名称</th><th>同一性</th><th>匹配/总</th><th>突变数</th></tr>';
+      html += '<th>#</th><th>序列名称</th><th>核心同一性</th><th>最长一致</th><th>匹配/总</th><th>突变数</th></tr>';
       html += '</thead><tbody>';
 
       results.forEach(function(r, idx) {
+        var coreId = r.core_identity != null ? r.core_identity + '%' : (r.identity != null ? r.identity + '%' : '-');
+        var longestId = r.longest_identity != null ? r.longest_identity + '%' : '-';
+        var matchInfo = (r.core_matches != null ? r.core_matches : r.matches) + '/' + (r.core_length != null ? r.core_length : r.total_positions);
+
         html += '<tr>';
         html += '<td>' + (idx + 1) + '</td>';
         html += '<td><strong>' + escapeHtml(r.name) + '</strong></td>';
-        html += '<td>' + (r.longest_identity ? (r.longest_identity * 100).toFixed(2) : (r.identity * 100).toFixed(2)) + '%</td>';
-        html += '<td>' + r.matches + '/' + r.total_positions + '</td>';
-        html += '<td>' + (r.mutations ? r.mutations.length : 0) + '</td>';
+        html += '<td>' + coreId + '</td>';
+        html += '<td>' + longestId + '</td>';
+        html += '<td>' + matchInfo + '</td>';
+        html += '<td>' + (r.total_mutations != null ? r.total_mutations : (r.mutations ? r.mutations.length : 0)) + '</td>';
         html += '</tr>';
 
         // 如果有突变，展开显示
-        if (r.mutations && r.mutations.length > 0) {
-          html += '<tr style="background:#fff8e1;"><td colspan="5" style="padding:8px 15px;text-align:left;">';
-          html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">突变详情:</div>';
+        var mutStr = r.mutation_string;
+        if (mutStr) {
+          html += '<tr style="background:#fff8e1;"><td colspan="6" style="padding:8px 15px;text-align:left;">';
+          html += '<div style="font-size:12px;color:#888;margin-bottom:4px;">突变位点列表:</div>';
+          html += '<code style="font-size:12px;word-break:break-all;">' + escapeHtml(mutStr) + '</code>';
+          html += '</td></tr>';
+        } else if (r.mutations && r.mutations.length > 0) {
+          html += '<tr style="background:#fff8e1;"><td colspan="6" style="padding:8px 15px;text-align:left;">';
           html += '<div style="font-size:12px;">';
           r.mutations.forEach(function(m) {
+            var ms = m.mutation_string || m.reference_residue + m.numbering_position + m.target_residue;
             html += '<span style="display:inline-block;margin:2px 6px 2px 0;padding:1px 6px;background:#ffe0b2;border-radius:3px;">';
-            html += '<strong>' + m.reference_residue + m.numbering_position + m.target_residue + '</strong>';
+            html += '<strong>' + escapeHtml(ms) + '</strong>';
             html += '</span> ';
           });
           html += '</div></td></tr>';
