@@ -9,7 +9,7 @@
   <style>
     * { box-sizing: border-box; }
     body { background: #0b0e17; color: #e2e8f0; font-family: 'Inter', -apple-system, sans-serif; }
-    .container { max-width: 1060px; margin: 0 auto; padding: 32px 20px 50px; }
+    .container { max-width: 1120px; margin: 0 auto; padding: 32px 20px 50px; }
 
     .back-link { display: inline-flex; align-items: center; gap: 6px; color: rgba(148,163,184,0.6); text-decoration: none; font-size: 13px; margin-bottom: 20px; transition: color .2s; }
     .back-link:hover { color: #94a3b8; }
@@ -21,63 +21,74 @@
     .panel textarea, .panel select, .panel input { width: 100%; padding: 10px 12px; background: rgba(15,23,42,0.6); border: 1px solid rgba(148,163,184,0.1); border-radius: 8px; color: #e2e8f0; font-size: 14px; transition: border .2s; }
     .panel textarea:focus, .panel select:focus { outline: none; border-color: rgba(168,85,247,0.3); }
     .panel textarea { min-height: 110px; font-family: 'Courier New', monospace; resize: vertical; }
-    .panel select { cursor: pointer; }
 
     .row { display: flex; gap: 16px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
-    .row label { font-size: 12px; white-space: nowrap; margin-bottom: 0; }
-    .row select, .row input { width: auto; flex: 1; min-width: 80px; }
     .row .form-group { display: flex; align-items: center; gap: 8px; }
+    .row .form-group label { font-size: 12px; white-space: nowrap; margin-bottom: 0; }
+    .row .form-group select { width: auto; flex: unset; min-width: 100px; }
 
     .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: all .3s; color: #fff; }
     .btn-primary { background: linear-gradient(135deg,#7c3aed,#6d28d9); box-shadow: 0 4px 14px rgba(124,58,237,.25); }
     .btn-primary:hover { box-shadow: 0 6px 20px rgba(124,58,237,.4); transform: translateY(-1px); }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-outline { background: transparent; border: 1px solid rgba(148,163,184,0.15); color: rgba(148,163,184,0.7); }
     .btn-outline:hover { border-color: rgba(148,163,184,0.3); color: #e2e8f0; }
     .btn-sm { padding: 6px 14px; font-size: 12px; }
-
     .btn-copy { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.2); }
     .btn-copy:hover { background: rgba(16,185,129,0.25); }
+    .btn-second { background: rgba(56,189,248,0.12); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.15); }
+    .btn-second:hover { background: rgba(56,189,248,0.2); }
 
     .loading { text-align: center; padding: 40px; display: none; }
     .spinner { width: 36px; height: 36px; border: 3px solid rgba(124,58,237,0.1); border-top-color: #a78bfa; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading p { color: rgba(148,163,184,0.5); font-size: 14px; }
-    .loading .rid-info { font-size: 12px; color: rgba(148,163,184,0.3); margin-top: 6px; }
 
-    /* === Results === */
-    .results-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); gap: 10px; margin-bottom: 18px; }
+    .stat-card { background: rgba(15,23,42,0.4); border: 1px solid rgba(148,163,184,0.04); border-radius: 8px; padding: 12px; text-align: center; }
+    .stat-card .val { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg,#e2e8f0,#94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat-card .lbl { font-size: 10px; color: rgba(148,163,184,0.4); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+
+    .results-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
     .results-title { font-size: 1.1rem; font-weight: 600; }
-    .results-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; border-radius: 100px; font-size: 12px; font-weight: 500; background: rgba(124,58,237,0.1); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.15); }
-    .results-badge.patent { background: rgba(16,185,129,0.1); color: #6ee7b7; border-color: rgba(16,185,129,0.15); }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; border-radius: 100px; font-size: 12px; font-weight: 500; border: 1px solid; }
+    .badge-hit { background: rgba(124,58,237,0.1); color: #c4b5fd; border-color: rgba(124,58,237,0.15); }
+    .badge-pat { background: rgba(16,185,129,0.1); color: #6ee7b7; border-color: rgba(16,185,129,0.15); }
 
-    .actions-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .actions-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 
-    /* Patent number tags */
-    .patent-cloud { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 16px 0; border-top: 1px solid rgba(148,163,184,0.06); }
-    .patent-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.1); border-radius: 8px; font-size: 13px; font-weight: 500; color: #6ee7b7; font-family: 'Courier New', monospace; transition: all .2s; cursor: pointer; }
+    .patent-cloud { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 0; border-top: 1px solid rgba(148,163,184,0.06); margin-bottom: 16px; }
+    .patent-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.1); border-radius: 8px; font-size: 13px; font-weight: 500; color: #6ee7b7; font-family: 'Courier New', monospace; cursor: pointer; transition: all .2s; }
     .patent-tag:hover { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.2); }
 
-    /* Hit table */
-    .hit-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-    .hit-table th { text-align: left; padding: 8px 12px; color: rgba(148,163,184,0.5); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid rgba(148,163,184,0.08); }
-    .hit-table td { padding: 10px 12px; border-bottom: 1px solid rgba(148,163,184,0.04); vertical-align: top; }
+    .hit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .hit-table th { text-align: left; padding: 8px 10px; color: rgba(148,163,184,0.5); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid rgba(148,163,184,0.08); white-space: nowrap; }
+    .hit-table td { padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,0.04); vertical-align: top; font-size: 12px; }
     .hit-table tr:hover td { background: rgba(148,163,184,0.02); }
-    .hit-table .acc { color: #a78bfa; font-weight: 600; font-family: 'Courier New', monospace; font-size: 12px; }
+    .hit-table .acc { color: #a78bfa; font-weight: 600; font-family: 'Courier New', monospace; }
+    .hit-table .num { font-family: 'Courier New', monospace; }
     .hit-table .pat { color: #6ee7b7; font-size: 11px; }
-    .hit-table .desc { color: rgba(148,163,184,0.7); font-size: 12px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hit-table .score { color: #fbbf24; font-family: 'Courier New', monospace; font-size: 12px; }
-    .hit-table .ident { color: #38bdf8; font-family: 'Courier New', monospace; font-size: 12px; }
-    .hit-table .evalue { font-family: 'Courier New', monospace; font-size: 12px; color: rgba(148,163,184,0.6); }
+    .hit-table .sc { color: #fbbf24; }
+    .hit-table .id { color: #38bdf8; }
+    .hit-table .desc { color: rgba(148,163,184,0.7); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hit-table .ev { color: rgba(148,163,184,0.5); }
+
+    .highlight-row td { background: rgba(16,185,129,0.04) !important; }
 
     .error-box { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.12); border-radius: 10px; padding: 16px; color: #fca5a5; text-align: center; font-size: 14px; }
 
-    .rid-bar { font-size: 12px; color: rgba(148,163,184,0.3); text-align: center; margin-top: 16px; }
-    .rid-bar code { color: rgba(148,163,184,0.5); background: rgba(15,23,42,0.6); padding: 2px 8px; border-radius: 4px; }
+    .filter-bar { display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; }
+    .filter-bar .fg { display: flex; align-items: center; gap: 6px; }
+    .filter-bar .fg label { font-size: 11px; margin-bottom: 0; }
+    .filter-bar .fg input { width: 60px; padding: 5px 8px; font-size: 12px; }
 
-    .section-title { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px; }
+    .toggle-link { cursor: pointer; color: rgba(148,163,184,0.4); font-size: 12px; }
+    .toggle-link:hover { color: rgba(148,163,184,0.7); }
 
-    @media (max-width: 720px) { .row { flex-direction: column; align-items: stretch; } }
+    @media (max-width: 720px) {
+      .row { flex-direction: column; align-items: stretch; }
+      .filter-bar { flex-direction: column; gap: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -86,35 +97,57 @@
 
   <a href="{{ url_for('main.index') }}" class="back-link">← 返回工具列表</a>
   <div class="page-title">🔍 专利序列检索</div>
-  <div class="page-subtitle">将序列提交至 NCBI BLAST 专利库，提取关联的专利公开号</div>
+  <div class="page-subtitle">
+    将序列提交至 NCBI 专利数据库（pataa / patnt），提取关联专利公开号
+  </div>
 
-  <!-- Input Panel -->
+  <!-- Input -->
   <div class="panel">
     <form id="search-form">
       <label for="sequence">输入序列（DNA / RNA / 蛋白质，自动检测类型）</label>
-      <textarea id="sequence" name="sequence" placeholder="粘贴待检索的核苷酸或氨基酸序列..." style="min-height:110px;"></textarea>
+      <textarea id="sequence" name="sequence" placeholder="粘贴待检索的核苷酸或氨基酸序列..."></textarea>
 
       <div class="row">
         <div class="form-group">
-          <label for="program">检索类型</label>
-          <select id="program" name="program">
+          <label>程序</label>
+          <select id="program">
             <option value="auto">自动检测</option>
             <option value="blastn">blastn（核酸）</option>
             <option value="blastp">blastp（蛋白）</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="hitlist_size">最大命中数</label>
-          <select id="hitlist_size" name="hitlist_size">
-            <option value="20">20</option>
+          <label>最大命中</label>
+          <select id="hitlist_size">
             <option value="50" selected>50</option>
             <option value="100">100</option>
             <option value="200">200</option>
+            <option value="500">500</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>E-value</label>
+          <select id="evalue">
+            <option value="10">10</option>
+            <option value="1">1</option>
+            <option value="0.01" selected>0.01</option>
+            <option value="1e-5">1e-5</option>
           </select>
         </div>
         <button type="submit" class="btn btn-primary" id="search-btn">
-          <span id="btn-icon">🔍</span> <span id="btn-text">提交检索</span>
+          🔍 提交检索
         </button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="fg">
+          <label>最低同一性(%)</label>
+          <input type="number" id="min_identity" value="0" min="0" max="100">
+        </div>
+        <div class="fg">
+          <label>最低覆盖度(%)</label>
+          <input type="number" id="min_qcov" value="0" min="0" max="100">
+        </div>
       </div>
     </form>
   </div>
@@ -122,8 +155,10 @@
   <!-- Loading -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    <p id="loading-text">正在提交序列至 NCBI BLAST 专利库...</p>
-    <div class="rid-info" id="rid-info"></div>
+    <p>正在提交至 NCBI 专利数据库，请稍候...</p>
+    <p style="font-size:11px;color:rgba(148,163,184,0.25);margin-top:4px;">
+      BLAST+ remote 模式，预计 10-120 秒
+    </p>
   </div>
 
   <!-- Results -->
@@ -132,129 +167,158 @@
 </div>
 
 <script>
-  $('#search-form').submit(function(e) {
-    e.preventDefault();
-    const seq = $('#sequence').val().trim().toUpperCase().replace(/\s+/g, '');
-    if (!seq) { alert('请输入序列'); return; }
+$('#search-form').submit(function(e) {
+  e.preventDefault();
+  const seq = $('#sequence').val().trim().toUpperCase().replace(/\s+/g, '');
+  if (!seq) { alert('请输入序列'); return; }
 
-    $('#results-area').hide().empty();
-    $('#loading').show();
-    $('#btn-text').text('提交中...');
+  $('#results-area').hide().empty();
+  $('#loading').show();
+  $('#search-btn').prop('disabled', true);
 
-    $.ajax({
-      url: '{{ url_for("patent.search") }}',
-      type: 'POST',
-      data: {
-        sequence: seq,
-        program: $('#program').val(),
-        hitlist_size: $('#hitlist_size').val(),
-      },
-      dataType: 'json',
-      success: function(r) { renderResults(r); },
-      error: function(x) {
-        let msg = '请求失败';
-        try { msg = JSON.parse(x.responseText).message; } catch(e) {}
-        showError(msg);
-      },
-      complete: function() { $('#loading').hide(); $('#btn-text').text('提交检索'); }
-    });
+  $.ajax({
+    url: '{{ url_for("patent.search") }}',
+    type: 'POST',
+    data: {
+      sequence: seq,
+      program: $('#program').val(),
+      hitlist_size: $('#hitlist_size').val(),
+      evalue: $('#evalue').val(),
+      min_identity: $('#min_identity').val() || 0,
+      min_qcov: $('#min_qcov').val() || 0,
+    },
+    dataType: 'json',
+    success: function(r) { renderResults(r); },
+    error: function(x) {
+      let msg = '请求失败';
+      try { msg = JSON.parse(x.responseText).message; } catch(e) {}
+      showError(msg);
+    },
+    complete: function() {
+      $('#loading').hide();
+      $('#search-btn').prop('disabled', false);
+    }
   });
+});
 
-  function renderResults(r) {
-    const area = $('#results-area');
-    area.empty();
+function renderResults(r) {
+  const area = $('#results-area');
+  area.empty();
 
-    if (r.status === 'error') {
-      showError(r.message);
-      return;
-    }
+  if (r.status === 'error') { showError(r.message); return; }
 
-    const stats = r.statistics || {};
-    const totalHits = stats.total_hits || 0;
-    const patents = r.patent_numbers || [];
-    const hits = r.hits || [];
-    const rid = r.rid || '';
+  const stats = r.statistics || {};
+  const entries = r.patent_entries || [];
+  const hits = r.hits || [];
 
-    let html = '<div class="panel">';
+  let html = '<div class="panel">';
 
-    // Header
-    html += '<div class="results-header">';
-    html += '<span class="results-title">📊 检索结果</span>';
-    html += '<span class="results-badge">命中 ' + totalHits + ' 条序列</span>';
-    html += '</div>';
+  // Header
+  html += '<div class="results-header">';
+  html += '<span class="results-title">📊 检索结果</span>';
+  html += '<div>';
+  html += '<span class="badge badge-hit">命中 ' + stats.total_hits + '</span> ';
+  html += '<span class="badge badge-pat">📄 ' + stats.unique_patents + ' 个专利号</span>';
+  html += '</div></div>';
 
-    // Patent count badge
-    html += '<div style="text-align:center;margin-bottom:14px;">';
-    html += '<span class="results-badge patent">📄 提取到 <strong>' + patents.length + '</strong> 个专利公开号</span>';
-    html += '</div>';
+  // Stats grid
+  html += '<div class="stats-grid">';
+  html += '<div class="stat-card"><div class="val">' + hits.length + '</div><div class="lbl">原始命中</div></div>';
+  html += '<div class="stat-card"><div class="val">' + entries.length + '</div><div class="lbl">去重专利号</div></div>';
+  html += '<div class="stat-card"><div class="val">' + (stats.query_length || '') + '</div><div class="lbl">查询长度</div></div>';
+  html += '<div class="stat-card"><div class="val">' + (stats.program || '') + '</div><div class="lbl">程序</div></div>';
+  html += '<div class="stat-card"><div class="val">' + (stats.database || '') + '</div><div class="lbl">数据库</div></div>';
+  html += '</div>';
 
-    // Action buttons
-    html += '<div class="actions-bar">';
-    html += '<button class="btn btn-sm btn-copy" onclick="copyPatents()">📋 复制全部专利号</button>';
-    html += '<a href="{{ url_for("patent.download") }}" class="btn btn-sm btn-outline" style="text-decoration:none;">📥 下载Excel</a>';
-    html += '</div>';
+  // Actions
+  html += '<div class="actions-bar">';
+  html += '<button class="btn btn-sm btn-copy" onclick="copyPatents()">📋 复制专利号列表</button>';
+  html += '<a href="{{ url_for("patent.download") }}" class="btn btn-sm btn-outline" style="text-decoration:none;">📥 下载Excel</a>';
+  html += '</div>';
 
-    // Patent cloud
-    if (patents.length > 0) {
-      html += '<div class="patent-cloud" id="patent-cloud">';
-      patents.forEach(function(p) {
-        html += '<span class="patent-tag" onclick="navigator.clipboard.writeText(\'' + esc(p) + '\')">📄 ' + esc(p) + '</span>';
-      });
-      html += '</div>';
-    } else {
-      html += '<div style="text-align:center;padding:20px;color:rgba(148,163,184,0.4);">未提取到专利公开号</div>';
-    }
-
-    // RID
-    if (rid) {
-      html += '<div class="rid-bar">RID: <code>' + rid + '</code> · 可通过 NCBI BLAST 页面手动查看</div>';
-    }
-
-    // Hit table (collapseable)
-    if (hits.length > 0) {
-      html += '<div style="margin-top:16px;">';
-      html += '<div class="section-title" style="cursor:pointer;margin:0;" onclick="$(\'#hit-body\').toggle()">📋 命中序列详情 <span style="font-size:11px;color:rgba(148,163,184,0.3);">（点击展开/折叠）</span></div>';
-      html += '<table class="hit-table"><thead><tr><th>Accession</th><th>专利号</th><th>定义</th><th>Score</th><th>Ident</th><th>E-value</th></tr></thead>';
-      html += '<tbody id="hit-body" style="display:none;">';
-
-      hits.forEach(function(h) {
-        const hsp = h.best_hsp || {};
-        const patStr = h.patent_numbers ? h.patent_numbers.slice(0, 3).join(', ') : '';
-        const more = h.patent_numbers && h.patent_numbers.length > 3 ? '...' : '';
-        html += '<tr>';
-        html += '<td class="acc">' + esc(h.accession || h.id) + '</td>';
-        html += '<td class="pat">' + esc(patStr) + more + '</td>';
-        html += '<td class="desc" title="' + esc(h.definition) + '">' + esc((h.definition || '').slice(0, 60)) + '</td>';
-        html += '<td class="score">' + (hsp.score || '-') + '</td>';
-        html += '<td class="ident">' + (hsp.identity_pct != null ? hsp.identity_pct + '%' : '-') + '</td>';
-        html += '<td class="evalue">' + (hsp.evalue || '-') + '</td>';
-        html += '</tr>';
-      });
-
-      html += '</tbody></table></div>';
-    }
-
-    html += '</div>';
-    area.html(html).show();
-    window.copyPatentsData = patents;
-  }
-
-  function copyPatents() {
-    const data = window.copyPatentsData || [];
-    if (!data.length) return;
-    const text = data.join('\n');
-    navigator.clipboard.writeText(text).then(function() {
-      const btn = $('.btn-copy');
-      btn.html('✅ 已复制 ' + data.length + ' 个');
-      setTimeout(function() { btn.html('📋 复制全部专利号'); }, 2000);
+  // Patent cloud
+  const patents = r.patent_numbers || [];
+  if (patents.length > 0) {
+    html += '<div class="patent-cloud" id="patent-cloud">';
+    patents.forEach(function(p) {
+      html += '<span class="patent-tag" onclick="navigator.clipboard.writeText(\'' + esc(p) + '\')">📄 ' + esc(p) + '</span>';
     });
+    html += '</div>';
+  } else {
+    html += '<div style="text-align:center;padding:16px;color:rgba(148,163,184,0.3);">未提取到专利公开号</div>';
   }
 
-  function showError(msg) {
-    $('#results-area').html('<div class="panel"><div class="error-box">' + esc(msg) + '</div></div>').show();
+  // Detailed hit table
+  if (entries.length > 0) {
+    html += '<div class="section-title" style="cursor:pointer;margin-top:12px;" onclick="$(\'#patent-detail-body\').toggle()">';
+    html += '📋 专利去重详情 <span class="toggle-link">（点击展开/折叠）</span></div>';
+    html += '<table class="hit-table"><thead><tr>';
+    html += '<th>专利号</th><th>Accession</th><th>同一性</th><th>覆盖度</th><th>Bitscore</th><th>E-value</th><th>描述</th>';
+    html += '</tr></thead>';
+    html += '<tbody id="patent-detail-body" style="display:none;">';
+    entries.forEach(function(e) {
+      html += '<tr class="' + (parseFloat(e.identity) >= 90 ? 'highlight-row' : '') + '">';
+      html += '<td class="pat" style="font-weight:600;">' + esc(e.patent) + '</td>';
+      html += '<td class="acc">' + esc(e.accession) + '</td>';
+      html += '<td class="id num">' + (e.identity ? e.identity.toFixed(1) + '%' : '-') + '</td>';
+      html += '<td class="num">' + (e.qcov ? e.qcov.toFixed(0) + '%' : '-') + '</td>';
+      html += '<td class="sc num">' + (e.bitscore || '-') + '</td>';
+      html += '<td class="ev num">' + (e.evalue != null ? (+e.evalue).toExponential(1) : '-') + '</td>';
+      html += '<td class="desc" title="' + esc(e.title) + '">' + esc((e.title || '').slice(0,60)) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
   }
 
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  // All raw hits (collapsible)
+  if (hits.length > 0) {
+    const hiddenCount = hits.length - entries.length;
+    html += '<div class="section-title" style="cursor:pointer;margin-top:16px;" onclick="$(\'#raw-hit-body\').toggle()">';
+    html += '🔬 全部命中 ' + hits.length + ' 条 <span class="toggle-link">（点击展开）</span></div>';
+    html += '<div id="raw-hit-body" style="display:none;">';
+    html += '<table class="hit-table"><thead><tr>';
+    html += '<th>#</th><th>Accession</th><th>同一性</th><th>长度</th><th>错配</th><th>Qcov</th><th>Bitscore</th><th>E-value</th><th>Q范围</th><th>S范围</th><th>专利号</th></tr>';
+    html += '</thead><tbody>';
+    hits.forEach(function(h, i) {
+      const patStr = (h.patents || []).slice(0, 2).join(', ');
+      const more = h.patents && h.patents.length > 2 ? '…' : '';
+      html += '<tr>';
+      html += '<td>' + (i+1) + '</td>';
+      html += '<td class="acc">' + esc(h.saccver || h.sseqid) + '</td>';
+      html += '<td class="id num">' + h.pident.toFixed(1) + '%</td>';
+      html += '<td class="num">' + h.length + '</td>';
+      html += '<td class="num">' + h.mismatch + '</td>';
+      html += '<td class="num">' + h.qcovs.toFixed(0) + '%</td>';
+      html += '<td class="sc num">' + h.bitscore.toFixed(0) + '</td>';
+      html += '<td class="ev num">' + h.evalue.toExponential(1) + '</td>';
+      html += '<td class="num">' + h.qstart + '..' + h.qend + '</td>';
+      html += '<td class="num">' + h.sstart + '..' + h.send + '</td>';
+      html += '<td class="pat">' + esc(patStr) + more + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  html += '</div>';
+  area.html(html).show();
+  window.patentList = patents;
+}
+
+function copyPatents() {
+  const data = window.patentList || [];
+  if (!data.length) return;
+  navigator.clipboard.writeText(data.join('\n')).then(function() {
+    const btn = $('.btn-copy');
+    btn.html('✅ 已复制 ' + data.length + ' 个');
+    setTimeout(function() { btn.html('📋 复制专利号列表'); }, 2000);
+  });
+}
+
+function showError(msg) {
+  $('#results-area').html('<div class="panel"><div class="error-box">' + esc(msg) + '</div></div>').show();
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>
 </html>
