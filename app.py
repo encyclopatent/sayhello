@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import blueprints
-from routes import main_bp, st26_bp, sirna_bp, fragment_bp, alignment_bp, compare_bp
+from routes import main_bp, st26_bp, sirna_bp, fragment_bp, alignment_bp, compare_bp, prop_bp
 
 # Import middleware
 from middleware import InputValidationMiddleware
@@ -85,6 +85,7 @@ def create_app():
     app.register_blueprint(fragment_bp)
     app.register_blueprint(alignment_bp)
     app.register_blueprint(compare_bp)
+    app.register_blueprint(prop_bp)
 
     # Make celery available at app level
     app.celery = celery

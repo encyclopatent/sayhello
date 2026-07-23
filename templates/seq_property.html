@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>序列理化性质分析</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #0b0e17; color: #e2e8f0; font-family: 'Inter', -apple-system, sans-serif; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px 50px; }
+
+    /* Header */
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: rgba(148,163,184,0.6); text-decoration: none; font-size: 13px; margin-bottom: 20px; transition: color .2s; }
+    .back-link:hover { color: #94a3b8; }
+    .page-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; background: linear-gradient(135deg,#f0f9ff,#38bdf8,#818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .page-subtitle { color: rgba(148,163,184,0.5); font-size: 0.9rem; margin-bottom: 28px; }
+
+    /* Mode Tabs */
+    .mode-tabs { display: flex; gap: 0; margin-bottom: 24px; }
+    .mode-tab { padding: 10px 28px; border: 1px solid rgba(148,163,184,0.1); background: rgba(30,41,59,0.4); cursor: pointer; font-size: 14px; font-weight: 500; color: rgba(148,163,184,0.6); transition: all .2s; }
+    .mode-tab:first-child { border-radius: 10px 0 0 10px; }
+    .mode-tab:last-child { border-radius: 0 10px 10px 0; }
+    .mode-tab.active { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.3); color: #7dd3fc; }
+    .mode-tab:hover:not(.active) { background: rgba(148,163,184,0.05); }
+
+    /* Input Panel */
+    .panel { background: rgba(30,41,59,0.5); border: 1px solid rgba(148,163,184,0.08); border-radius: 14px; padding: 24px; margin-bottom: 24px; backdrop-filter: blur(8px); display: none; }
+    .panel.active { display: block; }
+    .panel label { display: block; font-size: 13px; font-weight: 500; color: rgba(148,163,184,0.8); margin-bottom: 6px; }
+    .panel textarea, .panel input[type="file"] { width: 100%; padding: 12px; background: rgba(15,23,42,0.6); border: 1px solid rgba(148,163,184,0.1); border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: 'Courier New', monospace; resize: vertical; transition: border .2s; }
+    .panel textarea:focus { outline: none; border-color: rgba(56,189,248,0.3); }
+    .panel textarea { min-height: 90px; }
+    .panel input[type="file"] { padding: 10px; }
+    .panel .btn-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 26px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: all .3s; color: #fff; }
+    .btn-primary { background: linear-gradient(135deg,#0891b2,#0e7490); box-shadow: 0 4px 14px rgba(8,145,178,.25); }
+    .btn-primary:hover { box-shadow: 0 6px 20px rgba(8,145,178,.4); transform: translateY(-1px); }
+    .btn-green { background: linear-gradient(135deg,#059669,#047857); box-shadow: 0 4px 14px rgba(5,150,105,.25); }
+    .btn-green:hover { box-shadow: 0 6px 20px rgba(5,150,105,.4); transform: translateY(-1px); }
+    .btn-outline { background: transparent; border: 1px solid rgba(148,163,184,0.15); color: rgba(148,163,184,0.7); }
+    .btn-outline:hover { border-color: rgba(148,163,184,0.3); color: #e2e8f0; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 50px; display: none; }
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(56,189,248,0.1); border-top-color: #38bdf8; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { color: rgba(148,163,184,0.5); font-size: 14px; }
+
+    /* Results */
+    .results { display: none; }
+
+    /* Info Cards */
+    .moltype-badge { display: inline-block; padding: 3px 12px; border-radius: 100px; font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-bottom: 16px; }
+    .moltype-badge.dna { background: rgba(56,189,248,0.1); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.15); }
+    .moltype-badge.rna { background: rgba(232,121,249,0.1); color: #f0abfc; border: 1px solid rgba(232,121,249,0.15); }
+    .moltype-badge.protein { background: rgba(52,211,153,0.1); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.15); }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: rgba(15,23,42,0.4); border: 1px solid rgba(148,163,184,0.06); border-radius: 10px; padding: 14px 12px; text-align: center; }
+    .stat-card .val { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg,#e2e8f0,#94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat-card .val.highlight { background: linear-gradient(135deg,#38bdf8,#818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat-card .lbl { font-size: 11px; color: rgba(148,163,184,0.5); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* Chart Layout */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .chart-box { background: rgba(15,23,42,0.4); border: 1px solid rgba(148,163,184,0.06); border-radius: 10px; padding: 16px; }
+    .chart-box h4 { font-size: 12px; font-weight: 500; color: rgba(148,163,184,0.6); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 12px; }
+    .chart-box canvas { max-height: 220px; }
+
+    /* Property Table */
+    .prop-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    .prop-table th { text-align: left; padding: 8px 10px; color: rgba(148,163,184,0.5); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid rgba(148,163,184,0.08); }
+    .prop-table td { padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,0.04); }
+    .prop-table tr:hover td { background: rgba(148,163,184,0.02); }
+
+    /* AA Composition Table */
+    .aa-bar { display: inline-block; height: 14px; border-radius: 4px; margin-right: 6px; vertical-align: middle; transition: width .6s ease; min-width: 2px; }
+    .aa-cell { display: flex; align-items: center; gap: 8px; }
+    .aa-cell .aa-letter { width: 20px; font-weight: 700; font-family: 'Courier New', monospace; font-size: 13px; }
+    .aa-cell .aa-pct { color: rgba(148,163,184,0.5); font-size: 12px; min-width: 40px; text-align: right; }
+
+    .section-title { font-size: 1rem; font-weight: 600; margin: 24px 0 14px; color: #e2e8f0; display: flex; align-items: center; gap: 8px; }
+
+    /* Download bar */
+    .download-bar { display: flex; justify-content: center; gap: 12px; margin: 20px 0 10px; }
+
+    @media (max-width: 720px) {
+      .chart-row { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <a href="{{ url_for('main.index') }}" class="back-link">← 返回工具列表</a>
+  <div class="page-title">序列理化性质分析</div>
+  <div class="page-subtitle">自动检测类型 · 计算分子量 · 等电点 · 组成 · 疏水性 · GC含量 · 电荷谱</div>
+
+  <!-- Mode Tabs -->
+  <div class="mode-tabs">
+    <div class="mode-tab active" onclick="switchMode('single')">📝 单序列输入</div>
+    <div class="mode-tab" onclick="switchMode('batch')">📂 Excel批量分析</div>
+  </div>
+
+  <!-- Single Input -->
+  <div class="panel active" id="panel-single">
+    <form id="single-form">
+      <div style="display:flex;gap:12px;margin-bottom:12px;">
+        <div style="flex:1;">
+          <label>序列名称（可选）</label>
+          <input type="text" id="seq-name" placeholder="例如: 人源胰岛素" style="width:100%;padding:10px 12px;background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.1);border-radius:8px;color:#e2e8f0;font-size:14px;">
+        </div>
+      </div>
+      <label for="sequence">输入序列（DNA / RNA / 蛋白质，自动检测类型）</label>
+      <textarea id="sequence" name="sequence" placeholder="粘贴序列..." style="min-height:120px;"></textarea>
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">🔍 开始分析</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Batch Input -->
+  <div class="panel" id="panel-batch">
+    <form id="batch-form" enctype="multipart/form-data">
+      <label for="batch-excel">选择Excel文件（需包含"序列"列，可选"名称"列）</label>
+      <input type="file" id="batch-excel" name="excel_file" accept=".xlsx,.xls">
+      <div class="btn-row">
+        <button type="submit" class="btn btn-green">📊 批量分析</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading"><div class="spinner"></div><p>分析中...</p></div>
+
+  <!-- Single Results -->
+  <div class="results" id="result-single">
+    <div id="single-content"></div>
+  </div>
+
+  <!-- Batch Results -->
+  <div class="results" id="result-batch">
+    <div class="download-bar">
+      <a href="{{ url_for('property.download') }}" class="btn btn-green" id="batch-dl-btn" style="display:none;">📥 下载Excel汇总</a>
+    </div>
+    <div id="batch-content"></div>
+  </div>
+
+</div>
+
+<script>
+let charts = [];
+
+function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }
+
+function switchMode(m) {
+  $('.mode-tab').removeClass('active');
+  $(`.mode-tab:contains("${m === 'single' ? '单序列' : 'Excel'}")`).addClass('active');
+  $('.panel').removeClass('active');
+  $(`#panel-${m}`).addClass('active');
+}
+
+// Single submit
+$('#single-form').submit(function(e) {
+  e.preventDefault();
+  const seq = $('#sequence').val().trim().toUpperCase().replace(/\s+/g, '');
+  if (!seq) { alert('请输入序列'); return; }
+
+  $('#result-single').hide();
+  $('#loading').show();
+
+  $.ajax({
+    url: '{{ url_for("property.analyze") }}',
+    type: 'POST',
+    data: { sequence: seq, seq_name: $('#seq-name').val().trim() },
+    dataType: 'json',
+    success: function(r) {
+      $('#loading').hide();
+      if (r.status === 'success') renderSingle(r.result);
+      else showError(r.message);
+    },
+    error: function() { $('#loading').hide(); showError('请求失败'); }
+  });
+});
+
+// Batch submit
+$('#batch-form').submit(function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  if (!$('#batch-excel')[0].files.length) { alert('请选择文件'); return; }
+
+  $('#result-batch').hide();
+  $('#loading').show();
+
+  $.ajax({
+    url: '{{ url_for("property.batch") }}',
+    type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json',
+    success: function(r) {
+      $('#loading').hide();
+      if (r.status === 'success') renderBatch(r.results, r.count);
+      else showError(r.message);
+    },
+    error: function() { $('#loading').hide(); showError('请求失败'); }
+  });
+});
+
+// Render Single
+function renderSingle(result) {
+  $('#single-content').empty();
+  const mt = result.moltype;
+  const badge = mt === 'Protein' ? 'protein' : mt === 'RNA' ? 'rna' : 'dna';
+  let html = `<span class="moltype-badge ${badge}">${mt}</span>`;
+
+  // Stats cards
+  html += '<div class="stats-grid">';
+  html += card('长度', result.clean_length, true);
+  html += card('分子量', result.molecular_weight + ' Da', false);
+  if (mt === 'Protein' && result.protein) {
+    const p = result.protein;
+    html += card('等电点 pI', p.pI, true);
+    html += card('GRAVY', p.gravy, false);
+    html += card('不稳定指数', p.instability_index, false);
+    html += card('pH7 电荷', p.charge_ph7, false);
+    html += card('脂肪指数', p.aliphatic_index, false);
+    html += card('正向残基', p.pos_charged, false);
+    html += card('负向残基', p.neg_charged, false);
+  }
+  if (result.nucleic) {
+    const n = result.nucleic;
+    html += card('GC含量', n.gc_pct + '%', true);
+    html += card('Tm(基本)', n.tm_basic + '°C', false);
+    html += card('Tm(短链)', n.tm_wallace + '°C', false);
+  }
+  html += '</div>';
+
+  // Charts
+  html += '<div class="chart-row">';
+  if (mt === 'Protein' && result.protein) {
+    html += compChart('aminoAcidChart', '氨基酸组成', 1);
+    html += chargeChart('chargeChart', 'pH-电荷曲线', result.protein.charge_profile);
+  }
+  if (result.nucleic) {
+    html += compChart('baseChart', '碱基组成', 1);
+    html += '',
+  }
+  html += '</div>';
+
+  if (mt === 'Protein' && result.protein) html += proteinTable(result.protein);
+  if (result.nucleic) html += nucleicTable(result.nucleic);
+
+  $('#single-content').html(html);
+  $('#result-single').show();
+
+  // Build charts after DOM update
+  if (mt === 'Protein' && result.protein) {
+    buildAACbar('aminoAcidChart', result.protein.composition);
+    buildChargeChart('chargeChart', result.protein.charge_profile);
+  }
+  if (result.nucleic) {
+    buildBasePie('baseChart', result.nucleic.base_pct, result.nucleic.is_dna);
+  }
+}
+
+function card(lbl, val, highlight) {
+  return `<div class="stat-card"><div class="val${highlight ? ' highlight' : ''}">${val}</div><div class="lbl">${lbl}</div></div>`;
+}
+
+function compChart(id, label, _) {
+  return `<div class="chart-box"><h4>${label}</h4><canvas id="${id}"></canvas></div>`;
+}
+function chargeChart(id, label) {
+  return `<div class="chart-box"><h4>${label}</h4><canvas id="${id}"></canvas></div>`;
+}
+
+function buildAACbar(canvasId, comp) {
+  const keys = Object.keys(comp), vals = keys.map(k => comp[k]);
+  const colors = keys.map(k => aaColor(k));
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  charts.push(new Chart(ctx, {
+    type: 'bar',
+    data: { labels: keys, datasets: [{ data: vals, backgroundColor: colors, borderRadius: 3, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, grid: { color: 'rgba(148,163,184,0.05)' }, ticks: { color: 'rgba(148,163,184,0.5)', font: { size: 9 } } }, x: { grid: { display: false }, ticks: { color: 'rgba(148,163,184,0.5)', font: { size: 9 } } } }
+    }
+  }));
+}
+
+function buildBasePie(canvasId, basePct, isDna) {
+  const labels = isDna ? ['A','T','G','C'] : ['A','U','G','C'];
+  const data = labels.map(l => basePct[l] || 0).filter(v => v > 0);
+  const lbls = labels.filter((_,i) => (isDna ? ['A','T','G','C'] : ['A','U','G','C'])[i] !== undefined).filter((l,i,a) => a.includes(l));
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const colors = {A:'#38bdf8',T:'#fbbf24',G:'#34d399',C:'#f472b6',U:'#e879f9'};
+  charts.push(new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: lbls, datasets: [{ data: data, backgroundColor: lbls.map(l => colors[l] || '#64748b'), borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'right', labels: { color: 'rgba(148,163,184,0.7)', font: { size: 11 }, padding: 12 } } } }
+  }));
+}
+
+function buildChargeChart(canvasId, profile) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  charts.push(new Chart(ctx, {
+    type: 'line',
+    data: { labels: profile.map(p => 'pH ' + p.ph), datasets: [{ label: '净电荷', data: profile.map(p => p.charge), borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', fill: true, tension: 0.4, pointRadius: 2, pointBackgroundColor: '#38bdf8' }] },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(148,163,184,0.05)' }, ticks: { color: 'rgba(148,163,184,0.5)', font: { size: 9 } } }, x: { grid: { display: false }, ticks: { color: 'rgba(148,163,184,0.5)', font: { size: 8 }, maxTicksLimit: 14 } } }
+  }));
+}
+
+function aaColor(aa) {
+  const m = { A:'#38bdf8',R:'#f472b6',N:'#a78bfa',D:'#fb923c',C:'#fbbf24',Q:'#34d399',E:'#ef4444',G:'#94a3b8',H:'#818cf8',I:'#2dd4bf',L:'#2dd4bf',K:'#c084fc',M:'#f59e0b',F:'#f97316',P:'#14b8a6',S:'#22d3ee',T:'#06b6d4',W:'#8b5cf6',Y:'#3b82f6',V:'#10b981' };
+  return m[aa] || '#64748b';
+}
+
+function proteinTable(p) {
+  const stable = p.instability_index <= 40;
+  let h = '<div class="section-title">🧬 氨基酸组成</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;">';
+  const entries = Object.entries(p.composition).slice(0, 20);
+  const maxPct = Math.max(...entries.map(([,v]) => v), 1);
+  const compMap = {};
+  Object.entries(p.composition_raw).forEach(([k,v]) => { compMap[k] = v; });
+  entries.forEach(([aa, pct]) => {
+    const barW = Math.max((pct / maxPct) * 100, 2);
+    h += `<div class="aa-cell"><span class="aa-letter" style="color:${aaColor(aa)}">${aa}</span><span style="flex:1;"><span class="aa-bar" style="width:${barW}%;background:${aaColor(aa)}"></span></span><span class="aa-pct">${pct}%</span><span class="aa-pct" style="min-width:30px;">${compMap[aa]}</span></div>`;
+  });
+  h += '</div>';
+  return h;
+}
+
+function nucleicTable(n) {
+  let h = '<div class="section-title">🧬 碱基组成</div><table class="prop-table"><tr><th>碱基</th><th>数量</th><th>百分比</th></tr>';
+  'ACGTU'.split('').forEach(b => {
+    if (n.base_counts[b] || n.base_pct[b]) {
+      h += `<tr><td style="font-weight:600;">${b}</td><td>${n.base_counts[b] || 0}</td><td>${(n.base_pct[b] || 0)}%</td></tr>`;
+    }
+  });
+  h += '</table>';
+  return h;
+}
+
+function renderBatch(results, count) {
+  let html = `<p style="text-align:center;font-size:14px;color:rgba(148,163,184,0.6);margin-bottom:16px;">共 <strong>${count}</strong> 条序列</p>`;
+  html += '<table class="prop-table"><tr><th>#</th><th>名称</th><th>类型</th><th>长度</th><th>分子量</th><th>GC%/pI</th><th>GRAVY</th></tr>';
+  results.forEach((r, i) => {
+    const extra = r.nucleic ? r.nucleic.gc_pct + '%' : (r.protein ? r.protein.pI : '-');
+    const gravy = r.protein ? r.protein.gravy : '-';
+    html += `<tr><td>${i+1}</td><td style="font-weight:500;">${esc(r.name)}</td><td><span class="moltype-badge ${r.moltype === 'Protein' ? 'protein' : r.moltype === 'RNA' ? 'rna' : 'dna'}" style="font-size:10px;padding:1px 8px;margin:0;">${r.moltype}</span></td><td>${r.clean_length}</td><td>${r.molecular_weight}</td><td>${extra}</td><td>${gravy}</td></tr>`;
+  });
+  html += '</table>';
+  $('#batch-content').html(html);
+  $('#result-batch').show();
+  $('#batch-dl-btn').show();
+}
+
+function showError(msg) { $('.results').hide(); alert(msg); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
