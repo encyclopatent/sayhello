@@ -69,7 +69,10 @@ def batch():
         upload_folder = os.path.join('static', 'compare_uploads')
         os.makedirs(upload_folder, exist_ok=True)
 
-        filename = secure_filename(excel_file.filename)
+        stem = secure_filename(excel_file.filename)
+        if not stem:
+            stem = 'upload'
+        filename = stem + '.xlsx'
         excel_path = os.path.join(upload_folder, filename)
         excel_file.save(excel_path)
 
