@@ -6,79 +6,49 @@
   <title>生物序列分析工具集</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     /* ===== Reset & Base ===== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0b0e17;
-      color: #e2e8f0;
+      background: #f7f9fc;
+      color: #2d3748;
       min-height: 100vh;
       overflow-x: hidden;
     }
     a { color: inherit; text-decoration: none; }
 
     /* ===== Ambient Background ===== */
-    .bg-grid {
-      position: fixed; inset: 0;
-      background-image:
-        linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
-      background-size: 60px 60px;
-      pointer-events: none; z-index: 0;
-    }
-    .bg-glow {
+    .bg-orb {
       position: fixed; pointer-events: none; z-index: 0;
-      border-radius: 50%; filter: blur(120px);
+      border-radius: 50%; filter: blur(100px); opacity: 0.35;
     }
-    .bg-glow-1 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(56,189,248,0.08), transparent 70%);
-      top: -200px; right: -150px;
-    }
-    .bg-glow-2 {
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(139,92,246,0.06), transparent 70%);
-      bottom: -150px; left: -100px;
-    }
-    .bg-glow-3 {
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(16,185,129,0.05), transparent 70%);
-      top: 40%; left: 60%;
-    }
+    .bg-orb-1 { width: 480px; height: 480px; background: #dbeafe; top: -120px; right: -80px; }
+    .bg-orb-2 { width: 420px; height: 420px; background: #fce7f3; bottom: -100px; left: -60px; }
 
     /* ===== Hero ===== */
     .hero {
       position: relative; z-index: 1;
-      padding: 72px 24px 52px;
+      padding: 84px 24px 56px;
       text-align: center;
-      overflow: hidden;
     }
-    .hero::after {
-      content: '';
-      position: absolute; bottom: 0; left: 10%; right: 10%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(56,189,248,0.2), transparent);
-    }
-
     .hero-badge {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 5px 16px;
-      background: rgba(56,189,248,0.08);
-      border: 1px solid rgba(56,189,248,0.15);
+      background: #fff;
+      border: 1px solid #e2e8f0;
       border-radius: 100px;
-      font-size: 11px; font-weight: 500;
-      color: rgba(186,230,253,0.8);
+      font-size: 11px; font-weight: 600;
+      color: #64748b;
       letter-spacing: 0.1em; text-transform: uppercase;
       margin-bottom: 24px;
-      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(51, 65, 85, 0.05);
     }
     .hero-badge .dot {
       display: inline-block;
-      width: 6px; height: 6px;
-      border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
       background: #38bdf8;
       animation: pulse-dot 2s ease-in-out infinite;
     }
@@ -86,11 +56,10 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.8); }
     }
-
     .hero h1 {
-      font-size: clamp(2.4rem, 6vw, 3.8rem);
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
       font-weight: 700;
-      background: linear-gradient(135deg, #f0f9ff 0%, #7dd3fc 40%, #38bdf8 70%, #818cf8 100%);
+      background: linear-gradient(120deg, #2563eb 0%, #0ea5e9 50%, #7c3aed 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -99,148 +68,113 @@
     }
     .hero p {
       font-size: 1.05rem;
-      color: rgba(148,163,184,0.8);
-      max-width: 500px;
-      margin: 0 auto 0;
+      color: #94a3b8;
+      max-width: 520px;
+      margin: 0 auto;
       line-height: 1.7;
     }
 
-    /* DNA helix decoration */
-    .dna-helix {
-      position: absolute; pointer-events: none; opacity: 0.08;
-    }
-    .dna-helix.left {
-      left: 20px; top: 50%; transform: translateY(-50%);
-      width: 100px; height: 280px;
-    }
-    .dna-helix.right {
-      right: 20px; top: 50%; transform: translateY(-50%);
-      width: 100px; height: 280px;
-    }
-    @media (max-width: 900px) { .dna-helix { display: none; } }
-
-    /* ===== Stats Bar ===== */
+    /* ===== Stats ===== */
     .stats-bar {
       position: relative; z-index: 1;
-      display: flex; justify-content: center; gap: 40px;
-      padding: 20px 24px 28px;
+      display: flex; justify-content: center; align-items: center; gap: 32px;
+      padding: 8px 24px 36px;
     }
     .stat-item { text-align: center; }
     .stat-item .num {
-      font-size: 1.5rem; font-weight: 700;
-      background: linear-gradient(135deg, #38bdf8, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.35rem; font-weight: 700; color: #2563eb;
     }
     .stat-item .lbl {
-      font-size: 11px; color: rgba(148,163,184,0.5);
+      font-size: 11px; color: #a0aec0;
       text-transform: uppercase; letter-spacing: 0.08em;
       margin-top: 2px;
     }
-    .stat-divider {
-      width: 1px; background: rgba(148,163,184,0.1);
-    }
+    .stat-divider { width: 1px; height: 28px; background: #e2e8f0; }
 
-    /* ===== Tools Grid ===== */
+    /* ===== Tools Section ===== */
     .tools-section {
       position: relative; z-index: 1;
-      max-width: 1140px;
+      max-width: 1160px;
       margin: 0 auto;
-      padding: 18px 24px 60px;
+      padding: 0 24px 70px;
     }
+    .section-title-row {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .section-title-row h2 {
+      font-size: 12px; font-weight: 600; color: #2563eb;
+      text-transform: uppercase; letter-spacing: 0.18em;
+      margin-bottom: 6px;
+    }
+    .section-title-row p { font-size: 0.92rem; color: #a0aec0; }
 
     .tools-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
       gap: 20px;
     }
 
     /* ===== Tool Card ===== */
     .tool-card {
       position: relative;
-      background: rgba(30,41,59,0.5);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(148,163,184,0.08);
+      background: #fff;
+      border: 1px solid #eef2f7;
       border-radius: 16px;
       padding: 28px 26px 24px;
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      cursor: default;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 3px rgba(51, 65, 85, 0.04), 0 4px 14px rgba(51, 65, 85, 0.04);
       overflow: hidden;
       isolation: isolate;
     }
-    /* Hover glow */
-    .tool-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      border-radius: 16px;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-      z-index: -1;
-    }
-    .tool-card:hover::before { opacity: 1; }
-
     .tool-card:hover {
-      transform: translateY(-6px) scale(1.01);
-      border-color: rgba(148,163,184,0.15);
+      transform: translateY(-5px);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.08), 0 2px 8px rgba(51, 65, 85, 0.05);
+      border-color: #e0e9f5;
     }
-
-    /* Top accent line (per card color) */
+    /* Top accent */
     .tool-card .accent {
       position: absolute;
-      top: 0; left: 20px; right: 20px;
-      height: 2px;
-      border-radius: 0 0 2px 2px;
+      top: 0; left: 0; right: 0;
+      height: 3px;
       opacity: 0;
-      transition: all 0.4s ease;
+      transition: opacity 0.3s ease;
     }
-    .tool-card:hover .accent { opacity: 1; left: 0; right: 0; }
+    .tool-card:hover .accent { opacity: 1; }
 
-    /* Card icon area */
+    /* Icon */
     .tool-card-icon {
-      width: 44px; height: 44px;
+      width: 46px; height: 46px;
       border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
+      font-size: 21px;
       margin-bottom: 16px;
-      transition: transform 0.4s ease;
-      border: 1px solid rgba(148,163,184,0.06);
+      transition: transform 0.35s ease;
     }
-    .tool-card:hover .tool-card-icon { transform: scale(1.08) rotate(-3deg); }
+    .tool-card:hover .tool-card-icon { transform: scale(1.07) rotate(-3deg); }
 
     .tool-card h3 {
-      font-size: 1.05rem; font-weight: 600;
-      color: #f1f5f9;
-      margin-bottom: 8px;
-      letter-spacing: -0.01em;
+      font-size: 1.05rem; font-weight: 600; color: #1a2b47;
+      margin-bottom: 8px; letter-spacing: -0.01em;
     }
     .tool-card p {
-      font-size: 0.84rem;
-      color: rgba(148,163,184,0.7);
-      line-height: 1.7;
-      margin-bottom: 20px;
+      font-size: 0.84rem; color: #7a8ba3;
+      line-height: 1.7; margin-bottom: 18px;
     }
 
-    /* Tag chips */
-    .tool-tags {
-      display: flex; flex-wrap: wrap; gap: 6px;
-      margin-bottom: 18px;
-    }
+    /* Tags */
+    .tool-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
     .tool-tag {
       display: inline-block;
       padding: 2px 10px;
       border-radius: 100px;
       font-size: 10px; font-weight: 500;
       letter-spacing: 0.03em;
+      background: #f1f5f9; color: #64748b;
     }
 
-    /* CTA row */
-    .tool-card-actions {
-      display: flex; align-items: center;
-      justify-content: space-between;
-    }
+    /* Actions */
+    .tool-card-actions { display: flex; align-items: center; justify-content: space-between; }
     .tool-card-btn {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 20px;
@@ -248,96 +182,77 @@
       font-size: 0.83rem; font-weight: 500;
       color: #fff;
       transition: all 0.3s ease;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.15);
     }
-    .tool-card-btn svg {
-      width: 14px; height: 14px;
-      transition: transform 0.3s ease;
-    }
+    .tool-card-btn svg { width: 14px; height: 14px; transition: transform 0.3s ease; }
     .tool-card-btn:hover svg { transform: translateX(4px); }
-
+    .tool-card-btn:hover { box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25); }
     .tool-card-btn-outline {
-      background: transparent;
-      border: 1px solid rgba(148,163,184,0.15);
-      color: rgba(148,163,184,0.7);
+      background: transparent; border: 1px solid #e2e8f0;
+      color: #94a3b8;
     }
-    .tool-card-btn-outline:hover {
-      border-color: rgba(148,163,184,0.3);
-      color: #e2e8f0;
-    }
+    .tool-card-btn-outline:hover { border-color: #cbd5e1; color: #64748b; }
 
     /* ===== Per-card theming ===== */
-
-    /* Card 1: ST26 - sky blue */
-    .tool-card:nth-child(1) .accent { background: linear-gradient(90deg, #38bdf8, #2dd4bf); }
-    .tool-card:nth-child(1)::before { background: linear-gradient(145deg, rgba(56,189,248,0.04), transparent 60%); }
-    .tool-card:nth-child(1) .tool-card-icon { background: rgba(56,189,248,0.08); color: #7dd3fc; border-color: rgba(56,189,248,0.1); }
-    .tool-card:nth-child(1) .tool-tag { background: rgba(56,189,248,0.1); color: #7dd3fc; }
-    .tool-card:nth-child(1) .tool-card-btn { background: linear-gradient(135deg, #0e7490, #0891b2); box-shadow: 0 4px 14px rgba(8,145,178,0.25); }
-    .tool-card:nth-child(1) .tool-card-btn:hover { box-shadow: 0 6px 20px rgba(8,145,178,0.4); }
+    /* Card 1: ST26 - blue */
+    .tool-card:nth-child(1) .accent { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+    .tool-card:nth-child(1) .tool-card-icon { background: #eff6ff; color: #3b82f6; }
+    .tool-card:nth-child(1) .tool-tag { background: #eff6ff; color: #3b82f6; }
+    .tool-card:nth-child(1) .tool-card-btn { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 
     /* Card 2: siRNA - emerald */
-    .tool-card:nth-child(2) .accent { background: linear-gradient(90deg, #34d399, #38bdf8); }
-    .tool-card:nth-child(2)::before { background: linear-gradient(145deg, rgba(52,211,153,0.04), transparent 60%); }
-    .tool-card:nth-child(2) .tool-card-icon { background: rgba(52,211,153,0.08); color: #6ee7b7; border-color: rgba(52,211,153,0.1); }
-    .tool-card:nth-child(2) .tool-tag { background: rgba(52,211,153,0.1); color: #6ee7b7; }
-    .tool-card:nth-child(2) .tool-card-btn { background: linear-gradient(135deg, #065f46, #047857); box-shadow: 0 4px 14px rgba(4,120,87,0.25); }
-    .tool-card:nth-child(2) .tool-card-btn:hover { box-shadow: 0 6px 20px rgba(4,120,87,0.4); }
+    .tool-card:nth-child(2) .accent { background: linear-gradient(90deg, #10b981, #06b6d4); }
+    .tool-card:nth-child(2) .tool-card-icon { background: #ecfdf5; color: #10b981; }
+    .tool-card:nth-child(2) .tool-tag { background: #ecfdf5; color: #10b981; }
+    .tool-card:nth-child(2) .tool-card-btn { background: linear-gradient(135deg, #10b981, #059669); }
 
     /* Card 3: Fragment - violet */
-    .tool-card:nth-child(3) .accent { background: linear-gradient(90deg, #818cf8, #c084fc); }
-    .tool-card:nth-child(3)::before { background: linear-gradient(145deg, rgba(129,140,248,0.04), transparent 60%); }
-    .tool-card:nth-child(3) .tool-card-icon { background: rgba(129,140,248,0.08); color: #a5b4fc; border-color: rgba(129,140,248,0.1); }
-    .tool-card:nth-child(3) .tool-tag { background: rgba(129,140,248,0.1); color: #a5b4fc; }
-    .tool-card:nth-child(3) .tool-card-btn { background: linear-gradient(135deg, #5b21b6, #6d28d9); box-shadow: 0 4px 14px rgba(109,40,217,0.25); }
-    .tool-card:nth-child(3) .tool-card-btn:hover { box-shadow: 0 6px 20px rgba(109,40,217,0.4); }
+    .tool-card:nth-child(3) .accent { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
+    .tool-card:nth-child(3) .tool-card-icon { background: #f5f3ff; color: #8b5cf6; }
+    .tool-card:nth-child(3) .tool-tag { background: #f5f3ff; color: #8b5cf6; }
+    .tool-card:nth-child(3) .tool-card-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 
     /* Card 4: Alignment - amber */
-    .tool-card:nth-child(4) .accent { background: linear-gradient(90deg, #fbbf24, #f472b6); }
-    .tool-card:nth-child(4)::before { background: linear-gradient(145deg, rgba(251,191,36,0.04), transparent 60%); }
-    .tool-card:nth-child(4) .tool-card-icon { background: rgba(251,191,36,0.08); color: #fcd34d; border-color: rgba(251,191,36,0.1); }
-    .tool-card:nth-child(4) .tool-tag { background: rgba(251,191,36,0.1); color: #fcd34d; }
-    .tool-card:nth-child(4) .tool-card-btn { background: linear-gradient(135deg, #92400e, #c2410c); box-shadow: 0 4px 14px rgba(194,65,12,0.25); }
-    .tool-card:nth-child(4) .tool-card-btn:hover { box-shadow: 0 6px 20px rgba(194,65,12,0.4); }
+    .tool-card:nth-child(4) .accent { background: linear-gradient(90deg, #f59e0b, #ec4899); }
+    .tool-card:nth-child(4) .tool-card-icon { background: #fffbeb; color: #f59e0b; }
+    .tool-card:nth-child(4) .tool-tag { background: #fffbeb; color: #d97706; }
+    .tool-card:nth-child(4) .tool-card-btn { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-    /* Card 5: Compare - rose → fuchsia */
-    .tool-card:nth-child(5) .accent { background: linear-gradient(90deg, #e879f9, #38bdf8); }
-    .tool-card:nth-child(5)::before { background: linear-gradient(145deg, rgba(232,121,249,0.04), transparent 60%); }
+    /* Card 5: Compare - rose/fuchsia */
+    .tool-card:nth-child(5) .accent { background: linear-gradient(90deg, #ec4899, #3b82f6); }
     .tool-card:nth-child(5) .tool-card-icon {
-      background: linear-gradient(135deg, rgba(232,121,249,0.12), rgba(56,189,248,0.08));
-      color: #f0abfc;
-      border-color: rgba(232,121,249,0.1);
+      background: linear-gradient(135deg, #fdf2f8, #eff6ff); color: #ec4899;
     }
-    .tool-card:nth-child(5) .tool-tag { background: rgba(232,121,249,0.1); color: #f0abfc; }
-    .tool-card:nth-child(5) .tool-card-btn { background: linear-gradient(135deg, #86198f, #a21caf); box-shadow: 0 4px 14px rgba(162,28,175,0.25); }
-    .tool-card:nth-child(5) .tool-card-btn:hover { box-shadow: 0 6px 20px rgba(162,28,175,0.4); }
+    .tool-card:nth-child(5) .tool-tag { background: #fdf2f8; color: #db2777; }
+    .tool-card:nth-child(5) .tool-card-btn { background: linear-gradient(135deg, #ec4899, #db2777); }
+
+    /* Card 6: Patent - indigo/teal */
+    .tool-card:nth-child(6) .accent { background: linear-gradient(90deg, #6366f1, #14b8a6); }
+    .tool-card:nth-child(6) .tool-card-icon { background: #eef2ff; color: #6366f1; }
+    .tool-card:nth-child(6) .tool-tag { background: #eef2ff; color: #6366f1; }
+    .tool-card:nth-child(6) .tool-card-btn { background: linear-gradient(135deg, #6366f1, #4f46e5); }
 
     /* ===== Footer ===== */
     .footer {
       position: relative; z-index: 1;
-      text-align: center;
-      padding: 32px 24px;
-      border-top: 1px solid rgba(148,163,184,0.06);
+      text-align: center; padding: 30px 24px;
+      border-top: 1px solid #eef2f7;
     }
-    .footer p {
-      font-size: 12px;
-      color: rgba(148,163,184,0.35);
-    }
+    .footer p { font-size: 12px; color: #b0bccb; }
 
     /* ===== Responsive ===== */
     @media (max-width: 720px) {
-      .hero { padding: 52px 20px 38px; }
+      .hero { padding: 60px 20px 40px; }
       .tools-grid { grid-template-columns: 1fr; }
-      .stats-bar { gap: 24px; flex-wrap: wrap; }
+      .stats-bar { gap: 22px; flex-wrap: wrap; }
       .tool-card { padding: 22px 20px 20px; }
     }
   </style>
 </head>
 <body>
 
-  <div class="bg-grid"></div>
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
-  <div class="bg-glow bg-glow-3"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
 
   <!-- Hero -->
   <section class="hero">
@@ -347,46 +262,26 @@
     </div>
     <h1>序列分析工具集</h1>
     <p>专利序列对比、结构拆解与数据分析工具包</p>
-
-    <!-- DNA helix SVG decorations -->
-    <svg class="dna-helix left" viewBox="0 0 100 280" fill="none" stroke="#38bdf8" stroke-width="1.2">
-      <path d="M50 10 Q70 40 50 70 Q30 100 50 130 Q70 160 50 190 Q30 220 50 250" stroke-opacity="0.5"/>
-      <path d="M50 10 Q30 40 50 70 Q70 100 50 130 Q30 160 50 190 Q70 220 50 250" stroke-opacity="0.5"/>
-      <ellipse cx="50" cy="40" rx="4" ry="2" fill="#38bdf8" fill-opacity="0.15"/>
-      <ellipse cx="50" cy="100" rx="4" ry="2" fill="#38bdf8" fill-opacity="0.15"/>
-      <ellipse cx="50" cy="160" rx="4" ry="2" fill="#38bdf8" fill-opacity="0.15"/>
-      <ellipse cx="50" cy="220" rx="4" ry="2" fill="#38bdf8" fill-opacity="0.15"/>
-    </svg>
-    <svg class="dna-helix right" viewBox="0 0 100 280" fill="none" stroke="#818cf8" stroke-width="1.2">
-      <path d="M50 10 Q30 40 50 70 Q70 100 50 130 Q30 160 50 190 Q70 220 50 250" stroke-opacity="0.5"/>
-      <path d="M50 10 Q70 40 50 70 Q30 100 50 130 Q70 160 50 190 Q30 220 50 250" stroke-opacity="0.5"/>
-      <ellipse cx="50" cy="40" rx="4" ry="2" fill="#818cf8" fill-opacity="0.15"/>
-      <ellipse cx="50" cy="100" rx="4" ry="2" fill="#818cf8" fill-opacity="0.15"/>
-      <ellipse cx="50" cy="160" rx="4" ry="2" fill="#818cf8" fill-opacity="0.15"/>
-      <ellipse cx="50" cy="220" rx="4" ry="2" fill="#818cf8" fill-opacity="0.15"/>
-    </svg>
   </section>
 
   <!-- Stats -->
   <div class="stats-bar">
-    <div class="stat-item">
-      <div class="num">5</div>
-      <div class="lbl">分析工具</div>
-    </div>
+    <div class="stat-item"><div class="num">6</div><div class="lbl">分析工具</div></div>
     <div class="stat-divider"></div>
-    <div class="stat-item">
-      <div class="num">DNA · RNA · AA</div>
-      <div class="lbl">支持分子类型</div>
-    </div>
+    <div class="stat-item"><div class="num">DNA · RNA · AA</div><div class="lbl">支持分子类型</div></div>
     <div class="stat-divider"></div>
-    <div class="stat-item">
-      <div class="num">ST26 · BPN′</div>
-      <div class="lbl">标准兼容</div>
-    </div>
+    <div class="stat-item"><div class="num">ST26 · BPN′</div><div class="lbl">标准兼容</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat-item"><div class="num">NCBI</div><div class="lbl">专利检索</div></div>
   </div>
 
   <!-- Tools Grid -->
   <section class="tools-section">
+    <div class="section-title-row">
+      <h2>Tools</h2>
+      <p>选择你需要的工具开始分析</p>
+    </div>
+
     <div class="tools-grid">
 
       <!-- 1: ST26 -->
@@ -405,7 +300,6 @@
             开始使用
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
-          <a href="#" class="tool-card-btn-outline" style="border:none;padding:8px 10px;font-size:11px;">指南</a>
         </div>
       </div>
 
@@ -466,7 +360,7 @@
         </div>
       </div>
 
-      <!-- 5: Compare (Three-way) -->
+      <!-- 5: Compare -->
       <div class="tool-card">
         <div class="accent"></div>
         <div class="tool-card-icon">🔄</div>
@@ -486,19 +380,19 @@
         </div>
       </div>
 
-      <!-- 6: Patent Search -->
+      <!-- 6: Patent -->
       <div class="tool-card">
-        <div class="accent" style="background:linear-gradient(90deg,#a78bfa,#f472b6);"></div>
-        <div class="tool-card-icon" style="background:rgba(168,85,247,0.08);color:#c4b5fd;border-color:rgba(168,85,247,0.1);">🔍</div>
+        <div class="accent"></div>
+        <div class="tool-card-icon">🔍</div>
         <h3>专利序列检索</h3>
-        <p>将序列提交至 NCBI 专利专用 BLAST 库，自动提取专利公开号。支持核酸/蛋白质序列，一键复制或下载专利号列表。</p>
+        <p>将序列提交至 NCBI 专利专用 BLAST 库（pataa/patnt），自动提取专利公开号，支持一键复制与下载。</p>
         <div class="tool-tags">
-          <span class="tool-tag" style="background:rgba(168,85,247,0.1);color:#c4b5fd;">NCBI BLAST</span>
-          <span class="tool-tag" style="background:rgba(168,85,247,0.1);color:#c4b5fd;">专利检索</span>
-          <span class="tool-tag" style="background:rgba(168,85,247,0.1);color:#c4b5fd;">公开号提取</span>
+          <span class="tool-tag">NCBI BLAST</span>
+          <span class="tool-tag">专利检索</span>
+          <span class="tool-tag">公开号提取</span>
         </div>
         <div class="tool-card-actions">
-          <a href="{{ url_for('patent.index') }}" class="tool-card-btn" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);box-shadow:0 4px 14px rgba(124,58,237,0.25);">
+          <a href="{{ url_for('patent.index') }}" class="tool-card-btn">
             开始使用
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
