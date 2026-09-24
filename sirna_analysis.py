@@ -3,11 +3,17 @@ from Bio.Seq import Seq
 from Bio.SeqIO import parse
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
+import io
 import os
 import re
+from html import escape
 from datetime import datetime
 from collections import OrderedDict
 import time
+
+
+# 有效核酸字符。比对算法基于 DNA 反向互补，RNA 输入的 U 会在净化时归一为 T
+VALID_NUCLEOTIDES = frozenset({'A', 'T', 'C', 'G', 'U'})
 
 
 def sanitize_string_content(text: str) -> str:
@@ -33,6 +39,76 @@ def sanitize_string_content(text: str) -> str:
     cleaned = ' '.join(cleaned.split())
 
     return cleaned.strip()
+
+
+def sanitize_sequence(seq: str | None) -> str:
+    """
+    净化序列：只保留有效核酸字符（ATCGU），转大写并将 U 归一为 T
+
+    参数:
+        seq: 待净化的序列
+
+    返回:
+        净化后的序列字符串
+    """
+    if not isinstance(seq, str):
+        seq = str(seq) if seq is not None else ""
+
+    filtered = [c.upper() for c in seq if c.upper() in VALID_NUCLEOTIDES]
+    return ''.join(filtered).replace('U', 'T')
+
+
+def extract_match_length(position: str | None) -> int:
+    """
+    从匹配位置串中提取匹配长度
+
+    位置串格式为 "start-end (Nbpxxx)"，可能带 "[存在突出端]" 后缀，
+    例如 "5-24 (19bp)"、"2-20 (19bp) [存在突出端]"
+
+    参数:
+        position: 匹配位置字符串
+
+    返回:
+        匹配长度（整数），无法解析时返回 0
+    """
+    if not position or position == "N/A":
+        return 0
+
+    if '(' in position and 'bp)' in position:
+        left_paren = position.index('(')
+        right_paren = position.index('bp)') + 2  # +2 是因为 'bp)' 长度为2
+        length_str = position[left_paren + 1:right_paren].replace('bp', '')
+        if length_str.isdigit():
+            return int(length_str)
+
+    return 0
+
+
+def _looks_like_fasta(text: str) -> bool:
+    """
+    判断文本是否为 FASTA 格式
+
+    只认第一条非空行是否以 '>' 开头。不能放宽成「任意一行以 '>' 开头」：
+    Biopython 解析时会静默丢弃首个表头之前的内容，若把
+    "序列内容\\n>xxx\\n序列内容" 这类输入判成 FASTA，前半段序列会被无声截断。
+    """
+    for line in text.splitlines():
+        if line.strip():
+            return line.strip().startswith('>')
+    return False
+
+
+def _find_stray_fasta_header(text: str) -> int | None:
+    """
+    在纯文本模式下查找混入的 FASTA 表头行，返回其行号（1-based），没有则返回 None
+
+    这类输入格式歧义（表头不在第一行）会让该行内容被当作无效字符静默丢弃，
+    因此显式报错而不是让用户拿到悄悄少了一条序列的结果。
+    """
+    for lineno, line in enumerate(text.splitlines(), 1):
+        if line.strip().startswith('>'):
+            return lineno
+    return None
 
 
 def find_max_continuous(query, target, max_mismatch=1):
@@ -356,17 +432,6 @@ def parse_sequences_from_excel(excel_path, preview_mode=False):
         query_col = df.columns[0]
         target_col = df.columns[1]
 
-        # 标准化处理 - 增强版，处理特殊字符和中文字符
-        # 标准化处理 - 只保留有效的核酸字符（ATCGU），不破坏序列
-        def sanitize_seq(seq):
-            if not isinstance(seq, str):
-                seq = str(seq) if seq is not None else ""
-
-            # 只保留有效的核酸字符（ATCGU），不破坏连续性
-            valid_chars = {'A', 'T', 'C', 'G', 'U'}
-            filtered = [c.upper() for c in seq if c.upper() in valid_chars]
-            return ''.join(filtered).replace('U', 'T')
-
         # 解析查询序列 - 只转大写和过滤有效字符，不过度净化
         query_sequences = (
             df[query_col]
@@ -394,8 +459,8 @@ def parse_sequences_from_excel(excel_path, preview_mode=False):
             return query_sequences, target_sequence
             
         # 非预览模式下进行标准化
-        query_sequences = [sanitize_seq(q) for q in query_sequences]
-        target_sequence = sanitize_seq(target_sequence) if target_sequence else None
+        query_sequences = [sanitize_sequence(q) for q in query_sequences]
+        target_sequence = sanitize_sequence(target_sequence) if target_sequence else None
         
         return query_sequences, target_sequence
     except Exception as e:
@@ -471,18 +536,8 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
     # 分析查询序列（保持原始输入顺序）
     for i, query in enumerate(query_seqs):
         strand, pos = check_sirna_match(query, target_seq, max_mismatch)
-        # 提取匹配长度，处理可能的突出端标记
-        match_length = 0
-        if pos != "N/A":
-            # 提取括号内的长度信息，处理可能的[存在突出端]标记
-            if '(' in pos and 'bp)' in pos:
-                # 找到括号位置
-                left_paren = pos.index('(')
-                right_paren = pos.index('bp)') + 2  # +2 是因为 'bp)' 长度为2
-                # 提取括号内的部分并转换为整数
-                length_str = pos[left_paren + 1:right_paren].replace('bp', '')
-                match_length = int(length_str) if length_str.isdigit() else 0
-        
+        match_length = extract_match_length(pos)
+
         result = {
             '查询序列ID': f"Query_{i+1}",  # 严格按输入顺序编号
             '原始序号': i+1,             # 保留原始序号
@@ -510,26 +565,14 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
             for seq, name in zip(fasta_seqs, fasta_names):
                 strand, pos = check_sirna_match(seq, target_seq, max_mismatch)
                 if strand == "正义链" or strand == "反义链":  # 同时处理正义链和反义链
-                    # 提取匹配长度，处理可能的突出端标记
-                    match_length = 0
-                    if pos != "N/A":
-                        # 提取括号内的长度信息，处理可能的[存在突出端]标记
-                        if '(' in pos and 'bp)' in pos:
-                            # 找到括号位置
-                            left_paren = pos.index('(')
-                            right_paren = pos.index('bp)') + 2  # +2 是因为 'bp)' 长度为2
-                            # 提取括号内的部分并转换为整数
-                            length_str = pos[left_paren + 1:right_paren].replace('bp', '')
-                            match_length = int(length_str) if length_str.isdigit() else 0
-
                     file_results.append({
                         '文献序列ID': name,
                         '序列内容': seq,
                         '链类型': strand,  # 添加链类型信息
                         '匹配位置': pos,
-                        '匹配长度': match_length
+                        '匹配长度': extract_match_length(pos)
                     })
-            
+
             # 保存文献结果
             literature_reports[file_name] = file_results
             
@@ -634,7 +677,7 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
         # 为查询序列生成比对详情
         if result['链类型'] in ['正义链', '反义链'] and result['匹配位置'] != 'N/A':
             alignment = generate_alignment_details(
-                result['序列内容'],
+                _query_used_for_match(result['序列内容'], result['匹配位置']),
                 target_seq,
                 result['链类型'],
                 max_mismatch
@@ -661,7 +704,9 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
                                 # 为文献序列生成比对详情
                                 if lit_result.get('链类型') and lit_result['匹配位置'] != 'N/A':
                                     alignment = generate_alignment_details(
-                                        lit_result['序列内容'],
+                                        _query_used_for_match(
+                                            lit_result['序列内容'], lit_result['匹配位置']
+                                        ),
                                         target_seq,
                                         lit_result['链类型'],
                                         max_mismatch
@@ -715,9 +760,9 @@ def generate_results_table(results, max_rows=10):
         table_html += f'<td>{result["match_position"]}</td>'
         table_html += f'<td>{result["match_length"]}</td>'
 
-        # 显示FASTA匹配信息（逗号分隔）
-        fasta_ids = ', '.join(result['fasta_ids'])
-        fasta_positions = ', '.join(result['fasta_match_positions'])
+        # 显示FASTA匹配信息（逗号分隔）。序列 ID 取自用户上传的 FASTA 记录名，需转义
+        fasta_ids = escape(', '.join(result['fasta_ids']))
+        fasta_positions = escape(', '.join(result['fasta_match_positions']))
 
         table_html += f'<td>{fasta_ids}</td>'
         table_html += f'<td>{fasta_positions}</td>'
@@ -762,8 +807,11 @@ def generate_results_table(results, max_rows=10):
 
 def generate_alignment_html(title, alignment, strand_type):
     """生成单个序列比对的HTML"""
-    # 为每个比对元素生成唯一ID
-    title_id = title.replace(':', '_').replace(',', '_')
+    # 元素 id 只保留安全字符，避免标题里的引号等字符破坏属性结构
+    title_id = re.sub(r'[^0-9A-Za-z_-]', '_', title)[:60]
+    # 标题可能来自用户提交的 FASTA 记录名，插入 HTML 前必须转义
+    title_html = escape(title)
+    strand_html = escape(str(strand_type))
 
     # 获取序列并确保长度一致（取最短长度）
     query_seq = alignment['query_aligned']
@@ -808,11 +856,11 @@ def generate_alignment_html(title, alignment, strand_type):
     
     html = f'''
     <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6;">
-        <h4 style="margin: 0 0 10px 0; color: #333;">{title}</h4>
+        <h4 style="margin: 0 0 10px 0; color: #333;">{title_html}</h4>
         <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0;">
             <div style="margin-bottom: 8px;">
                 <span style="color: #666;">链类型:</span>
-                <strong>{strand_type}</strong>
+                <strong>{strand_html}</strong>
                 <span style="margin-left: 20px; color: #666;">位置:</span>
                 <strong>{alignment['target_start']}-{alignment['target_end']}</strong>
                 <span style="margin-left: 20px; color: #666;">长度:</span>
@@ -848,3 +896,217 @@ def colorize_alignment(alignment_symbols):
         else:
             result.append('<span style="color: #dc3545; font-weight: bold;">×</span>')
     return ''.join(result)
+
+
+def parse_sequences_from_text(text: str) -> tuple[list[str], list[str]]:
+    """
+    解析直接输入的待分析序列文本
+
+    支持两种格式，按第一条非空行是否以 '>' 开头自动判定：
+      - FASTA：序列名取记录 ID
+      - 纯文本：每个非空行一条序列，序列名按 Query_1..Query_N 顺序编号
+        （与 perform_sirna_analysis 中 Excel 模式的编号约定一致）
+
+    参数:
+        text: 用户输入的原始文本
+
+    返回:
+        (sequences, names): 净化后的序列列表和对应的名称列表
+
+    异常:
+        ValueError: 纯文本中混入了非首行的 FASTA 表头（格式歧义）
+    """
+    if not isinstance(text, str):
+        text = str(text) if text is not None else ""
+
+    if _looks_like_fasta(text):
+        records = list(parse(io.StringIO(text), "fasta"))
+        # 净化后为空的记录（如纯表头无序列）直接丢弃
+        kept = [(sanitize_sequence(str(r.seq)), r.id) for r in records]
+        kept = [(seq, name) for seq, name in kept if seq]
+        return [seq for seq, _ in kept], [name for _, name in kept]
+
+    stray = _find_stray_fasta_header(text)
+    if stray is not None:
+        raise ValueError(
+            f'第 {stray} 行以 ">" 开头，像是 FASTA 表头，但第一行不是。'
+            'FASTA 格式要求表头出现在最前面，请检查输入，或将这一行删除。'
+        )
+
+    raw_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    sequences = [seq for seq in (sanitize_sequence(line) for line in raw_lines) if seq]
+    names = [f"Query_{i+1}" for i in range(len(sequences))]
+    return sequences, names
+
+
+def parse_target_from_text(text: str) -> str | None:
+    """
+    解析直接输入的靶序列文本
+
+    靶序列只取一条，但输入可能带 FASTA 头或粘贴时被折行，两种情况都要处理：
+      - 含 FASTA 头：取第一条记录的序列。必须先剥离表头，
+        否则表头里的字母（如 '>target' 中的 A、G）会被当成碱基残留在序列里
+      - 否则：去掉所有空白后拼接
+
+    参数:
+        text: 用户输入的原始文本
+
+    返回:
+        净化后的靶序列；无有效内容时返回 None
+
+    异常:
+        ValueError: 纯文本中混入了非首行的 FASTA 表头（格式歧义）
+    """
+    if not isinstance(text, str):
+        text = str(text) if text is not None else ""
+
+    if _looks_like_fasta(text):
+        for record in parse(io.StringIO(text), "fasta"):
+            seq = sanitize_sequence(str(record.seq))
+            if seq:
+                return seq
+        return None
+
+    stray = _find_stray_fasta_header(text)
+    if stray is not None:
+        raise ValueError(
+            f'第 {stray} 行以 ">" 开头，像是 FASTA 表头，但第一行不是。'
+            '请检查靶序列输入，或将这一行删除。'
+        )
+
+    return sanitize_sequence(re.sub(r'\s+', '', text)) or None
+
+
+def _query_used_for_match(query: str, position: str | None) -> str:
+    """
+    还原 check_sirna_match 实际用于匹配的查询序列
+
+    对长度 >= 22nt 的输入，check_sirna_match 会两端各截去 2 个碱基后再匹配，
+    并在位置串上标注 "[存在突出端]"。比对详情必须用同一条截短后的序列生成，
+    否则展开的比对框会与所在行的链类型、位置互相矛盾。
+    """
+    if position and '[存在突出端]' in position and len(query) >= 22:
+        return query[2:-2]
+    return query
+
+
+def analyze_direct(query_seqs: list[str], target_seq: str, max_mismatch: int = 1,
+                   names: list[str] | None = None) -> list[dict]:
+    """
+    对直接输入的序列执行 siRNA 匹配分析
+
+    纯计算，不读写文件、不发起 BLAST。复用与 Excel 模式相同的匹配引擎。
+
+    参数:
+        query_seqs: 待分析序列列表
+        target_seq: 靶序列
+        max_mismatch: 允许的最大错配数
+        names: 可选的序列名列表（FASTA 输入时用记录 ID）。
+               长度与 query_seqs 不符时忽略，退回 Query_N 编号
+
+    返回:
+        结果字典列表，键名与 perform_sirna_analysis 产出的前端结构保持一致
+    """
+    results = []
+
+    if not names or len(names) != len(query_seqs):
+        names = [f"Query_{i+1}" for i in range(len(query_seqs))]
+
+    for i, query in enumerate(query_seqs):
+        strand, position = check_sirna_match(query, target_seq, max_mismatch)
+
+        result = {
+            'query_id': names[i],
+            'original_id': i + 1,
+            'sequence': query,
+            'strand_type': strand,
+            'match_position': position,
+            'match_length': extract_match_length(position)
+        }
+
+        # 命中时附带比对详情，供前端展开查看。
+        # 必须用 check_sirna_match 实际匹配的那条序列（可能已被截短），
+        # 否则带突出端的输入会显示与所在行矛盾的位置和匹配度。
+        if strand in ('正义链', '反义链') and position != 'N/A':
+            alignment = generate_alignment_details(
+                _query_used_for_match(query, position), target_seq, strand, max_mismatch
+            )
+            if alignment:
+                result['query_alignment'] = alignment
+
+        results.append(result)
+
+    return results
+
+
+def generate_direct_results_table(results: list[dict], max_rows: int = 200) -> str:
+    """
+    生成直接输入模式的匹配结果表格 HTML
+
+    与 generate_results_table 的区别：后者会过滤掉没有文献（FASTA）匹配的行，
+    直接输入模式没有文献序列，复用会导致表格永远为空，因此单独实现。
+
+    参数:
+        results: analyze_direct 的结果列表
+        max_rows: 最多显示的行数
+
+    返回:
+        table_html: HTML表格字符串
+    """
+    table_html = '<table class="results-table">'
+    table_html += '<thead><tr>'
+    table_html += '<th>序号</th>'
+    table_html += '<th>序列ID</th>'
+    table_html += '<th>待分析序列</th>'
+    table_html += '<th>链类型</th>'
+    table_html += '<th>匹配位置</th>'
+    table_html += '<th>匹配长度</th>'
+    table_html += '<th>操作</th>'
+    table_html += '</tr></thead><tbody>'
+
+    if not results:
+        table_html += '<tr><td colspan="7" style="text-align:center;">未找到匹配结果</td></tr>'
+        table_html += '</tbody></table>'
+        return table_html
+
+    for idx, result in enumerate(results[:max_rows]):
+        result_id = f"direct_result_{idx}"
+        matched = result['strand_type'] in ('正义链', '反义链')
+
+        table_html += f'<tr id="{result_id}_row">'
+        table_html += f'<td>{result["original_id"]}</td>'
+        # 序列名可能直接来自用户粘贴的 FASTA 表头，必须转义后再插入
+        table_html += f'<td>{escape(str(result["query_id"]))}</td>'
+        table_html += f'<td style="font-family: Consolas, Monaco, monospace; word-break: break-all;">{escape(result["sequence"])}</td>'
+        table_html += f'<td>{result["strand_type"]}</td>'
+        table_html += f'<td>{result["match_position"]}</td>'
+        table_html += f'<td>{result["match_length"]}</td>'
+
+        if matched:
+            table_html += f'<td><button id="btn_{result_id}" class="btn btn-secondary" onclick="toggleAlignmentDetails(\'{result_id}\')" style="padding: 5px 10px; font-size: 12px;">查看比对</button></td>'
+        else:
+            table_html += '<td>-</td>'
+        table_html += '</tr>'
+
+        if matched:
+            table_html += f'<tr id="{result_id}_details" style="display: none;">'
+            table_html += '<td colspan="7" style="padding: 20px; background-color: #f8f9fa;">'
+            if result.get('query_alignment'):
+                # 标题带上序号，保证 generate_alignment_html 生成的元素 id 唯一
+                table_html += generate_alignment_html(
+                    f'待分析序列比对 #{result["original_id"]}',
+                    result['query_alignment'],
+                    result['strand_type']
+                )
+            else:
+                table_html += '<p style="margin: 0; color: #6c757d;">无法生成比对详情。</p>'
+            table_html += '</td></tr>'
+
+    if len(results) > max_rows:
+        table_html += '<tr><td colspan="7" style="text-align:center;">' \
+                   + f'共 {len(results)} 条结果，仅显示前 {max_rows} 条' \
+                   + '</td></tr>'
+
+    table_html += '</tbody></table>'
+
+    return table_html

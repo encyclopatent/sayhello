@@ -230,6 +230,68 @@
         .banner-text {
             font-weight: 500;
         }
+
+        /* 模式切换 */
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .mode-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .mode-tab:hover {
+            color: var(--primary-color);
+        }
+
+        .mode-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .mode-tab:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: -2px;
+            border-radius: 4px;
+        }
+
+        .form-container {
+            display: none;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .sequence-textarea {
+            width: 100%;
+            min-height: 140px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .results-summary {
+            margin: 15px 0;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
     </style>
 </head>
 <body>
@@ -244,7 +306,55 @@
         <div class="nav-buttons">
             <a href="/" class="btn btn-secondary">返回主页</a>
         </div>
-        
+
+        <div class="mode-tabs" role="tablist" aria-label="分析模式">
+            <div class="mode-tab active" id="tab-direct" role="tab" tabindex="0" aria-selected="true"
+                 aria-controls="direct-mode" data-mode="direct"
+                 onclick="switchMode('direct')" onkeydown="handleModeTabKey(event, 'direct')">📝 直接输入模式</div>
+            <div class="mode-tab" id="tab-file" role="tab" tabindex="0" aria-selected="false"
+                 aria-controls="file-mode" data-mode="file"
+                 onclick="switchMode('file')" onkeydown="handleModeTabKey(event, 'file')">📂 文件比对模式</div>
+        </div>
+
+        <!-- 直接输入模式 -->
+        <div class="form-container active" id="direct-mode" role="tabpanel" aria-labelledby="tab-direct">
+            <div class="file-input-section">
+                <h2>直接输入</h2>
+
+                <div class="file-input-group">
+                    <label for="query-sequences">待分析序列：</label>
+                    <small class="form-hint">每行一条序列；也可直接粘贴 FASTA 格式（以 &gt; 开头），此时以 FASTA 记录名作为序列名</small>
+                    <textarea class="sequence-textarea" id="query-sequences" name="query_sequences" placeholder="GUGUUCUACUGUGAU...&#10;GCUUACCUAACGGUA..."></textarea>
+                </div>
+
+                <div class="file-input-group">
+                    <label for="target-sequence">靶序列：</label>
+                    <small class="form-hint">只需一条；可带 FASTA 表头，粘贴时的换行会自动去除</small>
+                    <textarea class="sequence-textarea" id="target-sequence" name="target_sequence" placeholder="TACGTACGTACGTACGTACGT..."></textarea>
+                </div>
+
+                <div class="file-input-group">
+                    <label for="direct-mismatch-count">允许的最大错配个数：</label>
+                    <select id="direct-mismatch-count" name="direct_mismatch_count">
+                        <option value="1" selected>1个错配</option>
+                        <option value="2">2个错配</option>
+                        <option value="3">3个错配</option>
+                        <option value="4">4个错配</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-success" id="direct-analyze-btn">开始分析</button>
+            </div>
+
+            <div class="results-section" id="direct-results-section" style="display: none;">
+                <h2>分析结果</h2>
+                <div class="results-summary" id="direct-results-summary"></div>
+                <div id="direct-results-content"></div>
+            </div>
+        </div>
+
+        <!-- 文件比对模式 -->
+        <div class="form-container" id="file-mode" role="tabpanel" aria-labelledby="tab-file">
         <div class="file-input-section">
             <h2>文件输入</h2>
             
@@ -313,9 +423,30 @@
             <div id="results-content"></div>
             <button class="btn" id="download-btn">下载结果</button>
         </div>
+        </div>
     </div>
-    
+
     <script>
+        // 模式切换：data-mode="xxx" 对应 id="xxx-mode"
+        function switchMode(mode) {
+            document.querySelectorAll('.mode-tab').forEach(function (tab) {
+                const isActive = tab.dataset.mode === mode;
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            document.querySelectorAll('.form-container').forEach(function (container) {
+                container.classList.toggle('active', container.id === mode + '-mode');
+            });
+        }
+
+        // 页签是 div，需要显式支持键盘操作（Enter / 空格）
+        function handleModeTabKey(event, mode) {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+                event.preventDefault();
+                switchMode(mode);
+            }
+        }
+
         // 比对详情切换函数
         function toggleAlignmentDetails(resultId) {
             const detailsRow = document.getElementById(resultId + '_details');
@@ -589,9 +720,77 @@
             downloadBtn.addEventListener('click', function() {
                 window.location.href = '/sirna/download';
             });
-            
+
+            // ---- 直接输入模式 ----
+            const directAnalyzeBtn = document.getElementById('direct-analyze-btn');
+            const directResultsSection = document.getElementById('direct-results-section');
+            const directResultsContent = document.getElementById('direct-results-content');
+            const directResultsSummary = document.getElementById('direct-results-summary');
+
+            function resetDirectButton() {
+                directAnalyzeBtn.disabled = false;
+                directAnalyzeBtn.textContent = '开始分析';
+            }
+
+            directAnalyzeBtn.addEventListener('click', function() {
+                const querySequences = document.getElementById('query-sequences').value.trim();
+                const targetSequence = document.getElementById('target-sequence').value.trim();
+
+                if (!querySequences) {
+                    alert('请填写待分析序列');
+                    return;
+                }
+                if (!targetSequence) {
+                    alert('请填写靶序列');
+                    return;
+                }
+
+                directAnalyzeBtn.disabled = true;
+                directAnalyzeBtn.textContent = '分析中...';
+                directResultsSection.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('query_sequences', querySequences);
+                formData.append('target_sequence', targetSequence);
+                formData.append('direct_mismatch_count', document.getElementById('direct-mismatch-count').value);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/sirna/direct', true);
+
+                xhr.onload = function() {
+                    let response = null;
+                    try {
+                        response = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        alert('分析失败：服务器返回格式错误');
+                        resetDirectButton();
+                        return;
+                    }
+
+                    if (xhr.status === 200 && response.status === 'success') {
+                        directResultsContent.innerHTML = response.results_table;
+                        directResultsSummary.textContent =
+                            '靶序列长度 ' + response.target_length + 'nt，共 ' + response.total_results +
+                            ' 条待分析序列，命中 ' + response.matched_count + ' 条';
+                    } else {
+                        directResultsContent.innerHTML = '';
+                        directResultsSummary.textContent = response.message || '分析失败：服务器错误';
+                        alert('分析失败：' + (response.message || '服务器错误'));
+                    }
+
+                    directResultsSection.style.display = 'block';
+                    resetDirectButton();
+                };
+
+                xhr.onerror = function() {
+                    alert('分析失败：网络错误');
+                    resetDirectButton();
+                };
+
+                xhr.send(formData);
+            });
+
         });
-    </script>
     </script>
 </body>
 </html>

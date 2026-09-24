@@ -54,6 +54,7 @@ Key modules:
 - `/` - Main page
 - `/st26` - ST26 Excel to XML converter
 - `/sirna` - siRNA analysis tool
+- `/sirna/direct` - siRNA analysis, direct sequence input mode (local matching only, no upload/BLAST)
 - `/fragment` - Peptide fragmentation
 - `/alignment` - Sequence alignment
 - `/compare` - Three-sequence comparison & mutation analysis

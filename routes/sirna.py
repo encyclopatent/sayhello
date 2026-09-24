@@ -8,6 +8,28 @@ import flask
 
 sirna_bp = Blueprint('sirna', __name__, url_prefix='/sirna')
 
+# 直接输入模式的输入上限。
+# 滑窗匹配的开销 ≈ 靶长度 × Σ(序列长度)，只限制序列条数并不足以约束耗时
+# （2000 条 × 1MB 靶序列会跑几十分钟），所以靶长度和总扫描量都要设限。
+MAX_DIRECT_SEQUENCES = 2000
+MAX_DIRECT_MISMATCH = 4
+MAX_DIRECT_TARGET_LENGTH = 20000
+MAX_DIRECT_SCAN_BUDGET = 100_000_000
+
+
+def parse_mismatch_count(raw, default=1):
+    """安全解析错配数参数，非法输入回退默认值，并钳制到合理区间"""
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return max(0, min(value, MAX_DIRECT_MISMATCH))
+
+
+def estimate_scan_cost(target_seq, query_seqs):
+    """估算滑窗匹配的字符比较次数，用于在真正开跑前挡住会拖垮服务的输入"""
+    return len(target_seq) * sum(len(q) for q in query_seqs)
+
 
 def send_file_compat(*args, **kwargs):
     """Flask 版本兼容的 send_file 包装器"""
@@ -148,6 +170,70 @@ def analyze():
             'total_results': len(filtered_results),
             'full_results_count': len(front_end_results),
             'blast_task_id': blast_task.id
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'分析失败：{str(e)}'})
+
+
+@sirna_bp.route('/direct', methods=['POST'])
+def direct_analyze():
+    """直接输入序列的siRNA匹配分析
+
+    与 /analyze 的区别：序列直接来自表单，不读上传文件、不写 session、
+    不落盘、不触发 Celery BLAST 任务，只做本地匹配。
+    """
+    import sirna_analysis
+
+    try:
+        query_text = request.form.get('query_sequences', '')
+        target_text = request.form.get('target_sequence', '')
+        max_mismatch = parse_mismatch_count(request.form.get('direct_mismatch_count'), 1)
+
+        try:
+            query_seqs, query_names = sirna_analysis.parse_sequences_from_text(query_text)
+            target_seq = sirna_analysis.parse_target_from_text(target_text)
+        except ValueError as e:
+            # 输入格式歧义（如 FASTA 表头不在第一行），直接把原因告诉用户
+            return jsonify({'status': 'error', 'message': str(e)})
+
+        if not query_seqs:
+            return jsonify({'status': 'error', 'message': '请填写待分析序列'})
+        if not target_seq:
+            return jsonify({'status': 'error', 'message': '请填写靶序列'})
+        if len(target_seq) < 18:
+            return jsonify({
+                'status': 'error',
+                'message': f'靶序列长度不足：当前 {len(target_seq)}nt，至少需要 18nt 才能进行siRNA匹配'
+            })
+        if len(query_seqs) > MAX_DIRECT_SEQUENCES:
+            return jsonify({
+                'status': 'error',
+                'message': f'待分析序列过多：当前 {len(query_seqs)} 条，单次最多 {MAX_DIRECT_SEQUENCES} 条'
+            })
+        if len(target_seq) > MAX_DIRECT_TARGET_LENGTH:
+            return jsonify({
+                'status': 'error',
+                'message': f'靶序列过长：当前 {len(target_seq)}nt，单次最多 {MAX_DIRECT_TARGET_LENGTH}nt。'
+                           '如靶序列很长，请改用文件比对模式'
+            })
+        if estimate_scan_cost(target_seq, query_seqs) > MAX_DIRECT_SCAN_BUDGET:
+            return jsonify({
+                'status': 'error',
+                'message': f'本次计算量过大（靶序列 {len(target_seq)}nt × {len(query_seqs)} 条序列），'
+                           '请减少序列条数、缩短靶序列，或改用文件比对模式'
+            })
+
+        results = sirna_analysis.analyze_direct(query_seqs, target_seq, max_mismatch, query_names)
+        matched_count = sum(1 for r in results if r['strand_type'] in ('正义链', '反义链'))
+
+        return jsonify({
+            'status': 'success',
+            'message': '分析完成',
+            'results_table': sirna_analysis.generate_direct_results_table(results),
+            'total_results': len(results),
+            'matched_count': matched_count,
+            'target_length': len(target_seq)
         })
 
     except Exception as e:
