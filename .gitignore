@@ -24,6 +24,14 @@ Thumbs.db
 temp/
 needle.txt
 
+# 运行期产物
+# celery.log 已被上面的 *.log 覆盖，celery_worker.pid 同理；此处单独列出是为了注明
+# 它们曾被跟踪过 —— gitignore 对已跟踪文件不生效，须先 git rm --cached 才会真正忽略。
+*.pid
+celery.log
+temp_combined.*
+clustalw.cfg
+
 # 测试文件
 test_*.txt
 
