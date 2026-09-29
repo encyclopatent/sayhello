@@ -5,10 +5,15 @@ from Bio.Seq import Seq
 # 添加当前目录到Python路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from sirna_analysis import check_sirna_match
+from sirna_analysis import (
+    STRAND_ANTISENSE,
+    STRAND_NO_MATCH,
+    STRAND_SENSE,
+    check_sirna_match,
+)
 
 def test_sirna_trimming():
-    """测试对非siRNA序列两端截短2个碱基后重新匹配的功能"""
+    """测试对未匹配序列两端截短2个碱基后重新匹配的功能"""
     print("开始测试siRNA序列两端截短重新匹配功能...")
     print("=" * 50)
     
@@ -32,11 +37,11 @@ def test_sirna_trimming():
     print(f"结果链类型: {strand}")
     print(f"结果位置: {pos}")
     
-    if strand == "正义链" and "[存在突出端]" in pos:
+    if strand == STRAND_SENSE and "[存在突出端]" in pos:
         print("✅ 测试通过: 正确截短并标注为正义链且存在突出端")
     else:
         print("❌ 测试失败")
-    
+
     # 测试用例2: 原始序列不匹配，但截短后匹配（反义链）
     print("\n测试用例2: 原始序列不匹配，但截短后匹配反义链")
     # 重新设计：确保截短后的查询序列本身不匹配靶序列，只有其反向互补才匹配
@@ -74,11 +79,11 @@ def test_sirna_trimming():
     print(f"\n结果链类型: {strand}")
     print(f"结果位置: {pos}")
     
-    if strand == "反义链" and "[存在突出端]" in pos:
+    if strand == STRAND_ANTISENSE and "[存在突出端]" in pos:
         print("✅ 测试通过: 正确截短并标注为反义链且存在突出端")
     else:
         print("❌ 测试失败")
-    
+
     # 测试用例3: 原始序列已经匹配，不应该被截短
     print("\n测试用例3: 原始序列已经匹配，不应该被截短")
     target_seq = "AAATCGTACGTACGTACGTACGTACGTAAAA"
@@ -94,7 +99,7 @@ def test_sirna_trimming():
     print(f"结果链类型: {strand}")
     print(f"结果位置: {pos}")
     
-    if strand == "正义链" and "[存在突出端]" not in pos:
+    if strand == STRAND_SENSE and "[存在突出端]" not in pos:
         print("✅ 测试通过: 原始序列匹配，未被截短")
     else:
         print("❌ 测试失败")
@@ -114,8 +119,8 @@ def test_sirna_trimming():
     print(f"结果链类型: {strand}")
     print(f"结果位置: {pos}")
     
-    if strand == "非siRNA" and pos == "N/A":
-        print("✅ 测试通过: 截短后仍不匹配，返回非siRNA")
+    if strand == STRAND_NO_MATCH and pos == "N/A":
+        print("✅ 测试通过: 截短后仍不匹配，返回无匹配")
     else:
         print("❌ 测试失败")
     
@@ -136,7 +141,7 @@ def test_sirna_trimming():
     print(f"结果链类型: {strand}")
     print(f"结果位置: {pos}")
     
-    if strand == "非siRNA" and pos == "N/A" and "[存在突出端]" not in pos:
+    if strand == STRAND_NO_MATCH and pos == "N/A" and "[存在突出端]" not in pos:
         print("✅ 测试通过: 序列长度不足22bp，未被截短")
     else:
         print("❌ 测试失败")

@@ -156,8 +156,12 @@ def test_analyze_direct():
     # 6.2 反向互补命中
     antisense_query = str(Seq(FORWARD).reverse_complement())
     results = analyze_direct([antisense_query], TARGET, 1)
-    check("反义命中链类型", results[0]["strand_type"], "反义链")
+    check("反义命中链类型", results[0]["strand_type"], "ASO/反义链")
     check("反义命中位置", results[0]["match_position"], "3-22 (19bp)")
+    # generate_alignment_details 按链类型分支决定拿哪条序列去比对：
+    # 该分支一旦与返回的链类型对不上，反义链的比对详情会静默换成正向序列，不会报错。
+    check("反义命中详情用的是反向互补序列",
+          results[0]["query_alignment"]["query_aligned"], FORWARD)
 
     # 6.3 两端各带 2 个突出端碱基，需截短后才能匹配
     overhang_query = "AA" + FORWARD + "CC"
@@ -168,7 +172,7 @@ def test_analyze_direct():
 
     # 6.4 不命中
     results = analyze_direct(["TTTTTTTTTTTTTTTTTTT"], TARGET, 1)
-    check("不命中链类型", results[0]["strand_type"], "非siRNA")
+    check("不命中链类型", results[0]["strand_type"], "无匹配")
     check("不命中位置", results[0]["match_position"], "N/A")
     check("不命中长度", results[0]["match_length"], 0)
     check("不命中无比对详情", "query_alignment" in results[0], False)
@@ -179,7 +183,7 @@ def test_analyze_direct():
     check("多条：编号顺序", [r["query_id"] for r in results],
           ["Query_1", "Query_2", "Query_3"])
     check("多条：链类型顺序", [r["strand_type"] for r in results],
-          ["正义链", "非siRNA", "反义链"])
+          ["正义链", "无匹配", "ASO/反义链"])
 
     # 6.6 编排层与既有匹配引擎保持一致（新增代码的正确性锚点）
     pairs = [
@@ -253,7 +257,7 @@ def test_direct_results_table():
     results = analyze_direct([FORWARD, "TTTTTTTTTTTTTTTTTTT"], TARGET, 1)
     html = generate_direct_results_table(results)
     check_true("命中行出现", "正义链" in html, html[:200])
-    check_true("未命中行也出现（不被过滤）", "非siRNA" in html, html[:200])
+    check_true("未命中行也出现（不被过滤）", "无匹配" in html, html[:200])
     check_true("命中行有查看比对按钮",
                'onclick="toggleAlignmentDetails(\'direct_result_0\')"' in html)
     check_true("未命中行没有比对按钮", "btn_direct_result_1" not in html)

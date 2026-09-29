@@ -225,7 +225,10 @@ def direct_analyze():
             })
 
         results = sirna_analysis.analyze_direct(query_seqs, target_seq, max_mismatch, query_names)
-        matched_count = sum(1 for r in results if r['strand_type'] in ('正义链', '反义链'))
+        matched_count = sum(
+            1 for r in results
+            if r['strand_type'] in (sirna_analysis.STRAND_SENSE, sirna_analysis.STRAND_ANTISENSE)
+        )
 
         return jsonify({
             'status': 'success',

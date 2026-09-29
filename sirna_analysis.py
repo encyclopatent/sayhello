@@ -15,6 +15,13 @@ import time
 # 有效核酸字符。比对算法基于 DNA 反向互补，RNA 输入的 U 会在净化时归一为 T
 VALID_NUCLEOTIDES = frozenset({'A', 'T', 'C', 'G', 'U'})
 
+# 链类型取值。这三个字符串既是结果里展示给用户看的文本，也是代码里用来做相等
+# 判断的枚举值（"是不是命中"全靠在几个地方比对它们），所以集中定义：
+# 散落的字面量漏改一处不会报错，只会让命中数静默变少。
+STRAND_SENSE = "正义链"         # 正向匹配
+STRAND_ANTISENSE = "ASO/反义链"  # 反向互补匹配
+STRAND_NO_MATCH = "无匹配"       # 未匹配上
+
 
 def sanitize_string_content(text: str) -> str:
     """
@@ -164,7 +171,7 @@ def check_sirna_match(query, target, max_mismatch=1):
     
     # 目标序列太短，无法匹配
     if target_len < 18:
-        return "非siRNA", "N/A"
+        return STRAND_NO_MATCH, "N/A"
     
     # 首先检查原始序列（18-22bp）是否匹配
     if 18 <= query_len <= 22:
@@ -174,7 +181,7 @@ def check_sirna_match(query, target, max_mismatch=1):
         match_length = end - start
         
         if match_length >= 18:  # siRNA通常18-21bp
-            return "正义链", f"{start}-{end} ({match_length}bp)"
+            return STRAND_SENSE, f"{start}-{end} ({match_length}bp)"
 
         # 反向互补链检测
         rc_query = str(Seq(query).reverse_complement())
@@ -182,7 +189,7 @@ def check_sirna_match(query, target, max_mismatch=1):
         rc_match_length = rc_end - rc_start
         
         if rc_match_length >= 18:
-            return "反义链", f"{rc_start}-{rc_end} ({rc_match_length}bp)"
+            return STRAND_ANTISENSE, f"{rc_start}-{rc_end} ({rc_match_length}bp)"
 
     # 如果原始序列匹配失败，尝试从两端各去除2个碱基后重新匹配
     if query_len >= 22:  # 确保截短后至少有18bp
@@ -196,7 +203,7 @@ def check_sirna_match(query, target, max_mismatch=1):
             trimmed_match_length = trimmed_end - trimmed_start
             
             if trimmed_match_length >= 18:
-                return "正义链", f"{trimmed_start}-{trimmed_end} ({trimmed_match_length}bp) [存在突出端]"
+                return STRAND_SENSE, f"{trimmed_start}-{trimmed_end} ({trimmed_match_length}bp) [存在突出端]"
 
             # 反向互补链检测（截短后）
             trimmed_rc_query = str(Seq(trimmed_query).reverse_complement())
@@ -204,9 +211,9 @@ def check_sirna_match(query, target, max_mismatch=1):
             trimmed_rc_match_length = trimmed_rc_end - trimmed_rc_start
             
             if trimmed_rc_match_length >= 18:
-                return "反义链", f"{trimmed_rc_start}-{trimmed_rc_end} ({trimmed_rc_match_length}bp) [存在突出端]"
+                return STRAND_ANTISENSE, f"{trimmed_rc_start}-{trimmed_rc_end} ({trimmed_rc_match_length}bp) [存在突出端]"
 
-    return "非siRNA", "N/A"
+    return STRAND_NO_MATCH, "N/A"
 
 
 def blastn_search_ncbi(target_sequence, blast_type="blastn", database="nt", evalue=0.01, max_hits=5):
@@ -287,7 +294,7 @@ def generate_alignment_details(query_seq, target_seq, strand_type, max_mismatch=
     参数:
         query_seq: 查询序列
         target_seq: 靶序列
-        strand_type: 链类型（"正义链" 或 "反义链"）
+        strand_type: 链类型（STRAND_SENSE 或 STRAND_ANTISENSE）
         max_mismatch: 最大允许错配数
 
     返回:
@@ -295,7 +302,7 @@ def generate_alignment_details(query_seq, target_seq, strand_type, max_mismatch=
     """
     try:
         # 根据链类型确定要比对的序列
-        if strand_type == "反义链":
+        if strand_type == STRAND_ANTISENSE:
             query_aligned = str(Seq(query_seq).reverse_complement())
         else:
             query_aligned = query_seq
@@ -354,7 +361,7 @@ def find_best_match(query_pos, literature_results, query_strand_type=None):
     参数:
         query_pos: 查询序列的匹配位置
         literature_results: 文献序列匹配结果列表
-        query_strand_type: 查询序列的链类型（"正义链" 或 "反义链"）
+        query_strand_type: 查询序列的链类型（STRAND_SENSE 或 STRAND_ANTISENSE）
 
     返回:
         best_match: 最佳匹配的文献序列结果，优先匹配相同链类型
@@ -564,7 +571,7 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
             # 分析每条序列
             for seq, name in zip(fasta_seqs, fasta_names):
                 strand, pos = check_sirna_match(seq, target_seq, max_mismatch)
-                if strand == "正义链" or strand == "反义链":  # 同时处理正义链和反义链
+                if strand in (STRAND_SENSE, STRAND_ANTISENSE):  # 只收命中项
                     file_results.append({
                         '文献序列ID': name,
                         '序列内容': seq,
@@ -578,8 +585,8 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
             
             # 关联到主结果
             for excel_row in excel_results:
-                # 同时处理正义链和反义链的匹配
-                if excel_row['链类型'] == "正义链" or excel_row['链类型'] == "反义链":
+                # 只处理命中项（正义链与反义链）的匹配
+                if excel_row['链类型'] in (STRAND_SENSE, STRAND_ANTISENSE):
                     # 传递查询序列的链类型，优先匹配相同链类型的文献序列
                     best_match = find_best_match(
                         excel_row['匹配位置'],
@@ -675,7 +682,7 @@ def perform_sirna_analysis(excel_path, fasta_paths, output_filename="siRNA_匹�
         }
 
         # 为查询序列生成比对详情
-        if result['链类型'] in ['正义链', '反义链'] and result['匹配位置'] != 'N/A':
+        if result['链类型'] in (STRAND_SENSE, STRAND_ANTISENSE) and result['匹配位置'] != 'N/A':
             alignment = generate_alignment_details(
                 _query_used_for_match(result['序列内容'], result['匹配位置']),
                 target_seq,
@@ -784,7 +791,7 @@ def generate_results_table(results, max_rows=10):
                 if fasta_id in result['alignment_details']:
                     lit_aln = result['alignment_details'][fasta_id]
                     # 获取文献序列的链类型
-                    lit_strand = '正义链'  # 默认值
+                    lit_strand = STRAND_SENSE  # 默认值
                     table_html += '<hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">'
                     table_html += generate_alignment_html(f'文献序列: {fasta_id}', lit_aln, lit_strand)
 
@@ -1027,7 +1034,7 @@ def analyze_direct(query_seqs: list[str], target_seq: str, max_mismatch: int = 1
         # 命中时附带比对详情，供前端展开查看。
         # 必须用 check_sirna_match 实际匹配的那条序列（可能已被截短），
         # 否则带突出端的输入会显示与所在行矛盾的位置和匹配度。
-        if strand in ('正义链', '反义链') and position != 'N/A':
+        if strand in (STRAND_SENSE, STRAND_ANTISENSE) and position != 'N/A':
             alignment = generate_alignment_details(
                 _query_used_for_match(query, position), target_seq, strand, max_mismatch
             )
@@ -1071,7 +1078,7 @@ def generate_direct_results_table(results: list[dict], max_rows: int = 200) -> s
 
     for idx, result in enumerate(results[:max_rows]):
         result_id = f"direct_result_{idx}"
-        matched = result['strand_type'] in ('正义链', '反义链')
+        matched = result['strand_type'] in (STRAND_SENSE, STRAND_ANTISENSE)
 
         table_html += f'<tr id="{result_id}_row">'
         table_html += f'<td>{result["original_id"]}</td>'
