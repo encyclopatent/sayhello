@@ -133,6 +133,10 @@
       grid-template-columns: repeat(4, 1fr);
       gap: 16px;
     }
+    /* ST26 与专利检索各跨 2 列，形成 2-1-1 / 1-1-2 的节奏。
+       注意：这条必须放在基础层，媒体查询里的同类规则只在窄屏生效。 */
+    .tool-card:nth-child(1),
+    .tool-card:nth-child(6) { grid-column: span 2; }
 
     /* ===== Tool Card ===== */
     .tool-card {
@@ -214,14 +218,46 @@
     .tool-card:nth-child(3n+2) { --tone: var(--cyan); --tone-soft: var(--cyan-soft); }
     .tool-card:nth-child(3n)   { --tone: var(--sea);  --tone-soft: var(--sea-soft);  }
 
-    /* ===== 主推卡片：ST26（跨 2 列） ===== */
+    /* ===== 跨 2 列的宽卡片：改为横向布局 ===== */
+    /* 跨列后若沿用纵向堆叠，文字只占左侧一小块，右半边会整片留白。
+       故改为横向网格：图标在左跨两行，标题与描述在右，标签与按钮沉到第三行。 */
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        "icon title ."
+        "icon desc  ."
+        "tags tags  act";
+      column-gap: 18px;
+      row-gap: 12px;
+      align-content: center;
+    }
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > .tool-card-icon {
+      grid-area: icon; align-self: start; margin-bottom: 0;
+    }
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > h3 {
+      grid-area: title; margin-bottom: 0;
+    }
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > p {
+      grid-area: desc; margin-bottom: 0;
+    }
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > .tool-tags {
+      grid-area: tags; margin-bottom: 0; align-self: center;
+    }
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > .tool-card-actions {
+      grid-area: act; margin-top: 0; justify-content: flex-end;
+    }
+
+    /* ===== 主推卡片：ST26 ===== */
     .tool-card:nth-child(1) {
       background: linear-gradient(150deg, var(--teal-soft) 0%, var(--surface) 58%);
       border-color: #d8ece9;
     }
     .tool-card:nth-child(1) h3 { font-size: 1.3rem; letter-spacing: -0.025em; }
-    .tool-card:nth-child(1) p { font-size: 0.88rem; max-width: 46ch; }
-    .tool-card:nth-child(1) .tool-card-icon { width: 52px; height: 52px; font-size: 24px; }
+    .tool-card:nth-child(1) p { font-size: 0.88rem; }
+    :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > .tool-card-icon {
+      width: 52px; height: 52px; font-size: 24px;
+    }
 
     /* ===== Footer ===== */
     .footer {
@@ -243,6 +279,14 @@
       .tools-grid { grid-template-columns: 1fr; }
       .tool-card:nth-child(1),
       .tool-card:nth-child(6) { grid-column: span 1; }
+      /* 单列时恢复纵向堆叠：窄卡片里图标与按钮分列两侧会把正文挤到很窄 */
+      :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) {
+        grid-template-columns: 1fr;
+        grid-template-areas: "icon" "title" "desc" "tags" "act";
+      }
+      :is(.tool-card:nth-child(1), .tool-card:nth-child(6)) > .tool-card-actions {
+        justify-content: flex-start;
+      }
       .tool-card:nth-child(1) h3 { font-size: 1.12rem; }
       .tool-card { padding: 22px 20px 20px; }
     }
