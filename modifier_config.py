@@ -29,6 +29,18 @@ MODIFIER_NAMES_EN = {
         'full': '5prime-vinylphosphonate',
         'description': '5prime-vinylphosphonate',
         'zh': '5\'-乙烯基膦酸酯'
+    },
+    # LNA 与 5-Me-LNA-C 均不在 ST.26 Annex I 表 2 的受控词表内，出 XML 时
+    # mod_base 只能填 OTHER，靠 note 写完整未缩写名称（见表 2 的规则原文）。
+    'l': {
+        'full': 'locked nucleic acid',
+        'description': 'LNA',
+        'zh': '锁核酸'
+    },
+    'k': {
+        'full': '5-methyl-locked nucleic acid',
+        'description': '5-Me-LNA',
+        'zh': '5-甲基锁核酸'
     }
 }
 
@@ -38,8 +50,15 @@ MODIFIER_NAMES_ZH_DEFAULT = {
     'f': '氟',
     'e': '甲氧基乙基',
     's': '硫代',
-    'pv': '乙烯基膦酸酯'
+    'pv': '乙烯基膦酸酯',
+    'l': '锁核酸',
+    'k': '5-甲基锁核酸'
 }
+
+# 这些修饰符的 note 需要拼上碱基名，组成 ST.26 要求的"完整未缩写名称"
+# （如 locked nucleic acid cytidine）。m/f 一直是这么做的，l/k 沿用同一规则；
+# 集中定义是因为漏加一处不会报错，只会让 note 少一截。
+BASE_SUBSTITUTED_MODIFIERS = ('m', 'f', 'l', 'k')
 
 # 碱基名称映射（用于拼接完整的修饰名称）
 BASE_NAMES_EN = {
@@ -63,8 +82,8 @@ def get_modifier_name_en(modifier: str, base: str = None, custom_names: dict = N
     获取修饰符的英文名称（用于XML）
 
     Args:
-        modifier: 修饰符类型 (m, f, e, s, pv)
-        base: 碱基 (A, C, G, U, T)，仅对m和f有效
+        modifier: 修饰符类型 (m, f, e, s, pv, l, k)
+        base: 碱基 (A, C, G, U, T)，对 BASE_SUBSTITUTED_MODIFIERS 中的修饰符有效
         custom_names: 用户自定义英文名称字典，键为 'mEn', 'fEn', 'eEn', 'sEn', 'pvEn'
 
     Returns:
@@ -75,8 +94,8 @@ def get_modifier_name_en(modifier: str, base: str = None, custom_names: dict = N
         custom_key = f"{modifier}En"
         if custom_key in custom_names and custom_names[custom_key]:
             custom_name = custom_names[custom_key]
-            # 对于m和f修饰符，需要替换碱基占位符
-            if modifier in ['m', 'f'] and base:
+            # 需要拼接碱基名的修饰符，替换碱基占位符
+            if modifier in BASE_SUBSTITUTED_MODIFIERS and base:
                 base_name = BASE_NAMES_EN.get(base.upper(), 'base')
                 # 将 {base} 替换为实际碱基名称
                 return custom_name.replace('{base}', base_name)
@@ -88,8 +107,8 @@ def get_modifier_name_en(modifier: str, base: str = None, custom_names: dict = N
 
     mod_info = MODIFIER_NAMES_EN[modifier]
 
-    # 对于m和f修饰符，需要拼接碱基名称
-    if modifier in ['m', 'f'] and base:
+    # 需要拼接碱基名称的修饰符
+    if modifier in BASE_SUBSTITUTED_MODIFIERS and base:
         base_name = BASE_NAMES_EN.get(base.upper(), 'base')
         return f"{mod_info['full']} {base_name}"
 
@@ -154,7 +173,7 @@ def get_all_modifier_info() -> dict:
         mod: {
             'en': MODIFIER_NAMES_EN[mod],
             'zh_default': MODIFIER_NAMES_ZH_DEFAULT[mod],
-            'bases': BASE_NAMES_EN if mod in ['m', 'f'] else None
+            'bases': BASE_NAMES_EN if mod in BASE_SUBSTITUTED_MODIFIERS else None
         }
         for mod in MODIFIER_NAMES_EN
     }

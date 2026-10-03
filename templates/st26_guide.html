@@ -393,25 +393,204 @@
         </tbody>
       </table>
 
+      <h3>4.3 杂合序列（同时含 DNA 和 RNA 片段）</h3>
+      <p>
+        ASO（反义寡核苷酸）常常是<strong>嵌合体</strong>：两端是 2'-MOE 或 LNA 修饰的核糖核苷酸
+        （RNA），中间是脱氧核苷酸（DNA gap）。按 WIPO ST.26 <strong>第 55 段</strong>，
+        这种序列有<strong>三条强制要求</strong>（原文用 must，不满足即不合规）：
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>要素</th>
+            <th>必须写成</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>INSDSeq_moltype</code></td>
+            <td><code>DNA</code></td>
+            <td>与 RNA 占比多少无关，杂合体一律写 DNA。取值只有 DNA/RNA/AA，没有 other</td>
+          </tr>
+          <tr>
+            <td><code>source</code> / <code>mol_type</code></td>
+            <td><code>other DNA</code></td>
+            <td>注意这是 source 特征上的限定符，与上面的元素是两个不同字段</td>
+          </tr>
+          <tr>
+            <td><code>source</code> / <code>organism</code></td>
+            <td><code>synthetic construct</code></td>
+            <td>非天然存在的序列都用这个值</td>
+          </tr>
+          <tr>
+            <td>每个 DNA/RNA 区段</td>
+            <td><code>misc_feature</code> + <code>note</code></td>
+            <td>note 的值就是 <code>DNA</code> 或 <code>RNA</code>，每段一条</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>系统如何判定区段 —— 取决于标注格式</h4>
+      <p>
+        判定规则<strong>按标注格式分叉</strong>，这一点很关键。ST.26 里
+        <code>a</code>/<code>t</code>/<code>c</code>/<code>g</code> 在 RNA 和 DNA 之间写法
+        <strong>完全相同</strong>（RNA 的尿嘧啶也写 <code>t</code>，见第 5 节）。所以一个
+        <strong>没写修饰的残基本身不携带任何「它是脱氧核糖」的信息</strong> ——
+        它既可能是真的脱氧核苷酸，也可能是漏写了 <code>m</code> 的核糖核苷酸。
+      </p>
+      <p>
+        而<strong>方括号厂商写法</strong>（<code>G[2'-MOE,PS]T[PS]A[PS]</code>）里，每个残基的修饰都被
+        <strong>显式枚举</strong>：<code>T[PS]</code> 是「明确说了没有糖修饰」，这才是脱氧核糖的正面证据。
+        因此两种格式的判定强度不同：
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>标注格式</th>
+            <th>填了区段列</th>
+            <th>系统行为</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="2">
+              方括号格式<br>
+              <small>每个残基都是 <code>碱基[...]</code></small>
+            </td>
+            <td>是</td>
+            <td>与按化学推断的区段<strong>严格比对</strong>；一致则制作，
+                <strong>不一致直接中止</strong>，不出 XML</td>
+          </tr>
+          <tr>
+            <td>否</td>
+            <td>按化学自动推断；判定为杂合则按第 55 段改写分子类型，
+                并在<strong>完成后的概要</strong>里提醒</td>
+          </tr>
+          <tr>
+            <td rowspan="2">旧格式 / 圆括号格式</td>
+            <td>是</td>
+            <td>只查<strong>硬矛盾</strong>：DNA 段里出现带 2' 糖修饰的残基 → <strong>中止</strong>；
+                RNA 段里出现没写修饰的残基 → 不中止，按「未修饰的 RNA 残基」处理并提示</td>
+          </tr>
+          <tr>
+            <td>否</td>
+            <td><strong>不做杂合识别</strong>（<code>atcg</code> 看不出是 RNA 还是 DNA）。
+                若序列里既有带修饰的残基、又有没写修饰的残基，会提示你手工填写区段列</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        注意「中止」只用在<strong>用户明确标注了、而化学上不可能</strong>的硬矛盾上。
+        「判不出来」的情况一律降级为提示，不会卡住整批转换。
+      </p>
+
+      <div class="warning">
+        <strong>⚠️ 填了区段却只有一种类型 → 中止，不是杂合体。</strong>
+        「杂合信息=是」意味着这条序列<strong>同时</strong>含 DNA 段和 RNA 段。
+        如果区段列里全是 <code>RNA</code>、或者全是 <code>DNA</code>，两处标注自相矛盾，
+        系统会中止并提示你补上缺失的区段、或<strong>清空「杂合信息」列</strong>。
+        <br>
+        这一条与标注格式无关，两种格式都查。也不能靠「猜」放过去：第 55 段的改写
+        （分子类型→DNA、<code>mol_type</code>→<code>other DNA</code>、生物体→
+        <code>synthetic construct</code>、每段一条 <code>misc_feature</code>）
+        只对 DNA/RNA 混合分子成立 —— 照着一个纯 RNA 的区段集套用，
+        会把 <code>AmGmCmUm</code> 这种全修饰的纯 RNA 序列写成分子上是 DNA。
+      </div>
+
+      <h4>方括号格式的自动推断</h4>
+      <p>满足「每个残基都带括号」时，系统按化学推断：</p>
+      <ul>
+        <li>带<strong>糖修饰</strong>的残基（2'-MOE、LNA、2'-OMe、2'-F）= 骨架是核糖 → <strong>RNA</strong></li>
+        <li><strong>不带</strong>糖修饰的残基（如 <code>T[PS]</code>）= 骨架是脱氧核糖 → <strong>DNA</strong></li>
+      </ul>
+      <p>例如上面 3-12-3 的 MOE-ASO 会被切成三段：</p>
+      <pre><code>RNA 1..3 (GTT) / DNA 4..15 (AGAATTGAAGTG) / RNA 16..18 (AGA)</code></pre>
+      <p>
+        判定结果会同时出现在<strong>完成后的概要表</strong>（「类型」列显示改写后的分子类型，
+        「修饰和特殊说明」列列出区段）和页面提醒里，请逐条核对。
+      </p>
+
+      <div class="warning">
+        <strong>⚠️ 方括号判定是「全或无」。</strong>
+        必须<strong>每个</strong>残基都写成 <code>碱基[...]</code> 才算方括号格式。
+        像 <code>A[PS]GCTT</code> 这种只给个别残基加了括号的写法会掉进「旧格式」分支、
+        不做杂合识别 —— 系统会给出提示，但如果你本意是方括号格式，
+        请把没加括号的残基补齐再传。
+      </div>
+
+      <div class="info">
+        <strong>关于「翅膀算不算 RNA 段」：这是推断，不是明文。</strong>
+        ST.26 第 55 段的官方示例（Annex VI Example 55-1、WIPO 培训课件）用的都是
+        <strong>未修饰</strong>的 u 残基，标准全文没有出现过 MOE / LNA / gapmer。
+        把糖修饰残基当作 RNA 段，依据是第 3(g) 段的骨架定义
+        （2'-脱氧核糖 vs 核糖 5'-单磷酸），化学上成立，但<strong>没有一条 ST.26 原文
+        直接支持</strong>。如果贵所或代理机构持不同意见，请手工填写区段列 ——
+        <strong>系统不会用自动判定的结果覆盖你填的区段</strong>。
+      </div>
+
+      <h4>手工填写区段</h4>
+      <p>
+        在 <code>seqdata</code> 表的「杂合信息」列填 <code>是</code>，然后在「第一区段」「第二区段」…
+        列里按 <code>1..3 RNA</code>、<code>4..15 DNA</code> 这样的写法逐段填写（也接受
+        <code>1-3 RNA</code> 和单残基的 <code>1 RNA</code>）。
+        区段必须<strong>从 1 开始连续铺满整条序列</strong>，否则会报错。
+      </p>
+      <p>
+        模板自带「第一区段」「第二区段」两列，但系统认到<strong>第十区段</strong> ——
+        更复杂的嵌合序列自己加列即可，列名照 <code>第三区段</code>、<code>第四区段</code>
+        的格式写。填了「杂合信息=是」就一定读区段列，<strong>与「分子类型」列填 DNA 还是
+        RNA 无关</strong>：区段列本身就是逐段的 DNA/RNA 归属，不必先声明整条序列是 DNA。
+      </p>
+
+      <div class="warning">
+        <strong>填了区段就要经得起化学核对，对不上会中止、不出 XML。</strong>
+        核对强度按格式分（见上表）：
+        <br>
+        ·<strong>方括号格式</strong>：与按修饰推断的区段<strong>逐段严格比对</strong>，
+        不一致即中止。报错信息会把「你填的」和「按修饰推断的」并列出来（各自带序列字母），
+        照着改即可。对比前会先合并相邻的同类型区段，所以 <code>1..2 RNA</code> +
+        <code>3..4 RNA</code> 与 <code>1..4 RNA</code> 等价，不会被误判成不一致。
+        <br>
+        ·<strong>旧格式 / 圆括号格式</strong>：只查化学上<strong>不可能</strong>的矛盾 ——
+        标为 DNA 的段里出现带 2' 糖修饰的残基（糖修饰说明该位是核糖）会中止。
+        反向的情况（标为 RNA 的段里有没写修饰的残基）<strong>不中止</strong>，
+        因为那既可能是漏写修饰、也可能是真的脱氧，系统按「未修饰的 RNA 残基」处理并提示。
+      </div>
+
+      <div class="info">
+        <strong>RNA 的 <code>u</code> 必须写成 <code>t</code>。</strong>
+        ST.26 第 13、14 段规定：<code>u</code> 符号<strong>禁止</strong>使用，RNA 序列同样写
+        <code>t</code>，由 feature table 区分 DNA/RNA。本系统会自动完成这个转换
+        （<code>AUGCAUGC</code> → <code>atgcatgc</code>），无需手工处理。
+      </div>
+
+      <div class="warning">
+        <strong>序列里含 <code>N</code> 时不自动判定区段 —— 两种格式都一样。</strong>
+        <code>N</code> 在 ST.26 里表示「其他/未知」核苷酸，把它归成 DNA 或 RNA 都是编造。
+        方括号格式下若已填了区段列，系统无法用修饰核对，会照单全收并提示你自行确认；
+        没填区段列则提醒你手工填写。
+      </div>
+
       <!-- 5. 序列修饰符说明 -->
       <h2 id="section5">5. 序列修饰符说明</h2>
 
-      <h3>5.1 两种支持的修饰符格式</h3>
-      <p>系统支持以下 <strong>两种严格格式</strong>，请选择其中一种填写：</p>
+      <h3>5.1 支持的修饰符格式</h3>
+      <p>系统支持以下 <strong>三种格式</strong>，请选择其中一种填写：</p>
 
       <table>
         <thead>
           <tr>
             <th>对比项</th>
             <th>格式 1（旧格式）</th>
-            <th>格式 2（新格式）</th>
+            <th>格式 2（圆括号格式）</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><strong>命名</strong></td>
             <td>旧格式</td>
-            <td>新格式</td>
+            <td>圆括号格式</td>
           </tr>
           <tr>
             <td><strong>特点</strong></td>
@@ -439,13 +618,14 @@
       <h4>格式 1：修饰符在碱基后面（推荐）</h4>
       <pre><code>GmGmUmUfGmCfAmUfUfUfUmUfCmUmUmGmCmUmAmUmG</code></pre>
       <ul>
-        <li><code>mG</code> = G 碱基的 2'-O-甲基化</li>
-        <li><code>mU</code> = U 碱基的 2'-O-甲基化</li>
-        <li><code>fG</code> = G 碱基的 2'-氟代</li>
+        <li><code>Gm</code> = G 碱基的 2'-O-甲基化</li>
+        <li><code>Um</code> = U 碱基的 2'-O-甲基化</li>
+        <li><code>Gf</code> = G 碱基的 2'-氟代</li>
         <li><code>AsG</code> = A 和 G 之间是硫代磷酸酯键</li>
+        <li>修饰符归属于它<strong>前面</strong>的那个碱基：<code>AmG</code> 表示 A 被甲基化，不是 G</li>
       </ul>
 
-      <h4>格式 2：使用括号结构（新格式）</h4>
+      <h4>格式 2：圆括号结构</h4>
       <pre><code>(VP)(mG)*(mG)*(mU)(mU)(fG)(mG)(fA)(mU)(fU)(fU)(fU)(mU)(fC)(mU)(mU)(mG)(mC)(mU)(mA)(mU)(mG)(L96)</code></pre>
       <ul>
         <li><code>(VP)</code> = 5'端乙烯基膦酸酯</li>
@@ -454,12 +634,38 @@
         <li><code>(L96)</code> = L96 配体（会被自动移除）</li>
       </ul>
 
+      <h4>格式 3：厂商括号格式（ASO，如 MOE / LNA）</h4>
+      <p>寡核苷酸合成厂商普遍使用「碱基 + 方括号内修饰名」的写法，系统可直接识别：</p>
+      <pre><code>G[2'-MOE,PS]T[2'-MOE,PS]T[2'-MOE,PS]A[PS]G[PS]A[PS]A[PS]T[PS]T[PS]G[PS]A[PS]A[PS]G[PS]T[PS]G[PS]A[2'-MOE,PS]G[2'-MOE,PS]A[2'-MOE,PS]</code></pre>
+      <pre><code>A[LNA,PS]G[LNA,PS]A[LNA,PS]C[PS]T[PS]C[PS]T[PS]T[PS]C[PS]C[PS]A[PS]T[PS]T[PS]C[PS]T[PS]A[LNA,PS]C[5-Me-LNA-C,PS]C[5-Me-LNA-C,PS]</code></pre>
+      <ul>
+        <li><code>G[2'-MOE,PS]</code> = G 带 2'-MOE 修饰，且与下一个碱基之间是硫代磷酸酯键</li>
+        <li><code>C[5-Me-LNA-C,PS]</code> = 5-甲基锁核酸胞苷，后接硫代磷酸酯键</li>
+        <li>方括号内多个修饰名用逗号分隔，<strong>顺序无关</strong></li>
+        <li>修饰名<strong>大小写不敏感</strong>；全角撇号（<code>2’</code>）和空格会自动兼容，可直接从 Word / PDF 粘贴</li>
+        <li>末尾的 <code>[PS]</code> 后面没有碱基，会被忽略 —— 硫代键描述的是两个碱基<em>之间</em>，末端没有键</li>
+        <li>认不出的修饰名会<strong>直接报错</strong>，不会静默丢弃</li>
+        <li>三种格式<strong>不能混合使用</strong></li>
+        <li><strong>每个残基都要带方括号</strong>才算这种格式 —— 只有个别残基加了括号（如
+            <code>A[PS]GCTT</code>）会被当作旧格式处理，杂合序列的自动判定也就不会触发。
+            方括号格式的判定规则见 <a href="#section4">第 4.3 节</a></li>
+      </ul>
+
+      <div class="info">
+        <strong>💡 MOE 与 LNA 的 ST.26 注释方式：</strong>
+        ST.26 的受控词表（Annex I 表 2）中<strong>没有</strong> 2'-MOE，也<strong>没有</strong> LNA，
+        因此这两类修饰出 XML 时一律记为 <code>modified_base</code> +
+        <code>mod_base=OTHER</code> + <code>note</code>，并在 note 中写出完整未缩写的名称
+        （如 <code>locked nucleic acid cytidine</code>）。这是标准要求的做法，不是系统的简化处理。
+      </div>
+
       <div class="error">
         <strong>⚠️ 重要提示：</strong>
         <ul>
-          <li>❌ <strong>两种格式不能混合使用</strong></li>
-          <li>❌ <strong>不支持修饰符在碱基前面的格式</strong>（如 <code>Cm</code>、<code>Um</code>、<code>Af</code>）</li>
-          <li>✅ 系统会将格式 2 自动转换为格式 1</li>
+          <li>❌ <strong>三种格式不能混合使用</strong></li>
+          <li>⚠️ 格式 1 请把修饰符写在碱基<strong>后面</strong>。写在前面（如 <code>mG</code>）只在序列开头能正确归属，
+              出现在序列中间时会算到前一个碱基上</li>
+          <li>✅ 系统会将格式 2、格式 3 自动转换为格式 1</li>
           <li>✅ 推荐使用格式 1</li>
         </ul>
       </div>
@@ -498,9 +704,21 @@
             <td>A/C/G/U</td>
           </tr>
           <tr>
+            <td><strong>l</strong></td>
+            <td>锁核酸（LNA）</td>
+            <td>核糖 2'-O 与 4'-C 成桥；不在 ST.26 表 2 内，出 XML 记为 <code>OTHER</code> + note</td>
+            <td>A/C/G/U</td>
+          </tr>
+          <tr>
+            <td><strong>k</strong></td>
+            <td>5-甲基锁核酸胞苷（5-Me-LNA-C）</td>
+            <td>LNA 且碱基为 5-甲基胞苷；同样记为 <code>OTHER</code> + note</td>
+            <td>C</td>
+          </tr>
+          <tr>
             <td><strong>s</strong></td>
             <td>硫代磷酸酯键</td>
-            <td>磷酸硫代修饰</td>
+            <td>磷酸硫代修饰；按 ST.26 记为 <code>modified_base</code> + <code>mod_base=OTHER</code> + note，连续键会合并为 <code>x..y</code> 区段</td>
             <td>-</td>
           </tr>
           <tr>

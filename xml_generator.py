@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import re
 from functools import lru_cache
-from parser import parse_sequence
+from parser import parse_sequence, resolve_hybrid
 from datetime import datetime
 from parser import BASE_NAMES, PREDEFINED_MODS
 from modifier_config import get_modifier_name_en
@@ -104,6 +104,69 @@ def get_modifier_fullname(abbrev: str) -> str:
     return ABBREV_TO_FULLNAME.get(abbrev.lower(), abbrev)
 
 
+def merge_phosphorothioate_regions(modifications):
+    """
+    把首尾相接的硫代磷酸酯键合并成区段。
+
+    WIPO ST.26 网络研讨会 Q11/A11 明确：连续硫代键可用 x..y 单条描述，
+    不必逐键展开。全硫代的 ASO（如 18nt gapmer）逐键会产生 17 条 feature，
+    合并后只剩一条 1..18。
+
+    位置串形如 "1^2"，首尾相接的键（1^2、2^3、3^4）合并后形如 "1..4"；
+    落单的键仍保持 "x^y" 写法。其他修饰原样保留，最后按位置重排一次。
+
+    Args:
+        modifications: [(位置, 修饰类型, 碱基), ...]
+
+    Returns:
+        合并后的新列表（不修改入参）
+    """
+    # 注意 modifications 是按位置排列的，同一个碱基上的糖修饰会插在硫代键中间
+    # （"1 号位的 MOE" 夹在 "1^2" 和 "2^3" 之间），所以不能只合并列表里相邻的
+    # 条目 —— 必须按位置把整条链找出来。
+    chains = []  # [(区段起点, 区段终点, 碱基, [在 modifications 中的下标...]), ...]
+
+    for index, (location, mod_type, base) in enumerate(modifications):
+        if mod_type != 's' or not isinstance(location, str) or '^' not in location:
+            continue
+        try:
+            start, end = (int(part) for part in location.split('^', 1))
+        except ValueError:
+            continue  # 位置不是预期的 x^y 形式，原样保留，不猜测
+
+        if chains and chains[-1][1] == start:
+            chain = chains[-1]
+            chains[-1] = (chain[0], end, chain[2], chain[3] + [index])
+        else:
+            chains.append((start, end, base, [index]))
+
+    # 每条链只在它第一次出现的位置输出一条区段，链内其余位置跳过
+    region_at = {}
+    skipped = set()
+    for start, end, base, indexes in chains:
+        # 单个键用 x^y（表示 x 与 y 之间那一根键），多个键相接才用 x..y 区段。
+        # 判断依据是键的数量而非端点：一根键的起点终点本来就不相等。
+        location = f"{start}^{end}" if len(indexes) == 1 else f"{start}..{end}"
+        region_at[indexes[0]] = (location, 's', base)
+        skipped.update(indexes[1:])
+
+    merged = [
+        region_at.get(index, entry)
+        for index, entry in enumerate(modifications)
+        if index not in skipped
+    ]
+
+    # 合并后区段的起点可能落在若干糖修饰之后，按位置重排一次让 feature 表保持有序
+    # （排序是稳定的，原有条目的相对顺序不变）
+    return sorted(merged, key=lambda entry: _location_sort_key(entry[0]))
+
+
+def _location_sort_key(location):
+    """位置的排序键：正常位置按起点数字排，解析不出来的排到最后（不猜它的位置）"""
+    match = re.match(r'\s*(\d+)', str(location))
+    return (0, int(match.group(1))) if match else (1, 0)
+
+
 def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
     # 创建提醒列表
     reminders = []
@@ -197,10 +260,12 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
             organism = "synthetic construct"
             reminders.append(f"第{line_number}行：未指定生物体名称，使用了默认值'synthetic construct'")
         
-        # 检查是否使用了默认限定符分子类型
-        if pd.isnull(qual_moltype):
+        # 检查是否使用了默认限定符分子类型。这里只算默认值，提醒推迟到下面
+        # mol_type 真正写入的地方 —— 杂合序列会被 ¶55 改写成 'other DNA'，
+        # 在这里就报「默认值 'other RNA'」会与实际写进 XML 的值对不上。
+        qual_moltype_defaulted = pd.isnull(qual_moltype)
+        if qual_moltype_defaulted:
             qual_moltype = "other RNA" if moltype in ["DNA", "RNA"] else "protein"
-            reminders.append(f"第{line_number}行：未指定限定符分子类型，使用了默认值'{qual_moltype}'")
         
         # 使用缓存的解析结果或重新解析
         if parsed_seq_data:
@@ -222,7 +287,17 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
         # 检查是否包含简并碱基
         if has_degenerate_bases:
             reminders.append(f"第{line_number}行：序列包含简并碱基（M/R/W/S/Y/K/V/H/D/B），请核查是否为预期使用")
-        
+
+        # 杂合序列（DNA/RNA）的区段判定统一走 parser.resolve_hybrid —— 概要页调用同一
+        # 函数，否则「概要里显示的类型」和「实际生成的 XML」会对不上。判定规则（按标注
+        # 格式分四条路径）都写在那边的 docstring 里，这里只负责接结果。
+        # 它只在「用户明确标注了区段、但化学上不可能」时才抛错中止整批转换。
+        resolution = resolve_hybrid(
+            sequence, moltype, naked_sequence, modifications, hybrid_segments, line_number
+        )
+        hybrid_segments = resolution.segments
+        reminders.extend(f"第{line_number}行：{hint}" for hint in resolution.hints)
+
         if moltype in ["DNA", "RNA"] and len(special_positions) > 0:
             seq_list = list(naked_sequence)
             for idx, pos in enumerate(special_positions):
@@ -262,10 +337,21 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
                 
             naked_sequence = ''.join(seq_list)
         
+        # ST.26 ¶55：杂合体的分子类型必须是 DNA，与用户在表里填的 DNA/RNA 无关。
+        # 注意 INSDSeq_moltype（元素，取值 DNA/RNA/AA）与 mol_type（source 上的限定符）
+        # 是两个不同字段，¶54 和 ¶84 两次警告过不要混淆。
+        is_hybrid = bool(hybrid_segments)
+        if is_hybrid:
+            output_moltype = "DNA"
+        elif pd.notnull(original_moltype):
+            output_moltype = str(original_moltype).upper()
+        else:
+            output_moltype = "RNA"
+
         sequence_data = ET.SubElement(root, "SequenceData", {"sequenceIDNumber": str(sequence_id_counter)})
         insd_seq = ET.SubElement(sequence_data, "INSDSeq")
         ET.SubElement(insd_seq, "INSDSeq_length").text = str(len(naked_sequence))
-        ET.SubElement(insd_seq, "INSDSeq_moltype").text = original_moltype if pd.notnull(original_moltype) else "RNA"
+        ET.SubElement(insd_seq, "INSDSeq_moltype").text = output_moltype
         ET.SubElement(insd_seq, "INSDSeq_division").text = "PAT"
 
         insd_feature_table = ET.SubElement(insd_seq, "INSDSeq_feature-table")
@@ -276,17 +362,31 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
         ET.SubElement(insd_feature_source, "INSDFeature_location").text = f"1..{len(naked_sequence)}"
         insd_feature_quals_source = ET.SubElement(insd_feature_source, "INSDFeature_quals")
         
-        if moltype == "DNA" and hybrid_segments:
+        # ST.26 ¶55：杂合体的 mol_type 必须是 other DNA、organism 必须是 synthetic construct
+        if is_hybrid:
             add_qualifier(insd_feature_quals_source, "mol_type", "other DNA")
         else:
             add_qualifier(insd_feature_quals_source, "mol_type", qual_moltype)
-        
+
+        if qual_moltype_defaulted:
+            effective_moltype = "other DNA" if is_hybrid else qual_moltype
+            reminders.append(
+                f"第{line_number}行：未指定限定符分子类型，使用了默认值'{effective_moltype}'"
+            )
+
+        if is_hybrid and str(organism) != "synthetic construct":
+            reminders.append(
+                f"第{line_number}行：杂合序列的organism按ST.26第55段改为'synthetic construct'"
+                f"（原填写'{organism}'）"
+            )
+            organism = "synthetic construct"
+
         organism_id = f"q{qualifier_counter}"
         add_qualifier_with_id(insd_feature_quals_source, "organism", organism, organism_id)
         qualifier_counter += 1
 
-        # 处理杂合DNA序列的区段特征
-        if moltype == "DNA" and hybrid_segments:
+        # 处理杂合序列的区段特征
+        if is_hybrid:
             segments = sorted(hybrid_segments, key=lambda x: x['start'])
             prev_end = 0
             for seg in segments:
@@ -307,18 +407,22 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", f"q{qualifier_counter}")
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = seg['type']
+                # 区段列的正则带 re.IGNORECASE，用户写 'rna' 也会被接受，
+                # 但 ¶55 的例子用的是大写，统一后再写进 XML。
+                ET.SubElement(qual, "INSDQualifier_value").text = str(seg['type']).upper()
                 qualifier_counter += 1
 
-        # 处理修饰碱基
-        for mod_info in modifications:
+        # 处理修饰碱基。连续硫代键先合并成区段，否则全硫代的 ASO 会产生上百条 feature。
+        for mod_info in merge_phosphorothioate_regions(modifications):
             location, mod_type, base = mod_info
             feature = ET.SubElement(insd_feature_table, "INSDFeature")
-            
-            if mod_type in ['m', 'f', 'e', 'pv']:
-                ET.SubElement(feature, "INSDFeature_key").text = "modified_base"
-            elif mod_type == 's':
-                ET.SubElement(feature, "INSDFeature_key").text = "misc_feature"
+
+            # 所有修饰都走 modified_base。硫代键（s）早先写成 misc_feature，但
+            # ST.26 网络研讨会 Q11/A11 明确它必须用 modified_base + mod_base=OTHER
+            # + note 描述，故一并统一。
+            if mod_type not in ('m', 'f', 'e', 'pv', 'l', 'k', 's'):
+                raise ValueError(f"未知的修饰类型 '{mod_type}'，无法生成 XML")
+            ET.SubElement(feature, "INSDFeature_key").text = "modified_base"
             
             ET.SubElement(feature, "INSDFeature_location").text = str(location)
             
@@ -354,16 +458,19 @@ def generate_xml(sequences, basic_data, output_folder, expert_settings=None):
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
                 ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('f', base, expert_settings)
                 qualifier_counter += 1
-            elif mod_type == 'e':
+            # MOE / LNA / 5-Me-LNA-C 都不在 Annex I 表 2 的受控词表内，只能
+            # mod_base=OTHER + note 写完整未缩写名称（note 里带碱基名）。
+            elif mod_type in ('e', 'l', 'k'):
                 base_name = BASE_NAMES.get(base.upper(), {}).get('en', 'base')
                 add_qualifier(quals, "mod_base", "OTHER")
                 note_id = f"q{qualifier_counter}"
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", note_id)
                 ET.SubElement(qual, "INSDQualifier_name").text = "note"
-                ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en('e', base, expert_settings)
+                ET.SubElement(qual, "INSDQualifier_value").text = get_modifier_name_en(mod_type, base, expert_settings)
                 qualifier_counter += 1
             elif mod_type == 's':
+                add_qualifier(quals, "mod_base", "OTHER")
                 note_id = f"q{qualifier_counter}"
                 qual = ET.SubElement(quals, "INSDQualifier")
                 qual.set("id", note_id)
