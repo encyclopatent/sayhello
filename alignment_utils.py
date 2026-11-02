@@ -3,7 +3,7 @@ import subprocess
 from Bio import AlignIO
 import os
 
-def create_aligner(mode, matrix_name="BLOSUM62"):
+def create_aligner(mode, matrix_name="BLOSUM62", gapopen=10.0, gapextend=0.5):
     # 1. 创建对齐器实例
     aligner = PairwiseAligner()
 
@@ -17,7 +17,84 @@ def create_aligner(mode, matrix_name="BLOSUM62"):
     # 3. 设置模式
     aligner.mode = mode
 
+    # 4. 设置空位罚分
+    #    必须设置：PairwiseAligner 默认 open/extend gap score 都是 0，
+    #    相当于允许在任意位置插入任意多个空位且不扣分，最优比对路径数会指数级膨胀，
+    #    Biopython 在统计最优解数量时抛
+    #    OverflowError: number of optimal alignments is larger than 9223372036854775807
+    #    另外空位不扣分时比对结果也和 EMBOSS needle/water 不一致。
+    try:
+        aligner.open_gap_score = -abs(float(gapopen))
+        aligner.extend_gap_score = -abs(float(gapextend))
+    except (TypeError, ValueError):
+        pass
+
     return aligner
+
+
+def _aligned_pair(aln):
+    """取比对后的两条带空位序列 (target, query) 及其在原始序列中的起始位置。
+
+    返回 (seq_a, seq_b, t_start, q_start)：
+      - seq_a / seq_b 是比对区内的序列（含 '-' 空位）
+      - t_start / q_start 是比对区第一列对应在原始 target / query 中的 0-based 下标
+        （全局比对为 0；局部比对可能是非 0 的两翼偏移）
+
+    兼容 Biopython 1.79（py3.6，线上环境）与 1.80+：
+      - 1.80+ 直接支持 aln[0] / aln[1]，起点从 aln.coordinates 取
+      - 1.79 的 aln[0] 抛 NotImplementedError，起点从 aln.path[0] 取
+    """
+    # --- Biopython 1.80+ ---
+    try:
+        seq_a = aln[0]
+        seq_b = aln[1]
+        coords = getattr(aln, 'coordinates', None)
+        t_start = q_start = 0
+        if coords is not None and len(coords) == 2 and len(coords[0]) and len(coords[1]):
+            t_start = int(coords[0][0])
+            q_start = int(coords[1][0])
+        return seq_a, seq_b, t_start, q_start
+    except (NotImplementedError, TypeError, IndexError, KeyError):
+        pass
+
+    # --- Biopython 1.79：按 path 重建比对区 ---
+    path = getattr(aln, 'path', None)
+    target = getattr(aln, 'target', None)
+    query = getattr(aln, 'query', None)
+    if path and target is not None and query is not None:
+        t_parts, q_parts = [], []
+        p1, p2 = path[0]
+        t_start, q_start = p1, p2
+        for e1, e2 in path[1:]:
+            if e1 > p1 and e2 > p2:
+                t_parts.append(target[p1:e1])
+                q_parts.append(query[p2:e2])
+            elif e1 > p1:
+                t_parts.append(target[p1:e1])
+                q_parts.append('-' * (e1 - p1))
+            elif e2 > p2:
+                t_parts.append('-' * (e2 - p2))
+                q_parts.append(query[p2:e2])
+            p1, p2 = e1, e2
+        return ''.join(t_parts), ''.join(q_parts), t_start, q_start
+
+    lines = str(aln).split('\n')
+    seq_a = lines[0]
+    seq_b = lines[2] if len(lines) > 2 else ''
+    return seq_a, seq_b, 0, 0
+
+
+def _build_map(seq_a, seq_b, t_start=0, q_start=0):
+    """由比对后的两条序列生成 target位置 -> query位置 的映射。"""
+    mapping = {}
+    t_pos = t_start - 1
+    q_pos = q_start - 1
+    for t, q in zip(seq_a, seq_b):
+        t_pos += t != '-'
+        q_pos += q != '-'
+        if t != '-' and q != '-':
+            mapping[t_pos] = q_pos
+    return mapping
 
 def calculate_identity(t_aligned, q_aligned):
     """计算序列同一性百分比（基于比对后长度）"""
@@ -41,78 +118,45 @@ def process_alignment(target, query, sites, key_positions=None, algorithm='globa
         'water': {'target': '', 'query': ''}
     }
     
+    # 输入校验：保持与之前一致的错误提示
+    if not target or not query:
+        raise ValueError("sequence has zero length")
+
     # 执行全局比对
-    global_aligner = create_aligner('global', matrix_name)
-    global_alignments = global_aligner.align(target, query)
-    if not global_alignments:
-        global_identity = 0.0
-        global_map = {}
-    else:
-        best_global = global_alignments[0]
-        # --- 修改开始 ---
-        try:
-            # 尝试使用新版写法 (Python 3.8+ / Biopython 1.80+)
-            seq_a = best_global[0]
-            seq_b = best_global[1]
-        except NotImplementedError:
-            # 针对你的服务器环境 (Python 3.6 / Biopython 1.79)
-            # 将对齐结果格式化为字符串，通常格式为三行：
-            # 第一行：序列A (带gap)
-            # 第二行：匹配符号 (|)
-            # 第三行：序列B (带gap)
-            lines = str(best_global).split('\n')
-            seq_a = lines[0]
-            seq_b = lines[2]
-        
+    global_aligner = create_aligner('global', matrix_name, gapopen, gapextend)
+    global_identity = 0.0
+    global_map = {}
+    try:
+        best_global = global_aligner.align(target, query)[0]
+    except (IndexError, StopIteration):
+        best_global = None
+    except OverflowError as e:
+        # 最优比对方案数溢出（理论上设置空位罚分后不会再发生），降级为无结果
+        print(f"Biopython全局比对方案数溢出: {e}")
+        best_global = None
+    if best_global is not None:
+        seq_a, seq_b, t_start, q_start = _aligned_pair(best_global)
         global_identity = calculate_identity(seq_a, seq_b)
-        # --- 修改结束 ---
-        
-        # 生成全局映射
-        global_map = {}
-        t_pos, q_pos = -1, -1
-        for t, q in zip(seq_a, seq_b):
-            t_pos += t != '-'
-            q_pos += q != '-'
-            if t != '-' and q != '-':
-                global_map[t_pos] = q_pos
+        global_map = _build_map(seq_a, seq_b, t_start, q_start)
         # 保存比对后的序列
         aligned_sequences['global']['target'] = str(seq_a)
         aligned_sequences['global']['query'] = str(seq_b)
 
     # 执行局部比对
-    local_aligner = create_aligner('local', matrix_name)
-    local_alignments = local_aligner.align(target, query)
-    if not local_alignments:
-        local_identity = 0.0
-        local_map = {}
-    else:
-        best_local = local_alignments[0]
-        # --- 修改开始 ---
-        try:
-            # 尝试使用新版写法 (Python 3.8+ / Biopython 1.80+)
-            seq_a = best_local[0]
-            seq_b = best_local[1]
-        except NotImplementedError:
-            # 针对你的服务器环境 (Python 3.6 / Biopython 1.79)
-            # 将对齐结果格式化为字符串，通常格式为三行：
-            # 第一行：序列A (带gap)
-            # 第二行：匹配符号 (|)
-            # 第三行：序列B (带gap)
-            lines = str(best_local).split('\n')
-            seq_a = lines[0]
-            seq_b = lines[2]
-        
+    local_aligner = create_aligner('local', matrix_name, gapopen, gapextend)
+    local_identity = 0.0
+    local_map = {}
+    try:
+        best_local = local_aligner.align(target, query)[0]
+    except (IndexError, StopIteration):
+        best_local = None
+    except OverflowError as e:
+        print(f"Biopython局部比对方案数溢出: {e}")
+        best_local = None
+    if best_local is not None:
+        seq_a, seq_b, t_start, q_start = _aligned_pair(best_local)
         local_identity = calculate_identity(seq_a, seq_b)
-        # --- 修改结束 ---
-        
-        # 生成局部映射
-        local_map = {}
-        t_pos, q_pos = -1, -1
-        for t, q in zip(seq_a, seq_b):
-            t_pos += t != '-'
-            q_pos += q != '-'
-            if t != '-' and q != '-':
-                local_map[t_pos] = q_pos
+        local_map = _build_map(seq_a, seq_b, t_start, q_start)
         # 保存比对后的序列
         aligned_sequences['local']['target'] = str(seq_a)
         aligned_sequences['local']['query'] = str(seq_b)
